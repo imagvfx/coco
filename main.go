@@ -1,5 +1,12 @@
 package main
 
+import (
+	"flag"
+	"log"
+	"net/http"
+	"os"
+)
+
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// ID lets a Job distinguishes from others.
@@ -49,5 +56,19 @@ type Task struct {
 // When a Command is nil or empty, the command will be skipped.
 type Command []string
 
+func handleRoot(w http.ResponseWriter, r *http.Request) {}
+
 func main() {
+	var addr string
+	defaultAddr := os.Getenv("COCO_ADDR")
+	if defaultAddr == "" {
+		defaultAddr = "localhost:8282"
+	}
+	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
+	flag.Parse()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", handleRoot)
+
+	log.Fatal(http.ListenAndServe(addr, mux))
 }
