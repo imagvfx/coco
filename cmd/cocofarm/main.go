@@ -20,7 +20,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
-	mux.HandleFunc("/api/user/job/add", handleAPIUserJobAdd)
+	mux.HandleFunc("/api/order", handleAPIOrder)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
