@@ -12,17 +12,11 @@ func main() {
 		log.Fatal("need a subcommand: [order]")
 	}
 
-	var err error
-
 	subcmd := args[0]
 	switch subcmd {
 	case "order":
-		err = order(args[1:])
+		order(args[1:])
 	default:
 		log.Fatalf("unknown subcommand: %s", subcmd)
-	}
-
-	if err != nil {
-		log.Fatalf("%v: %v", subcmd, err)
 	}
 }
