@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/imagvfx/coco"
 )
 
 func handleAPIUserJobAdd(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
-	j := &Job{}
+	j := &coco.Job{}
 	dec.Decode(j)
 
 	io.WriteString(w, fmt.Sprintf("%v", j))
