@@ -14,8 +14,7 @@ func handleAPIOrder(w http.ResponseWriter, r *http.Request) {
 	j := &coco.Job{}
 	dec.Decode(j)
 
-	io.WriteString(w, fmt.Sprintf("%v", j))
-
-	// TODO: add job to job stack
+	JobManager.Add(j)
+	io.WriteString(w, fmt.Sprintf("%v", JobManager.Jobs()))
 	// TODO: return the job id
 }

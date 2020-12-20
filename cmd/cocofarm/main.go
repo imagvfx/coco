@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+var JobManager = &jobManager{}
+
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
 
 func main() {
