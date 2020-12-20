@@ -19,7 +19,7 @@ func main() {
 	case "order":
 		err = order(args[1:])
 	default:
-		log.Fatalf("unknow subcommand: %s", subcmd)
+		log.Fatalf("unknown subcommand: %s", subcmd)
 	}
 
 	if err != nil {
