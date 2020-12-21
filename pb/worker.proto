@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package pb;
+
+option go_package = "github.com/imagvfx/coco/pb";
+
+service Worker {
+	rpc Run(Commands) returns (Empty) {};
+}
+
+message Commands {
+	message C {
+		repeated string args = 1;
+	}
+	repeated C cmds = 1;
+}
+
+message Empty {}
