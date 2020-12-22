@@ -8,11 +8,12 @@ service Worker {
 	rpc Run(Commands) returns (Empty) {};
 }
 
+message Command {
+	repeated string args = 1;
+}
+
 message Commands {
-	message C {
-		repeated string args = 1;
-	}
-	repeated C cmds = 1;
+	repeated Command cmds = 1;
 }
 
 message Empty {}

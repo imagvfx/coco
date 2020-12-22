@@ -36,7 +36,7 @@ func main() {
 	defer cancel()
 
 	_, err = c.Run(ctx, &pb.Commands{
-		Cmds: []*pb.Commands_C{
+		Cmds: []*pb.Command{
 			{Args: []string{"ls"}},
 			{Args: []string{"ls", "-al"}},
 		},
