@@ -1,15 +1,12 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
-	"github.com/imagvfx/coco/pb"
-	"google.golang.org/grpc"
+	"github.com/imagvfx/coco"
 )
 
 var JobManager = &jobManager{}
@@ -26,20 +23,9 @@ func main() {
 	flag.Parse()
 
 	// grpc test
-	conn, err := grpc.Dial("localhost:8283", grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-	c := pb.NewWorkerClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	_, err = c.Run(ctx, &pb.Commands{
-		Cmds: []*pb.Command{
-			{Args: []string{"ls"}},
-			{Args: []string{"ls", "-al"}},
-		},
+	err := sendCommands("localhost:8283", []coco.Command{
+		{"ls"},
+		{"ls", "-al"},
 	})
 	if err != nil {
 		log.Fatal(err)
