@@ -21,6 +21,7 @@ func order(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// TODO: validate the json data before sending it to farm
 	cli := &http.Client{}
 	addr := os.Getenv("COCO_ADDR")
 	if addr == "" {

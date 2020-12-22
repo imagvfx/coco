@@ -23,7 +23,7 @@ type Worker struct {
 }
 
 func sendCommands(worker string, cmds []coco.Command) error {
-	conn, err := grpc.Dial(worker, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(worker, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
 	}

@@ -5,11 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/imagvfx/coco"
 )
 
-var JobManager = &jobManager{}
+var JobManager = newJobManager()
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
 
@@ -22,14 +20,7 @@ func main() {
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
 	flag.Parse()
 
-	// grpc test
-	err := sendCommands("localhost:8283", []coco.Command{
-		{"ls"},
-		{"ls", "-al"},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	JobManager.Start()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
