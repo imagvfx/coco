@@ -9,6 +9,19 @@ import (
 	"google.golang.org/grpc"
 )
 
+type WorkerStatus int
+
+const (
+	WorkerNotFound = WorkerStatus(iota)
+	WorkerIdle
+	WorkerRunning
+)
+
+type Worker struct {
+	addr   string
+	status WorkerStatus
+}
+
 func sendCommands(worker string, cmds []coco.Command) error {
 	conn, err := grpc.Dial(worker, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
