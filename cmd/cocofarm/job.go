@@ -3,9 +3,7 @@ package main
 import (
 	"container/heap"
 	"fmt"
-	"log"
 	"sync"
-	"time"
 
 	"github.com/imagvfx/coco"
 )
@@ -77,16 +75,12 @@ type jobManager struct {
 
 	jobs        *jobHeap
 	taskWalkers map[*coco.Job]*taskWalker
-
-	workers []*Worker
 }
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.jobs = &jobHeap{}
 	m.taskWalkers = make(map[*coco.Job]*taskWalker)
-	// TODO: accept workers
-	m.workers = []*Worker{&Worker{addr: "localhost:8283", status: WorkerIdle}}
 	return m
 }
 
@@ -127,18 +121,6 @@ func (m *jobManager) Jobs() *jobHeap {
 	return m.jobs
 }
 
-func (m *jobManager) idleWorkers() []*Worker {
-	m.Lock()
-	defer m.Unlock()
-	workers := make([]*Worker, 0)
-	for _, w := range m.workers {
-		if w.status == WorkerIdle {
-			workers = append(workers, w)
-		}
-	}
-	return workers
-}
-
 func (m *jobManager) NextTask() *coco.Task {
 	for {
 		if len(*m.jobs) == 0 {
@@ -164,43 +146,4 @@ func (m *jobManager) NextTask() *coco.Task {
 
 		return next
 	}
-}
-
-func (m *jobManager) Start() {
-	match := func() {
-		workers := m.idleWorkers()
-		if len(workers) == 0 {
-			log.Print("no worker yet")
-			return
-		}
-
-		for i := 0; i < len(workers); i++ {
-			w := workers[i]
-			var cmds []coco.Command
-			for {
-				t := m.NextTask()
-				if t == nil {
-					// no more task to do
-					return
-				}
-				if len(t.Commands) == 0 {
-					continue
-				}
-				cmds = t.Commands
-				break
-			}
-			err := sendCommands(w.addr, cmds)
-			if err != nil {
-				log.Print(err)
-			}
-		}
-	}
-
-	go func() {
-		for {
-			time.Sleep(time.Second)
-			log.Print("matching...")
-			match()
-		}
-	}()
 }

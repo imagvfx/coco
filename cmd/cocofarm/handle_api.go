@@ -10,7 +10,11 @@ import (
 	"github.com/imagvfx/coco"
 )
 
-func handleAPIOrder(w http.ResponseWriter, r *http.Request) {
+type apiHandler struct {
+	jobManager *jobManager
+}
+
+func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	j := &coco.Job{}
 	err := dec.Decode(j)
@@ -18,7 +22,7 @@ func handleAPIOrder(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 	}
 
-	err = JobManager.Add(j)
+	err = h.jobManager.Add(j)
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}

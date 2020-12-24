@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/imagvfx/coco"
@@ -20,6 +21,30 @@ const (
 type Worker struct {
 	addr   string
 	status WorkerStatus
+}
+
+type workerManager struct {
+	sync.Mutex
+	workers []*Worker
+}
+
+func newWorkerManager() *workerManager {
+	m := &workerManager{}
+	// TODO: accept workers
+	m.workers = []*Worker{&Worker{addr: "localhost:8283", status: WorkerIdle}}
+	return m
+}
+
+func (m *workerManager) idleWorkers() []*Worker {
+	m.Lock()
+	defer m.Unlock()
+	workers := make([]*Worker, 0)
+	for _, w := range m.workers {
+		if w.status == WorkerIdle {
+			workers = append(workers, w)
+		}
+	}
+	return workers
 }
 
 func sendCommands(worker string, cmds []coco.Command) error {

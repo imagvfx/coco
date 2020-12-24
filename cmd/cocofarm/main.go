@@ -5,9 +5,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-)
+	"time"
 
-var JobManager = newJobManager()
+	"github.com/imagvfx/coco"
+)
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
 
@@ -20,11 +21,55 @@ func main() {
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
 	flag.Parse()
 
-	JobManager.Start()
+	job := newJobManager()
+	worker := newWorkerManager()
+	go matching(job, worker)
 
+	api := &apiHandler{
+		jobManager: job,
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
-	mux.HandleFunc("/api/order", handleAPIOrder)
+	mux.HandleFunc("/api/order", api.handleOrder)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func matching(jobman *jobManager, workerman *workerManager) {
+	match := func() {
+		workers := workerman.idleWorkers()
+		if len(workers) == 0 {
+			log.Print("no worker yet")
+			return
+		}
+
+		for i := 0; i < len(workers); i++ {
+			w := workers[i]
+			var cmds []coco.Command
+			for {
+				t := jobman.NextTask()
+				if t == nil {
+					// no more task to do
+					return
+				}
+				if len(t.Commands) == 0 {
+					continue
+				}
+				cmds = t.Commands
+				break
+			}
+			err := sendCommands(w.addr, cmds)
+			if err != nil {
+				log.Print(err)
+			}
+		}
+	}
+
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			log.Print("matching...")
+			match()
+		}
+	}()
 }
