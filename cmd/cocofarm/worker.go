@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -30,9 +31,30 @@ type workerManager struct {
 
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
-	// TODO: accept workers
-	m.workers = []*Worker{&Worker{addr: "localhost:8283", status: WorkerIdle}}
+	m.workers = make([]*Worker, 0)
 	return m
+}
+
+func (m *workerManager) Add(w *Worker) error {
+	m.Lock()
+	defer m.Unlock()
+	found := false
+	for _, v := range m.workers {
+		if w.addr == v.addr {
+			found = true
+		}
+	}
+	if found {
+		return fmt.Errorf("worker %s already added", w.addr)
+	}
+	m.workers = append(m.workers, w)
+	return nil
+}
+
+func (m *workerManager) SetStatus(w *Worker, s WorkerStatus) {
+	m.Lock()
+	defer m.Unlock()
+	w.status = s
 }
 
 func (m *workerManager) idleWorkers() []*Worker {
@@ -47,8 +69,8 @@ func (m *workerManager) idleWorkers() []*Worker {
 	return workers
 }
 
-func sendCommands(worker string, cmds []coco.Command) error {
-	conn, err := grpc.Dial(worker, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+func (m *workerManager) sendCommands(w *Worker, cmds []coco.Command) error {
+	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
 	}
@@ -69,5 +91,9 @@ func sendCommands(worker string, cmds []coco.Command) error {
 	if err != nil {
 		return err
 	}
+
+	m.Lock()
+	defer m.Unlock()
+	w.status = WorkerRunning
 	return nil
 }

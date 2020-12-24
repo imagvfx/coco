@@ -16,4 +16,13 @@ message Commands {
 	repeated Command cmds = 1;
 }
 
+service Farm {
+	rpc Waiting(Here) returns (Empty) {};
+}
+
+message Here {
+	string addr = 1;
+}
+
 message Empty {}
+

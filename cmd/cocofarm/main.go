@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/pb"
+	"google.golang.org/grpc"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
@@ -21,8 +25,10 @@ func main() {
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
 	flag.Parse()
 
-	job := newJobManager()
 	worker := newWorkerManager()
+	go listenWorker(worker)
+
+	job := newJobManager()
 	go matching(job, worker)
 
 	api := &apiHandler{
@@ -33,6 +39,43 @@ func main() {
 	mux.HandleFunc("/api/order", api.handleOrder)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+type server struct {
+	pb.UnimplementedFarmServer
+	workerman *workerManager
+}
+
+func listenWorker(workerman *workerManager) {
+	lis, err := net.Listen("tcp", "localhost:8284")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterFarmServer(s, &server{workerman: workerman})
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failted to serve: %v", err)
+	}
+}
+
+func (s *server) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
+	log.Printf("received: %v", in.Addr)
+	addr := in.Addr
+	found := false
+	for _, w := range s.workerman.workers {
+		if addr == w.addr {
+			s.workerman.SetStatus(w, WorkerIdle)
+			found = true
+			break
+		}
+	}
+	if !found {
+		err := s.workerman.Add(&Worker{addr: addr, status: WorkerIdle})
+		if err != nil {
+			log.Print(err)
+		}
+	}
+	return &pb.Empty{}, nil
 }
 
 func matching(jobman *jobManager, workerman *workerManager) {
@@ -58,8 +101,10 @@ func matching(jobman *jobManager, workerman *workerManager) {
 				cmds = t.Commands
 				break
 			}
-			err := sendCommands(w.addr, cmds)
+			err := workerman.sendCommands(w, cmds)
 			if err != nil {
+				// TODO: currently, it skips the commands if failed to communicate with the worker.
+				// is it right decision?
 				log.Print(err)
 			}
 		}
