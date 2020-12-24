@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"fmt"
 	"log"
 	"sync"
@@ -66,6 +67,7 @@ func (h *jobHeap) Pop() interface{} {
 	old := *h
 	n := len(old)
 	el := old[n-1]
+	old[n-1] = nil // avoid memory leak
 	*h = old[:n-1]
 	return el
 }
@@ -73,7 +75,7 @@ func (h *jobHeap) Pop() interface{} {
 type jobManager struct {
 	sync.Mutex
 
-	jobs        map[int]*coco.Job
+	jobs        *jobHeap
 	taskWalkers map[*coco.Job]*taskWalker
 
 	workers []*Worker
@@ -81,7 +83,7 @@ type jobManager struct {
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
-	m.jobs = make(map[int]*coco.Job)
+	m.jobs = &jobHeap{}
 	m.taskWalkers = make(map[*coco.Job]*taskWalker)
 	// TODO: accept workers
 	m.workers = []*Worker{&Worker{addr: "localhost:8283", status: WorkerIdle}}
@@ -89,7 +91,6 @@ func newJobManager() *jobManager {
 }
 
 func (m *jobManager) Add(j *coco.Job) error {
-	fmt.Println(j)
 	if j == nil {
 		return fmt.Errorf("nil job cannot be added")
 	}
@@ -98,17 +99,29 @@ func (m *jobManager) Add(j *coco.Job) error {
 	}
 	m.Lock()
 	defer m.Unlock()
-	m.jobs[j.ID] = j
+	heap.Push(m.jobs, j)
 	return nil
 }
 
-func (m *jobManager) Delete(id int) {
+func (m *jobManager) Delete(id int) error {
 	m.Lock()
 	defer m.Unlock()
-	delete(m.jobs, id)
+	idx := -1
+	for i := 0; i < len(*m.jobs); i++ {
+		j := (*m.jobs)[i]
+		if id == j.ID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return fmt.Errorf("cannot find the job with id")
+	}
+	heap.Remove(m.jobs, idx)
+	return nil
 }
 
-func (m *jobManager) Jobs() map[int]*coco.Job {
+func (m *jobManager) Jobs() *jobHeap {
 	m.Lock()
 	defer m.Unlock()
 	return m.jobs
@@ -126,6 +139,33 @@ func (m *jobManager) idleWorkers() []*Worker {
 	return workers
 }
 
+func (m *jobManager) NextTask() *coco.Task {
+	for {
+		if len(*m.jobs) == 0 {
+			return nil
+		}
+		j := heap.Pop(m.jobs).(*coco.Job)
+		m.Lock()
+		walk, ok := m.taskWalkers[j]
+		if !ok {
+			walk = newTaskWalker(j.Root)
+			m.taskWalkers[j] = walk
+		}
+		m.Unlock()
+		next := walk.Next()
+
+		// check there is any task left.
+		peek := walk.Peek()
+		if peek != nil {
+			// TODO: calculate real priority of the task.
+			j.Priority = peek.Priority
+			heap.Push(m.jobs, j)
+		}
+
+		return next
+	}
+}
+
 func (m *jobManager) Start() {
 	match := func() {
 		workers := m.idleWorkers()
@@ -134,34 +174,20 @@ func (m *jobManager) Start() {
 			return
 		}
 
-		h := &jobHeap{}
-		jobs := m.Jobs()
-		for _, j := range jobs {
-			h.Push(j)
-		}
-
-		for i := 0; i < len(workers) && i < len(m.jobs); i++ {
-			fmt.Println(i)
+		for i := 0; i < len(workers); i++ {
 			w := workers[i]
-			j := h.Pop().(*coco.Job)
-			walk, ok := m.taskWalkers[j]
-			if !ok {
-				walk = newTaskWalker(j.Root)
-				m.taskWalkers[j] = walk
-			}
 			var cmds []coco.Command
 			for {
-				t := walk.Next()
+				t := m.NextTask()
 				if t == nil {
-					break
+					// no more task to do
+					return
 				}
-				if len(t.Commands) != 0 {
-					cmds = t.Commands
-					break
+				if len(t.Commands) == 0 {
+					continue
 				}
-			}
-			if walk.Peek() == nil {
-				m.Delete(j.ID)
+				cmds = t.Commands
+				break
 			}
 			err := sendCommands(w.addr, cmds)
 			if err != nil {

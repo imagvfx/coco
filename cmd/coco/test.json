@@ -1,8 +1,22 @@
 {
 	"Root": {
-		"Commands": [
-			["ls"],
-			["ls", "-al"]
+		"SubTasks": [
+			{
+				"Commands": [
+					["echo", "hello"]
+				]
+			},
+			{
+				"Commands": [
+					["ls"],
+					["ls", "-al"]
+				]
+			},
+			{
+				"Commands": [
+					["echo", "bye"]
+				]
+			}
 		]
 	}
 }
