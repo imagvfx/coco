@@ -93,7 +93,7 @@ var _Worker_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "worker.proto",
+	Metadata: "coco.proto",
 }
 
 // FarmClient is the client API for Farm service.
@@ -176,5 +176,5 @@ var _Farm_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "worker.proto",
+	Metadata: "coco.proto",
 }
