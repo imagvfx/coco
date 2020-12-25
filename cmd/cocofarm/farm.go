@@ -16,7 +16,7 @@ type farmServer struct {
 	workerman *workerManager
 }
 
-// newFarm creates a new farmServer.
+// newFarmServer creates a new farmServer.
 func newFarmServer(addr string, workerman *workerManager) *farmServer {
 	return &farmServer{
 		addr:      addr,
