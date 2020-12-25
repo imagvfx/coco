@@ -1,17 +1,13 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/imagvfx/coco"
-	"github.com/imagvfx/coco/pb"
-	"google.golang.org/grpc"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
@@ -26,7 +22,9 @@ func main() {
 	flag.Parse()
 
 	worker := newWorkerManager()
-	go listenWorker(worker)
+
+	farm := newFarmServer("localhost:8284", worker)
+	go farm.Listen()
 
 	job := newJobManager()
 	go matching(job, worker)
@@ -39,43 +37,6 @@ func main() {
 	mux.HandleFunc("/api/order", api.handleOrder)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
-}
-
-type server struct {
-	pb.UnimplementedFarmServer
-	workerman *workerManager
-}
-
-func listenWorker(workerman *workerManager) {
-	lis, err := net.Listen("tcp", "localhost:8284")
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
-	pb.RegisterFarmServer(s, &server{workerman: workerman})
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failted to serve: %v", err)
-	}
-}
-
-func (s *server) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
-	log.Printf("received: %v", in.Addr)
-	addr := in.Addr
-	found := false
-	for _, w := range s.workerman.workers {
-		if addr == w.addr {
-			s.workerman.SetStatus(w, WorkerIdle)
-			found = true
-			break
-		}
-	}
-	if !found {
-		err := s.workerman.Add(&Worker{addr: addr, status: WorkerIdle})
-		if err != nil {
-			log.Print(err)
-		}
-	}
-	return &pb.Empty{}, nil
 }
 
 func matching(jobman *jobManager, workerman *workerManager) {
