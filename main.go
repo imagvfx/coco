@@ -20,11 +20,24 @@ type Job struct {
 	Root *Task
 }
 
+type TaskStatus int
+
+const (
+	TaskWaiting = TaskStatus(iota)
+	TaskRunning
+	TaskFailed
+	TaskDone
+)
+
 // Task has a command and/or subtasks that will be run by workers.
 type Task struct {
 	// Title is human readable title for task.
 	// Empty Title is allowed.
 	Title string
+
+	// status indicates task status using in the farm.
+	// It should not be set from user.
+	status TaskStatus
 
 	// Priority will change it's job priority temporarily for this task.
 	// Priority set to zero makes it inherit the parent's priority.
@@ -42,6 +55,10 @@ type Task struct {
 	// Commands will be executed after SubTasks run.
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
+}
+
+func (t *Task) Status() TaskStatus {
+	return t.status
 }
 
 // Command is a command to be run in a worker.
