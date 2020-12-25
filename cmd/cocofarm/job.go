@@ -122,18 +122,18 @@ func (m *jobManager) Jobs() *jobHeap {
 }
 
 func (m *jobManager) NextTask() *coco.Task {
+	m.Lock()
+	defer m.Unlock()
 	for {
 		if len(*m.jobs) == 0 {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*coco.Job)
-		m.Lock()
 		walk, ok := m.taskWalkers[j]
 		if !ok {
 			walk = newTaskWalker(j.Root)
 			m.taskWalkers[j] = walk
 		}
-		m.Unlock()
 		next := walk.Next()
 
 		// check there is any task left.
