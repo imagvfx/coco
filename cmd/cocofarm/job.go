@@ -115,12 +115,6 @@ func (m *jobManager) Delete(id int) error {
 	return nil
 }
 
-func (m *jobManager) Jobs() *jobHeap {
-	m.Lock()
-	defer m.Unlock()
-	return m.jobs
-}
-
 func (m *jobManager) NextTask() *coco.Task {
 	m.Lock()
 	defer m.Unlock()
