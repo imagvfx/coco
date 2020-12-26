@@ -70,17 +70,44 @@ func (h *jobHeap) Pop() interface{} {
 	return el
 }
 
+type taskHeap []*coco.Task
+
+func (h taskHeap) Len() int {
+	return len(h)
+}
+
+func (h taskHeap) Less(i, j int) bool {
+	return h[i].Num < h[j].Num
+}
+
+func (h taskHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+func (h *taskHeap) Push(el interface{}) {
+	*h = append(*h, el.(*coco.Task))
+}
+
+func (h *taskHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	el := old[n-1]
+	old[n-1] = nil // avoid memory leak
+	*h = old[:n-1]
+	return el
+}
+
 type jobManager struct {
 	sync.Mutex
 
-	jobs        *jobHeap
-	taskWalkers map[*coco.Job]*taskWalker
+	jobs  *jobHeap
+	tasks map[*coco.Job]*taskHeap
 }
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.jobs = &jobHeap{}
-	m.taskWalkers = make(map[*coco.Job]*taskWalker)
+	m.tasks = make(map[*coco.Job]*taskHeap)
 	return m
 }
 
@@ -91,9 +118,27 @@ func (m *jobManager) Add(j *coco.Job) error {
 	if j.Root == nil {
 		return fmt.Errorf("root task of job should not be nil")
 	}
+
 	m.Lock()
 	defer m.Unlock()
 	heap.Push(m.jobs, j)
+
+	tasks, ok := m.tasks[j]
+	if !ok {
+		tasks = &taskHeap{}
+		m.tasks[j] = tasks
+	}
+	walk := newTaskWalker(j.Root)
+	i := 0
+	for {
+		t := walk.Next()
+		if t == nil {
+			break
+		}
+		t.Num = i
+		heap.Push(tasks, t)
+		i++
+	}
 	return nil
 }
 
@@ -123,21 +168,17 @@ func (m *jobManager) NextTask() *coco.Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*coco.Job)
-		walk, ok := m.taskWalkers[j]
-		if !ok {
-			walk = newTaskWalker(j.Root)
-			m.taskWalkers[j] = walk
-		}
-		next := walk.Next()
+		tasks := m.tasks[j]
+		t := heap.Pop(tasks).(*coco.Task)
 
 		// check there is any task left.
-		peek := walk.Peek()
-		if peek != nil {
+		if tasks.Len() != 0 {
+			peek := (*tasks)[0]
 			// TODO: calculate real priority of the task.
 			j.Priority = peek.Priority
 			heap.Push(m.jobs, j)
 		}
 
-		return next
+		return t
 	}
 }
