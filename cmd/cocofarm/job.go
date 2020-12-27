@@ -60,7 +60,7 @@ func (h taskHeap) Len() int {
 }
 
 func (h taskHeap) Less(i, j int) bool {
-	return h[i].Num < h[j].Num
+	return h[i].num < h[j].num
 }
 
 func (h taskHeap) Swap(i, j int) {
@@ -118,7 +118,7 @@ func (m *jobManager) Add(j *Job) error {
 		if t == nil {
 			break
 		}
-		t.Num = i
+		t.num = i
 		heap.Push(tasks, t)
 		i++
 	}

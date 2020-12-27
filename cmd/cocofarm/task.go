@@ -15,9 +15,8 @@ type Task struct {
 	// Empty Title is allowed.
 	Title string
 
-	// Num is internal order of the task in a job.
-	// Note: User don't need to set it. Farm will calculate the order.
-	Num int
+	// num is internal order of the task in a job.
+	num int
 
 	// status indicates task status using in the farm.
 	// It should not be set from user.
