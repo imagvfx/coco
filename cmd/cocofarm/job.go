@@ -26,41 +26,6 @@ type Job struct {
 	Root *Task
 }
 
-type taskWalker struct {
-	ch   chan *Task
-	next *Task
-}
-
-func newTaskWalker(t *Task) *taskWalker {
-	w := &taskWalker{}
-	w.ch = make(chan *Task)
-	go walk(t, w.ch)
-	w.next = <-w.ch
-	return w
-}
-
-func (w *taskWalker) Next() *Task {
-	next := w.next
-	w.next = <-w.ch
-	return next
-}
-
-func (w *taskWalker) Peek() *Task {
-	return w.next
-}
-
-func walk(t *Task, ch chan *Task) {
-	walkR(t, ch)
-	close(ch)
-}
-
-func walkR(t *Task, ch chan<- *Task) {
-	for _, t := range t.Subtasks {
-		walkR(t, ch)
-	}
-	ch <- t
-}
-
 type jobHeap []*Job
 
 func (h jobHeap) Len() int {
