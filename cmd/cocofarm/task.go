@@ -15,6 +15,10 @@ type Task struct {
 	// Empty Title is allowed.
 	Title string
 
+	// parent is a parent task of the task.
+	// it will be nil, if the task is a root task.
+	parent *Task
+
 	// num is internal order of the task in a job.
 	num int
 
@@ -44,38 +48,9 @@ func (t *Task) Status() TaskStatus {
 	return t.status
 }
 
-// taskWalker walks through the task and it's subtasks recursively.
-type taskWalker struct {
-	ch   chan *Task
-	next *Task
-}
-
-func newTaskWalker(t *Task) *taskWalker {
-	w := &taskWalker{}
-	w.ch = make(chan *Task)
-	go walk(t, w.ch)
-	w.next = <-w.ch
-	return w
-}
-
-func (w *taskWalker) Next() *Task {
-	next := w.next
-	w.next = <-w.ch
-	return next
-}
-
-func (w *taskWalker) Peek() *Task {
-	return w.next
-}
-
-func walk(t *Task, ch chan *Task) {
-	walkR(t, ch)
-	close(ch)
-}
-
-func walkR(t *Task, ch chan<- *Task) {
+func walkTaskFn(t *Task, fn func(t *Task)) {
+	fn(t)
 	for _, t := range t.Subtasks {
-		walkR(t, ch)
+		walkTaskFn(t, fn)
 	}
-	ch <- t
 }

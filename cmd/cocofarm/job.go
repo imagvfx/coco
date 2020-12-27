@@ -101,6 +101,7 @@ func (m *jobManager) Add(j *Job) error {
 	if j.Root == nil {
 		return fmt.Errorf("root task of job should not be nil")
 	}
+	initJob(j)
 
 	m.Lock()
 	defer m.Unlock()
@@ -111,18 +112,26 @@ func (m *jobManager) Add(j *Job) error {
 		tasks = &taskHeap{}
 		m.tasks[j] = tasks
 	}
-	walk := newTaskWalker(j.Root)
-	i := 0
-	for {
-		t := walk.Next()
-		if t == nil {
-			break
-		}
-		t.num = i
+	walkTaskFn(j.Root, func(t *Task) {
 		heap.Push(tasks, t)
-		i++
-	}
+	})
 	return nil
+}
+
+// initJob inits a job before it is added to jobManager.
+func initJob(j *Job) {
+	initJobTasks(j.Root, nil, 0)
+}
+
+// initJobTasks inits a job tasks recursively.
+func initJobTasks(t *Task, parent *Task, i int) int {
+	t.parent = parent
+	t.num = i
+	i++
+	for _, subt := range t.Subtasks {
+		i = initJobTasks(subt, t, i)
+	}
+	return i
 }
 
 func (m *jobManager) Delete(id int) error {
