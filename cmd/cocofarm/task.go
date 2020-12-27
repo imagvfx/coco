@@ -10,6 +10,11 @@ const (
 )
 
 // Task has a command and/or subtasks that will be run by workers.
+//
+// Task having subtasks are called Branch.
+// Others are called Leaf, which can have commands.
+// Leaf not having commands are valid, but barely useful.
+// A Task is either a Branch or a Leaf. It cannot be both at same time.
 type Task struct {
 	// Title is human readable title for task.
 	// Empty Title is allowed.
@@ -45,7 +50,6 @@ type Task struct {
 	// When false, a subtask will be launched right after the prior task started.
 	SerialSubtasks bool
 
-	// Commands will be executed after SubTasks run.
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
 }
@@ -66,8 +70,21 @@ func (t *Task) CalcPriority() int {
 	return t.job.DefaultPriority
 }
 
+func (t *Task) IsLeaf() bool {
+	return len(t.Subtasks) == 0
+}
+
 func walkTaskFn(t *Task, fn func(t *Task)) {
 	fn(t)
+	for _, t := range t.Subtasks {
+		walkTaskFn(t, fn)
+	}
+}
+
+func walkLeafTaskFn(t *Task, fn func(t *Task)) {
+	if t.IsLeaf() {
+		fn(t)
+	}
 	for _, t := range t.Subtasks {
 		walkTaskFn(t, fn)
 	}

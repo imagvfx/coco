@@ -115,7 +115,7 @@ func (m *jobManager) Add(j *Job) error {
 		tasks = &taskHeap{}
 		m.tasks[j] = tasks
 	}
-	walkTaskFn(j.Root, func(t *Task) {
+	walkLeafTaskFn(j.Root, func(t *Task) {
 		heap.Push(tasks, t)
 	})
 	return nil
@@ -172,10 +172,14 @@ func (m *jobManager) NextTask() *Task {
 		tasks := m.tasks[j]
 		t := heap.Pop(tasks).(*Task)
 
-		// check there is any task left.
-		if tasks.Len() != 0 {
+		// check there is any leaf task left.
+		for tasks.Len() != 0 {
+			// remove branch tasks.
 			peek := (*tasks)[0]
 			j.priority = peek.CalcPriority()
+			break
+		}
+		if tasks.Len() != 0 {
 			heap.Push(m.jobs, j)
 		}
 
