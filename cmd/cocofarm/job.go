@@ -4,46 +4,64 @@ import (
 	"container/heap"
 	"fmt"
 	"sync"
-
-	"github.com/imagvfx/coco"
 )
 
-type taskWalker struct {
-	ch   chan *coco.Task
-	next *coco.Task
+// Job is a job, user sended to server to run them in a farm.
+type Job struct {
+	// ID lets a Job distinguishes from others.
+	ID int
+
+	// Title is human readable title for job.
+	Title string
+
+	// Priority sets the job's default priority.
+	// Jobs are compete each other with priority.
+	// Job's priority could be temporarily updated by a task that waits at the time.
+	// Higher values take precedence to lower values.
+	// Negative values will corrected to 0, the lowest priority value.
+	// If multiple jobs are having same priority, server will take a job with rotation rule.
+	Priority int
+
+	// Root task contains commands or subtasks to be run.
+	Root *Task
 }
 
-func newTaskWalker(t *coco.Task) *taskWalker {
+type taskWalker struct {
+	ch   chan *Task
+	next *Task
+}
+
+func newTaskWalker(t *Task) *taskWalker {
 	w := &taskWalker{}
-	w.ch = make(chan *coco.Task)
+	w.ch = make(chan *Task)
 	go walk(t, w.ch)
 	w.next = <-w.ch
 	return w
 }
 
-func (w *taskWalker) Next() *coco.Task {
+func (w *taskWalker) Next() *Task {
 	next := w.next
 	w.next = <-w.ch
 	return next
 }
 
-func (w *taskWalker) Peek() *coco.Task {
+func (w *taskWalker) Peek() *Task {
 	return w.next
 }
 
-func walk(t *coco.Task, ch chan *coco.Task) {
+func walk(t *Task, ch chan *Task) {
 	walkR(t, ch)
 	close(ch)
 }
 
-func walkR(t *coco.Task, ch chan<- *coco.Task) {
+func walkR(t *Task, ch chan<- *Task) {
 	for _, t := range t.Subtasks {
 		walkR(t, ch)
 	}
 	ch <- t
 }
 
-type jobHeap []*coco.Job
+type jobHeap []*Job
 
 func (h jobHeap) Len() int {
 	return len(h)
@@ -58,7 +76,7 @@ func (h jobHeap) Swap(i, j int) {
 }
 
 func (h *jobHeap) Push(el interface{}) {
-	*h = append(*h, el.(*coco.Job))
+	*h = append(*h, el.(*Job))
 }
 
 func (h *jobHeap) Pop() interface{} {
@@ -70,7 +88,7 @@ func (h *jobHeap) Pop() interface{} {
 	return el
 }
 
-type taskHeap []*coco.Task
+type taskHeap []*Task
 
 func (h taskHeap) Len() int {
 	return len(h)
@@ -85,7 +103,7 @@ func (h taskHeap) Swap(i, j int) {
 }
 
 func (h *taskHeap) Push(el interface{}) {
-	*h = append(*h, el.(*coco.Task))
+	*h = append(*h, el.(*Task))
 }
 
 func (h *taskHeap) Pop() interface{} {
@@ -101,17 +119,17 @@ type jobManager struct {
 	sync.Mutex
 
 	jobs  *jobHeap
-	tasks map[*coco.Job]*taskHeap
+	tasks map[*Job]*taskHeap
 }
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.jobs = &jobHeap{}
-	m.tasks = make(map[*coco.Job]*taskHeap)
+	m.tasks = make(map[*Job]*taskHeap)
 	return m
 }
 
-func (m *jobManager) Add(j *coco.Job) error {
+func (m *jobManager) Add(j *Job) error {
 	if j == nil {
 		return fmt.Errorf("nil job cannot be added")
 	}
@@ -160,16 +178,16 @@ func (m *jobManager) Delete(id int) error {
 	return nil
 }
 
-func (m *jobManager) NextTask() *coco.Task {
+func (m *jobManager) NextTask() *Task {
 	m.Lock()
 	defer m.Unlock()
 	for {
 		if len(*m.jobs) == 0 {
 			return nil
 		}
-		j := heap.Pop(m.jobs).(*coco.Job)
+		j := heap.Pop(m.jobs).(*Job)
 		tasks := m.tasks[j]
-		t := heap.Pop(tasks).(*coco.Task)
+		t := heap.Pop(tasks).(*Task)
 
 		// check there is any task left.
 		if tasks.Len() != 0 {

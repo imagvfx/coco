@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/imagvfx/coco"
 	"github.com/imagvfx/coco/pb"
 	"google.golang.org/grpc"
 )
@@ -69,7 +68,7 @@ func (m *workerManager) idleWorkers() []*Worker {
 	return workers
 }
 
-func (m *workerManager) sendCommands(w *Worker, cmds []coco.Command) error {
+func (m *workerManager) sendCommands(w *Worker, cmds []Command) error {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err

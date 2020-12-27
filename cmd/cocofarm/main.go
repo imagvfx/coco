@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/imagvfx/coco"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
@@ -49,7 +47,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 
 		for i := 0; i < len(workers); i++ {
 			w := workers[i]
-			var cmds []coco.Command
+			var cmds []Command
 			for {
 				t := jobman.NextTask()
 				if t == nil {

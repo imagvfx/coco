@@ -6,8 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-
-	"github.com/imagvfx/coco"
 )
 
 type apiHandler struct {
@@ -16,7 +14,7 @@ type apiHandler struct {
 
 func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
-	j := &coco.Job{}
+	j := &Job{}
 	err := dec.Decode(j)
 	if err != nil {
 		log.Print(err)
