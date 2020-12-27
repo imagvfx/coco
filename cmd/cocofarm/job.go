@@ -14,13 +14,16 @@ type Job struct {
 	// Title is human readable title for job.
 	Title string
 
-	// Priority sets the job's default priority.
+	// DefaultPriority sets the job's default priority.
 	// Jobs are compete each other with priority.
 	// Job's priority could be temporarily updated by a task that waits at the time.
 	// Higher values take precedence to lower values.
 	// Negative values will corrected to 0, the lowest priority value.
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
-	Priority int
+	DefaultPriority int
+
+	// priority is the job's task priority waiting at the time.
+	priority int
 
 	// Root task contains commands or subtasks to be run.
 	Root *Task
@@ -33,7 +36,7 @@ func (h jobHeap) Len() int {
 }
 
 func (h jobHeap) Less(i, j int) bool {
-	return h[i].Priority > h[j].Priority
+	return h[i].priority > h[j].priority
 }
 
 func (h jobHeap) Swap(i, j int) {
@@ -120,16 +123,22 @@ func (m *jobManager) Add(j *Job) error {
 
 // initJob inits a job before it is added to jobManager.
 func initJob(j *Job) {
-	initJobTasks(j.Root, nil, 0)
+	j.priority = j.DefaultPriority
+	initJobTasks(j.Root, j, nil, 0)
 }
 
 // initJobTasks inits a job tasks recursively.
-func initJobTasks(t *Task, parent *Task, i int) int {
+func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
+	t.job = j
 	t.parent = parent
 	t.num = i
 	i++
+	if t.Priority < 0 {
+		// nagative priority is invalid.
+		t.Priority = 0
+	}
 	for _, subt := range t.Subtasks {
-		i = initJobTasks(subt, t, i)
+		i = initJobTasks(subt, j, t, i)
 	}
 	return i
 }
@@ -166,8 +175,7 @@ func (m *jobManager) NextTask() *Task {
 		// check there is any task left.
 		if tasks.Len() != 0 {
 			peek := (*tasks)[0]
-			// TODO: calculate real priority of the task.
-			j.Priority = peek.Priority
+			j.priority = peek.CalcPriority()
 			heap.Push(m.jobs, j)
 		}
 

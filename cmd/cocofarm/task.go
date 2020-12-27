@@ -15,6 +15,9 @@ type Task struct {
 	// Empty Title is allowed.
 	Title string
 
+	// job is a job the task is belong to.
+	job *Job
+
 	// parent is a parent task of the task.
 	// it will be nil, if the task is a root task.
 	parent *Task
@@ -26,9 +29,12 @@ type Task struct {
 	// It should not be set from user.
 	status TaskStatus
 
-	// Priority will change it's job priority temporarily for this task.
-	// Priority set to zero makes it inherit the parent's priority.
+	// Priority is a priority hint for the task.
+	// Priority set to zero makes it inherit nearest parent that has non-zero priority.
+	// If there isn't non-zero priority parent, it will use the job's priority.
 	// Negative values will be considered as false value, and treated as zero.
+	//
+	// NOTE: Use CalcPriority to get the real priority of the task.
 	Priority int
 
 	// Subtasks contains subtasks to be run.
@@ -46,6 +52,18 @@ type Task struct {
 
 func (t *Task) Status() TaskStatus {
 	return t.status
+}
+
+func (t *Task) CalcPriority() int {
+	tt := t
+	for tt != nil {
+		p := tt.Priority
+		if p != 0 {
+			return p
+		}
+		tt = tt.parent
+	}
+	return t.job.DefaultPriority
 }
 
 func walkTaskFn(t *Task, fn func(t *Task)) {
