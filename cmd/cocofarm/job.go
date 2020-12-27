@@ -36,7 +36,13 @@ func (h jobHeap) Len() int {
 }
 
 func (h jobHeap) Less(i, j int) bool {
-	return h[i].priority > h[j].priority
+	if h[i].priority > h[j].priority {
+		return true
+	}
+	if h[i].priority < h[j].priority {
+		return false
+	}
+	return h[i].ID < h[j].ID
 }
 
 func (h jobHeap) Swap(i, j int) {
@@ -85,9 +91,9 @@ func (h *taskHeap) Pop() interface{} {
 
 type jobManager struct {
 	sync.Mutex
-
-	jobs  *jobHeap
-	tasks map[*Job]*taskHeap
+	nextJobID int
+	jobs      *jobHeap
+	tasks     map[*Job]*taskHeap
 }
 
 func newJobManager() *jobManager {
@@ -105,6 +111,9 @@ func (m *jobManager) Add(j *Job) error {
 		return fmt.Errorf("root task of job should not be nil")
 	}
 	initJob(j)
+
+	j.ID = m.nextJobID
+	m.nextJobID++
 
 	m.Lock()
 	defer m.Unlock()
