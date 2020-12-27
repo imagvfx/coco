@@ -127,12 +127,15 @@ func (m *jobManager) Add(j *Job) error {
 	walkLeafTaskFn(j.Root, func(t *Task) {
 		heap.Push(tasks, t)
 	})
+
+	// set priority for the very first leaf task.
+	peek := (*tasks)[0]
+	j.priority = peek.CalcPriority()
 	return nil
 }
 
 // initJob inits a job before it is added to jobManager.
 func initJob(j *Job) {
-	j.priority = j.DefaultPriority
 	initJobTasks(j.Root, j, nil, 0)
 }
 
