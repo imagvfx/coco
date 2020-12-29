@@ -20,6 +20,9 @@ type Task struct {
 	// Empty Title is allowed.
 	Title string
 
+	// id is a Task identifier make it distinct from all other tasks.
+	id string
+
 	// job is a job the task is belong to.
 	job *Job
 

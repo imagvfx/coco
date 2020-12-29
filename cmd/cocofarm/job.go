@@ -4,6 +4,8 @@ import (
 	"container/heap"
 	"fmt"
 	"sync"
+
+	"github.com/rs/xid"
 )
 
 // Job is a job, user sended to server to run them in a farm.
@@ -141,6 +143,7 @@ func initJob(j *Job) {
 
 // initJobTasks inits a job tasks recursively.
 func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
+	t.id = xid.New().String()
 	t.job = j
 	t.parent = parent
 	t.num = i
