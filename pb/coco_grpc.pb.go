@@ -17,7 +17,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerClient interface {
-	Run(ctx context.Context, in *Commands, opts ...grpc.CallOption) (*Empty, error)
+	Run(ctx context.Context, in *Task, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type workerClient struct {
@@ -28,7 +28,7 @@ func NewWorkerClient(cc grpc.ClientConnInterface) WorkerClient {
 	return &workerClient{cc}
 }
 
-func (c *workerClient) Run(ctx context.Context, in *Commands, opts ...grpc.CallOption) (*Empty, error) {
+func (c *workerClient) Run(ctx context.Context, in *Task, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/pb.Worker/Run", in, out, opts...)
 	if err != nil {
@@ -41,7 +41,7 @@ func (c *workerClient) Run(ctx context.Context, in *Commands, opts ...grpc.CallO
 // All implementations must embed UnimplementedWorkerServer
 // for forward compatibility
 type WorkerServer interface {
-	Run(context.Context, *Commands) (*Empty, error)
+	Run(context.Context, *Task) (*Empty, error)
 	mustEmbedUnimplementedWorkerServer()
 }
 
@@ -49,7 +49,7 @@ type WorkerServer interface {
 type UnimplementedWorkerServer struct {
 }
 
-func (UnimplementedWorkerServer) Run(context.Context, *Commands) (*Empty, error) {
+func (UnimplementedWorkerServer) Run(context.Context, *Task) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
 }
 func (UnimplementedWorkerServer) mustEmbedUnimplementedWorkerServer() {}
@@ -66,7 +66,7 @@ func RegisterWorkerServer(s grpc.ServiceRegistrar, srv WorkerServer) {
 }
 
 func _Worker_Run_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Commands)
+	in := new(Task)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func _Worker_Run_Handler(srv interface{}, ctx context.Context, dec func(interfac
 		FullMethod: "/pb.Worker/Run",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkerServer).Run(ctx, req.(*Commands))
+		return srv.(WorkerServer).Run(ctx, req.(*Task))
 	}
 	return interceptor(ctx, in, info, handler)
 }

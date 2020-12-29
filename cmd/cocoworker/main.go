@@ -15,8 +15,8 @@ type server struct {
 	pb.UnimplementedWorkerServer
 }
 
-func (s *server) Run(ctx context.Context, in *pb.Commands) (*pb.Empty, error) {
-	log.Printf("received: %v", in.Cmds)
+func (s *server) Run(ctx context.Context, in *pb.Task) (*pb.Empty, error) {
+	log.Printf("received: %v %v", in.Id, in.Cmds)
 	go func() {
 		cmds := in.Cmds
 		for _, cmd := range cmds {

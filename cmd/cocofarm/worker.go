@@ -85,14 +85,15 @@ func (m *workerManager) sendTask(w *Worker, t *Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	pbCmds := &pb.Commands{}
+	pbTask := &pb.Task{}
+	pbTask.Id = t.id
 	for _, c := range t.Commands {
 		pbCmd := &pb.Command{
 			Args: c,
 		}
-		pbCmds.Cmds = append(pbCmds.Cmds, pbCmd)
+		pbTask.Cmds = append(pbTask.Cmds, pbCmd)
 	}
-	_, err = c.Run(ctx, pbCmds)
+	_, err = c.Run(ctx, pbTask)
 	if err != nil {
 		return err
 	}
