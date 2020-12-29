@@ -25,12 +25,14 @@ type Worker struct {
 
 type workerManager struct {
 	sync.Mutex
-	workers []*Worker
+	workers  []*Worker
+	WorkerCh chan *Worker
 }
 
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
 	m.workers = make([]*Worker, 0)
+	m.WorkerCh = make(chan *Worker)
 	return m
 }
 
@@ -48,6 +50,10 @@ func (m *workerManager) Add(w *Worker) error {
 	}
 	m.workers = append(m.workers, w)
 	return nil
+}
+
+func (m *workerManager) Waiting(w *Worker) {
+	m.WorkerCh <- w
 }
 
 func (m *workerManager) SetStatus(w *Worker, s WorkerStatus) {
@@ -68,7 +74,7 @@ func (m *workerManager) idleWorkers() []*Worker {
 	return workers
 }
 
-func (m *workerManager) sendCommands(w *Worker, cmds []Command) error {
+func (m *workerManager) sendTask(w *Worker, t *Task) error {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -80,7 +86,7 @@ func (m *workerManager) sendCommands(w *Worker, cmds []Command) error {
 	defer cancel()
 
 	pbCmds := &pb.Commands{}
-	for _, c := range cmds {
+	for _, c := range t.Commands {
 		pbCmd := &pb.Command{
 			Args: c,
 		}

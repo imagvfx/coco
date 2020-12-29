@@ -50,11 +50,13 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 			break
 		}
 	}
+	w := &Worker{addr: addr, status: WorkerIdle}
 	if !found {
-		err := f.workerman.Add(&Worker{addr: addr, status: WorkerIdle})
+		err := f.workerman.Add(w)
 		if err != nil {
 			log.Print(err)
 		}
 	}
+	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }

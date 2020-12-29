@@ -39,40 +39,26 @@ func main() {
 
 func matching(jobman *jobManager, workerman *workerManager) {
 	match := func() {
-		workers := workerman.idleWorkers()
-		if len(workers) == 0 {
-			log.Print("no worker yet")
+		t := jobman.NextTask()
+		if t == nil {
+			time.Sleep(time.Second)
 			return
 		}
-
-		for i := 0; i < len(workers); i++ {
-			w := workers[i]
-			var cmds []Command
-			for {
-				t := jobman.NextTask()
-				if t == nil {
-					// no more task to do
-					return
-				}
-				if len(t.Commands) == 0 {
-					continue
-				}
-				cmds = t.Commands
-				break
-			}
-			err := workerman.sendCommands(w, cmds)
-			if err != nil {
-				// TODO: currently, it skips the commands if failed to communicate with the worker.
-				// is it right decision?
-				log.Print(err)
-			}
+		if len(t.Commands) == 0 {
+			// noting to do
+			return
+		}
+		w := <-workerman.WorkerCh
+		err := workerman.sendTask(w, t)
+		if err != nil {
+			// TODO: currently, it skips the commands if failed to communicate with the worker.
+			// is it right decision?
+			log.Print(err)
 		}
 	}
 
 	go func() {
 		for {
-			time.Sleep(time.Second)
-			log.Print("matching...")
 			match()
 		}
 	}()
