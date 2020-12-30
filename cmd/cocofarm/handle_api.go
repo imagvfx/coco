@@ -9,7 +9,7 @@ import (
 )
 
 type apiHandler struct {
-	jobManager *jobManager
+	jobman *jobManager
 }
 
 func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
@@ -20,9 +20,19 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 	}
 
-	err = h.jobManager.Add(j)
+	id, err := h.jobman.Add(j)
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
+	io.WriteString(w, id)
 	// TODO: return the job id
+}
+
+func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	id := r.Form.Get("id")
+	err := h.jobman.Cancel(id)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("%v", err))
+	}
 }

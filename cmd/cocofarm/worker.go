@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -27,12 +28,14 @@ type workerManager struct {
 	sync.Mutex
 	workers  []*Worker
 	WorkerCh chan *Worker
+	assignee map[string]*Worker
 }
 
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
 	m.workers = make([]*Worker, 0)
 	m.WorkerCh = make(chan *Worker)
+	m.assignee = make(map[string]*Worker)
 	return m
 }
 
@@ -100,6 +103,34 @@ func (m *workerManager) sendTask(w *Worker, t *Task) error {
 
 	m.Lock()
 	defer m.Unlock()
+	m.assignee[t.id] = w
 	w.status = WorkerRunning
+	return nil
+}
+
+func (m *workerManager) sendCancelTask(w *Worker, t *Task) error {
+	log.Printf("cancel: %v %v", w.addr, t.id)
+	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	c := pb.NewWorkerClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	// only id is needed for cancelling
+	pbTask := &pb.Task{}
+	pbTask.Id = t.id
+
+	_, err = c.Cancel(ctx, pbTask)
+	if err != nil {
+		return err
+	}
+
+	m.Lock()
+	defer m.Unlock()
+	delete(m.assignee, t.id)
 	return nil
 }

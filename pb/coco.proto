@@ -6,6 +6,7 @@ option go_package = "github.com/imagvfx/coco/pb";
 
 service Worker {
 	rpc Run(Task) returns (Empty) {};
+	rpc Cancel(Task) returns (Empty) {};
 }
 
 message Command {
@@ -19,10 +20,16 @@ message Task {
 
 service Farm {
 	rpc Waiting(Here) returns (Empty) {};
+	rpc Done(DoneRequest) returns (Empty) {};
 }
 
 message Here {
 	string addr = 1;
+}
+
+message DoneRequest{
+	string addr = 1;
+	string task_id = 2;
 }
 
 message Empty {}

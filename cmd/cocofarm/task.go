@@ -5,6 +5,7 @@ type TaskStatus int
 const (
 	TaskWaiting = TaskStatus(iota)
 	TaskRunning
+	TaskCancelled
 	TaskFailed
 	TaskDone
 )

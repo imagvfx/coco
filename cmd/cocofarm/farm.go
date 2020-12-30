@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 
@@ -41,22 +42,49 @@ func (f *farmServer) Listen() {
 // Workers will call this to indicate they are idle and waiting for commands to run.
 func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
 	log.Printf("received: %v", in.Addr)
-	addr := in.Addr
 	found := false
 	for _, w := range f.workerman.workers {
-		if addr == w.addr {
+		if in.Addr == w.addr {
 			f.workerman.SetStatus(w, WorkerIdle)
 			found = true
 			break
 		}
 	}
-	w := &Worker{addr: addr, status: WorkerIdle}
+	w := &Worker{addr: in.Addr, status: WorkerIdle}
 	if !found {
 		err := f.workerman.Add(w)
 		if err != nil {
 			log.Print(err)
 		}
 	}
+	go f.workerman.Waiting(w)
+	return &pb.Empty{}, nil
+}
+
+// Done will be called by workers through gRPC.
+// Workers will call this to indicate they are done with the requested task.
+func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
+	log.Printf("done: %v %v", in.Addr, in.TaskId)
+	w, ok := f.workerman.assignee[in.TaskId]
+	if !ok {
+		found := false
+		for _, w := range f.workerman.workers {
+			if in.Addr == w.addr {
+				f.workerman.SetStatus(w, WorkerIdle)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return &pb.Empty{}, fmt.Errorf("worker not registered yet: %v", in.Addr)
+		}
+		return &pb.Empty{}, fmt.Errorf("task isn't assigned to any worker: %v", in.TaskId)
+	}
+	if w.addr != in.Addr {
+		return &pb.Empty{}, fmt.Errorf("task is assigned from different worker: %v", in.TaskId)
+	}
+
+	delete(f.workerman.assignee, in.TaskId)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"container/heap"
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/rs/xid"
@@ -11,7 +12,7 @@ import (
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// ID lets a Job distinguishes from others.
-	ID int
+	ID string
 
 	// Title is human readable title for job.
 	Title string
@@ -93,32 +94,37 @@ func (h *taskHeap) Pop() interface{} {
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID int
-	jobs      *jobHeap
-	tasks     map[*Job]*taskHeap
+	nextJobID    int
+	job          map[string]*Job
+	jobs         *jobHeap
+	tasks        map[*Job]*taskHeap
+	CancelTaskCh chan *Task
 }
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
+	m.job = make(map[string]*Job)
 	m.jobs = &jobHeap{}
 	m.tasks = make(map[*Job]*taskHeap)
+	m.CancelTaskCh = make(chan *Task)
 	return m
 }
 
-func (m *jobManager) Add(j *Job) error {
+func (m *jobManager) Add(j *Job) (string, error) {
 	if j == nil {
-		return fmt.Errorf("nil job cannot be added")
+		return "", fmt.Errorf("nil job cannot be added")
 	}
 	if j.Root == nil {
-		return fmt.Errorf("root task of job should not be nil")
+		return "", fmt.Errorf("root task of job should not be nil")
 	}
 	initJob(j)
 
-	j.ID = m.nextJobID
+	j.ID = strconv.Itoa(m.nextJobID)
 	m.nextJobID++
 
 	m.Lock()
 	defer m.Unlock()
+	m.job[j.ID] = j
 	heap.Push(m.jobs, j)
 
 	tasks, ok := m.tasks[j]
@@ -133,7 +139,7 @@ func (m *jobManager) Add(j *Job) error {
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
 	j.priority = peek.CalcPriority()
-	return nil
+	return j.ID, nil
 }
 
 // initJob inits a job before it is added to jobManager.
@@ -158,21 +164,57 @@ func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 	return i
 }
 
-func (m *jobManager) Delete(id int) error {
+func (m *jobManager) Cancel(id string) error {
 	m.Lock()
 	defer m.Unlock()
+	j, ok := m.job[id]
+	if !ok {
+		return fmt.Errorf("cannot find the job: %v", id)
+	}
+	// also remove the job from heap.
 	idx := -1
-	for i := 0; i < len(*m.jobs); i++ {
-		j := (*m.jobs)[i]
+	for i, j := range *m.jobs {
 		if id == j.ID {
 			idx = i
 			break
 		}
 	}
 	if idx == -1 {
-		return fmt.Errorf("cannot find the job with id")
+		// job is not in heap means it is already done.
+		// no task need to be cancelled.
+		return
 	}
 	heap.Remove(m.jobs, idx)
+	go func() {
+		walkLeafTaskFn(j.Root, func(t *Task) {
+			// indicate the task is cancelled, first.
+			t.status = TaskCancelled
+		})
+		walkLeafTaskFn(j.Root, func(t *Task) {
+			m.CancelTaskCh <- t
+		})
+	}()
+	return nil
+}
+
+func (m *jobManager) Delete(id string) error {
+	m.Lock()
+	defer m.Unlock()
+	_, ok := m.job[id]
+	if !ok {
+		return fmt.Errorf("cannot find the job: %v", id)
+	}
+	idx := -1
+	for i, j := range *m.jobs {
+		if id == j.ID {
+			idx = i
+			break
+		}
+	}
+	if idx != -1 {
+		heap.Remove(m.jobs, idx)
+	}
+	delete(m.job, id)
 	return nil
 }
 

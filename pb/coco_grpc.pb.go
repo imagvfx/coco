@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerClient interface {
 	Run(ctx context.Context, in *Task, opts ...grpc.CallOption) (*Empty, error)
+	Cancel(ctx context.Context, in *Task, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type workerClient struct {
@@ -37,11 +38,21 @@ func (c *workerClient) Run(ctx context.Context, in *Task, opts ...grpc.CallOptio
 	return out, nil
 }
 
+func (c *workerClient) Cancel(ctx context.Context, in *Task, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/pb.Worker/Cancel", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkerServer is the server API for Worker service.
 // All implementations must embed UnimplementedWorkerServer
 // for forward compatibility
 type WorkerServer interface {
 	Run(context.Context, *Task) (*Empty, error)
+	Cancel(context.Context, *Task) (*Empty, error)
 	mustEmbedUnimplementedWorkerServer()
 }
 
@@ -51,6 +62,9 @@ type UnimplementedWorkerServer struct {
 
 func (UnimplementedWorkerServer) Run(context.Context, *Task) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
+}
+func (UnimplementedWorkerServer) Cancel(context.Context, *Task) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedWorkerServer) mustEmbedUnimplementedWorkerServer() {}
 
@@ -83,6 +97,24 @@ func _Worker_Run_Handler(srv interface{}, ctx context.Context, dec func(interfac
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Worker_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Task)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkerServer).Cancel(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Worker/Cancel",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkerServer).Cancel(ctx, req.(*Task))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Worker_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.Worker",
 	HandlerType: (*WorkerServer)(nil),
@@ -90,6 +122,10 @@ var _Worker_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Run",
 			Handler:    _Worker_Run_Handler,
+		},
+		{
+			MethodName: "Cancel",
+			Handler:    _Worker_Cancel_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -101,6 +137,7 @@ var _Worker_serviceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FarmClient interface {
 	Waiting(ctx context.Context, in *Here, opts ...grpc.CallOption) (*Empty, error)
+	Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type farmClient struct {
@@ -120,11 +157,21 @@ func (c *farmClient) Waiting(ctx context.Context, in *Here, opts ...grpc.CallOpt
 	return out, nil
 }
 
+func (c *farmClient) Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/pb.Farm/Done", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FarmServer is the server API for Farm service.
 // All implementations must embed UnimplementedFarmServer
 // for forward compatibility
 type FarmServer interface {
 	Waiting(context.Context, *Here) (*Empty, error)
+	Done(context.Context, *DoneRequest) (*Empty, error)
 	mustEmbedUnimplementedFarmServer()
 }
 
@@ -134,6 +181,9 @@ type UnimplementedFarmServer struct {
 
 func (UnimplementedFarmServer) Waiting(context.Context, *Here) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Waiting not implemented")
+}
+func (UnimplementedFarmServer) Done(context.Context, *DoneRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Done not implemented")
 }
 func (UnimplementedFarmServer) mustEmbedUnimplementedFarmServer() {}
 
@@ -166,6 +216,24 @@ func _Farm_Waiting_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Farm_Done_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DoneRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FarmServer).Done(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Farm/Done",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FarmServer).Done(ctx, req.(*DoneRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Farm_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.Farm",
 	HandlerType: (*FarmServer)(nil),
@@ -173,6 +241,10 @@ var _Farm_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Waiting",
 			Handler:    _Farm_Waiting_Handler,
+		},
+		{
+			MethodName: "Done",
+			Handler:    _Farm_Done_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

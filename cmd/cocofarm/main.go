@@ -26,13 +26,15 @@ func main() {
 
 	job := newJobManager()
 	go matching(job, worker)
+	go cancelling(job, worker)
 
 	api := &apiHandler{
-		jobManager: job,
+		jobman: job,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/api/order", api.handleOrder)
+	mux.HandleFunc("/api/cancel", api.handleCancel)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -49,6 +51,13 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			return
 		}
 		w := <-workerman.WorkerCh
+		jobman.Lock()
+		defer jobman.Unlock()
+		if t.status == TaskCancelled {
+			// the task is cancelled while it is waiting a worker.
+			go workerman.Waiting(w)
+			return
+		}
 		err := workerman.sendTask(w, t)
 		if err != nil {
 			// TODO: currently, it skips the commands if failed to communicate with the worker.
@@ -60,6 +69,26 @@ func matching(jobman *jobManager, workerman *workerManager) {
 	go func() {
 		for {
 			match()
+		}
+	}()
+}
+
+func cancelling(jobman *jobManager, workerman *workerManager) {
+	cancel := func() {
+		t := <-jobman.CancelTaskCh
+		w, ok := workerman.assignee[t.id]
+		if !ok {
+			return
+		}
+		err := workerman.sendCancelTask(w, t)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	go func() {
+		for {
+			cancel()
 		}
 	}()
 }
