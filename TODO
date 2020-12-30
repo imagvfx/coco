@@ -1,2 +1,3 @@
 WorkGroup
 Comment on Job, Task
+make Job, Task, Worker as sync.Mutex (better concurrent handling)
