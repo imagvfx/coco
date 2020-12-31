@@ -219,6 +219,16 @@ func (m *jobManager) Delete(id string) error {
 func (m *jobManager) NextTask() *Task {
 	m.Lock()
 	defer m.Unlock()
+	if m.jobs.Len() == 0 {
+		return nil
+	}
+	j := (*m.jobs)[0]
+	return (*m.tasks[j])[0]
+}
+
+func (m *jobManager) PopTask() *Task {
+	m.Lock()
+	defer m.Unlock()
 	for {
 		if len(*m.jobs) == 0 {
 			return nil

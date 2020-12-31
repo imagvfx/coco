@@ -46,15 +46,9 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			time.Sleep(time.Second)
 			return
 		}
-		if len(t.Commands) == 0 {
-			// noting to do
-			return
-		}
 		w := <-workerman.WorkerCh
-		jobman.Lock()
-		defer jobman.Unlock()
-		if t.status == TaskCancelled {
-			// the task is cancelled while it is waiting a worker.
+		t = jobman.PopTask()
+		if t == nil || len(t.Commands) == 0 || t.status == TaskCancelled {
 			go workerman.Waiting(w)
 			return
 		}
