@@ -64,15 +64,10 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, e
 	if w == nil {
 		return &pb.Empty{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	w, ok := f.workerman.assignee[in.TaskId]
-	if !ok {
-		return &pb.Empty{}, fmt.Errorf("task isn't assigned to any worker: %v", in.TaskId)
+	err := f.workerman.DoneBy(in.TaskId, w)
+	if err != nil {
+		return &pb.Empty{}, err
 	}
-	if w.addr != in.Addr {
-		return &pb.Empty{}, fmt.Errorf("task is assigned from different worker: %v", in.TaskId)
-	}
-
-	delete(f.workerman.assignee, in.TaskId)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }

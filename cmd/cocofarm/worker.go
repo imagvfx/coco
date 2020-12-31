@@ -69,6 +69,23 @@ func (m *workerManager) Add(w *Worker) error {
 	return nil
 }
 
+func (m *workerManager) DoneBy(taskID string, w *Worker) error {
+	// TODO: do we need DoneBy and also Waiting? merge two?
+	// this function is task centric, Waiting is worker centric.
+	// also Waiting is a blocking function.
+	m.Lock()
+	defer m.Unlock()
+	a, ok := m.assignee[taskID]
+	if !ok {
+		return fmt.Errorf("task isn't assigned to any worker: %v", taskID)
+	}
+	if w != a {
+		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
+	}
+	delete(m.assignee, taskID)
+	return nil
+}
+
 func (m *workerManager) Waiting(w *Worker) {
 	w.SetStatus(WorkerIdle)
 	m.WorkerCh <- w
