@@ -20,8 +20,16 @@ const (
 )
 
 type Worker struct {
+	sync.Mutex
+
 	addr   string
 	status WorkerStatus
+}
+
+func (w *Worker) SetStatus(s WorkerStatus) {
+	w.Lock()
+	defer w.Unlock()
+	w.status = s
 }
 
 type workerManager struct {
@@ -57,12 +65,6 @@ func (m *workerManager) Add(w *Worker) error {
 
 func (m *workerManager) Waiting(w *Worker) {
 	m.WorkerCh <- w
-}
-
-func (m *workerManager) SetStatus(w *Worker, s WorkerStatus) {
-	m.Lock()
-	defer m.Unlock()
-	w.status = s
 }
 
 func (m *workerManager) idleWorkers() []*Worker {

@@ -42,21 +42,21 @@ func (f *farmServer) Listen() {
 // Workers will call this to indicate they are idle and waiting for commands to run.
 func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
 	log.Printf("received: %v", in.Addr)
-	found := false
-	for _, w := range f.workerman.workers {
-		if in.Addr == w.addr {
-			f.workerman.SetStatus(w, WorkerIdle)
-			found = true
+	var w *Worker
+	for _, ww := range f.workerman.workers {
+		if in.Addr == ww.addr {
+			w = ww
 			break
 		}
 	}
-	w := &Worker{addr: in.Addr, status: WorkerIdle}
-	if !found {
+	if w == nil {
+		w = &Worker{addr: in.Addr, status: WorkerIdle}
 		err := f.workerman.Add(w)
 		if err != nil {
 			log.Print(err)
 		}
 	}
+	w.SetStatus(WorkerIdle)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }
@@ -66,15 +66,14 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	// TODO: don't believe in.Addr, take real addr
-	found := false
-	for _, w := range f.workerman.workers {
-		if in.Addr == w.addr {
-			f.workerman.SetStatus(w, WorkerIdle)
-			found = true
+	var w *Worker
+	for _, ww := range f.workerman.workers {
+		if in.Addr == ww.addr {
+			w = ww
 			break
 		}
 	}
-	if !found {
+	if w == nil {
 		return &pb.Empty{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
 	w, ok := f.workerman.assignee[in.TaskId]
@@ -86,6 +85,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, e
 	}
 
 	delete(f.workerman.assignee, in.TaskId)
+	w.SetStatus(WorkerIdle)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }
