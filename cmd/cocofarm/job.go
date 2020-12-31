@@ -228,13 +228,9 @@ func (m *jobManager) NextTask() *Task {
 		t := heap.Pop(tasks).(*Task)
 
 		// check there is any leaf task left.
-		for tasks.Len() != 0 {
-			// remove branch tasks.
+		if tasks.Len() != 0 {
 			peek := (*tasks)[0]
 			j.priority = peek.CalcPriority()
-			break
-		}
-		if tasks.Len() != 0 {
 			heap.Push(m.jobs, j)
 		}
 
