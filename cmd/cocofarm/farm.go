@@ -65,19 +65,20 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 // Workers will call this to indicate they are done with the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
+	// TODO: don't believe in.Addr, take real addr
+	found := false
+	for _, w := range f.workerman.workers {
+		if in.Addr == w.addr {
+			f.workerman.SetStatus(w, WorkerIdle)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return &pb.Empty{}, fmt.Errorf("unknown worker: %v", in.Addr)
+	}
 	w, ok := f.workerman.assignee[in.TaskId]
 	if !ok {
-		found := false
-		for _, w := range f.workerman.workers {
-			if in.Addr == w.addr {
-				f.workerman.SetStatus(w, WorkerIdle)
-				found = true
-				break
-			}
-		}
-		if !found {
-			return &pb.Empty{}, fmt.Errorf("worker not registered yet: %v", in.Addr)
-		}
 		return &pb.Empty{}, fmt.Errorf("task isn't assigned to any worker: %v", in.TaskId)
 	}
 	if w.addr != in.Addr {
