@@ -180,9 +180,7 @@ func (m *jobManager) Cancel(id string) error {
 		}
 	}
 	if idx == -1 {
-		// job is not in heap means it is already done.
-		// no task need to be cancelled.
-		return
+		return fmt.Errorf("job already done: %v", id)
 	}
 	heap.Remove(m.jobs, idx)
 	go func() {
