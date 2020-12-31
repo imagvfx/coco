@@ -64,6 +64,7 @@ func (m *workerManager) Add(w *Worker) error {
 }
 
 func (m *workerManager) Waiting(w *Worker) {
+	w.SetStatus(WorkerIdle)
 	m.WorkerCh <- w
 }
 

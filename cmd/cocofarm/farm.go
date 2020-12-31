@@ -56,7 +56,6 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 			log.Print(err)
 		}
 	}
-	w.SetStatus(WorkerIdle)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }
@@ -85,7 +84,6 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, e
 	}
 
 	delete(f.workerman.assignee, in.TaskId)
-	w.SetStatus(WorkerIdle)
 	go f.workerman.Waiting(w)
 	return &pb.Empty{}, nil
 }
