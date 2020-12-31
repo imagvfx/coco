@@ -42,13 +42,8 @@ func (f *farmServer) Listen() {
 // Workers will call this to indicate they are idle and waiting for commands to run.
 func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
 	log.Printf("received: %v", in.Addr)
-	var w *Worker
-	for _, ww := range f.workerman.workers {
-		if in.Addr == ww.addr {
-			w = ww
-			break
-		}
-	}
+	// TODO: don't believe in.Addr, take real addr
+	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		w = &Worker{addr: in.Addr, status: WorkerIdle}
 		err := f.workerman.Add(w)
@@ -65,13 +60,7 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	// TODO: don't believe in.Addr, take real addr
-	var w *Worker
-	for _, ww := range f.workerman.workers {
-		if in.Addr == ww.addr {
-			w = ww
-			break
-		}
-	}
+	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		return &pb.Empty{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}

@@ -26,6 +26,12 @@ type Worker struct {
 	status WorkerStatus
 }
 
+func (w *Worker) Addr() string {
+	w.Lock()
+	defer w.Unlock()
+	return w.addr
+}
+
 func (w *Worker) SetStatus(s WorkerStatus) {
 	w.Lock()
 	defer w.Unlock()
@@ -66,6 +72,17 @@ func (m *workerManager) Add(w *Worker) error {
 func (m *workerManager) Waiting(w *Worker) {
 	w.SetStatus(WorkerIdle)
 	m.WorkerCh <- w
+}
+
+func (m *workerManager) FindByAddr(addr string) *Worker {
+	m.Lock()
+	defer m.Unlock()
+	for _, w := range m.workers {
+		if addr == w.Addr() {
+			return w
+		}
+	}
+	return nil
 }
 
 func (m *workerManager) idleWorkers() []*Worker {
