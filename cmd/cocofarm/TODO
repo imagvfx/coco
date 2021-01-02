@@ -1,2 +1,3 @@
 use db to remember jobs
 retry when worker failed to run commands
+job status
