@@ -2,7 +2,7 @@ package main
 
 import "testing"
 
-func TestJobManagerNextTask(t *testing.T) {
+func TestJobManagerPopTask(t *testing.T) {
 	j1 := &Job{
 		DefaultPriority: 1,
 		Root: &Task{
@@ -44,7 +44,7 @@ func TestJobManagerNextTask(t *testing.T) {
 	}
 	got := []*Task{}
 	for {
-		t := m.NextTask()
+		t := m.PopTask()
 		if t == nil {
 			break
 		}
