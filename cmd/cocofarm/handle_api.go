@@ -36,3 +36,20 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
 }
+
+func (h *apiHandler) handleTree(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	id := r.Form.Get("id")
+	j := h.jobman.Get(id)
+	if j == nil {
+		http.Error(w, fmt.Sprintf("job not found by id: %v", id), http.StatusBadRequest)
+		return
+	}
+	enc := json.NewEncoder(w)
+	j.Lock()
+	defer j.Unlock()
+	err := enc.Encode(j)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("%v", err))
+	}
+}

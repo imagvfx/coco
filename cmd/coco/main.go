@@ -18,6 +18,8 @@ func main() {
 		order(args[1:])
 	case "cancel":
 		cancel(args[1:])
+	case "tree":
+		tree(args[1:])
 	default:
 		log.Fatalf("unknown subcommand: %s", subcmd)
 	}

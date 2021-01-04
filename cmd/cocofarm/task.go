@@ -10,6 +10,18 @@ const (
 	TaskDone
 )
 
+func (s TaskStatus) MarshalJSON() ([]byte, error) {
+	str := map[TaskStatus]string{
+		TaskWaiting:   "waiting",
+		TaskRunning:   "running",
+		TaskCancelled: "cancelled",
+		TaskFailed:    "failed",
+		TaskDone:      "done",
+	}
+	ss := "\"" + str[s] + "\""
+	return []byte(ss), nil
+}
+
 // Task has a command and/or subtasks that will be run by workers.
 //
 // Task having subtasks are called Branch.
@@ -36,7 +48,7 @@ type Task struct {
 
 	// status indicates task status using in the farm.
 	// It should not be set from user.
-	status TaskStatus
+	Status TaskStatus
 
 	// Priority is a priority hint for the task.
 	// Priority set to zero makes it inherit nearest parent that has non-zero priority.
@@ -56,10 +68,6 @@ type Task struct {
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
-}
-
-func (t *Task) Status() TaskStatus {
-	return t.status
 }
 
 func (t *Task) CalcPriority() int {

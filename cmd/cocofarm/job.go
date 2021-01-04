@@ -11,6 +11,8 @@ import (
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
+	sync.Mutex
+
 	// ID lets a Job distinguishes from others.
 	ID string
 
@@ -110,6 +112,12 @@ func newJobManager() *jobManager {
 	return m
 }
 
+func (m *jobManager) Get(id string) *Job {
+	m.Lock()
+	defer m.Unlock()
+	return m.job[id]
+}
+
 func (m *jobManager) Add(j *Job) (string, error) {
 	if j == nil {
 		return "", fmt.Errorf("nil job cannot be added")
@@ -186,7 +194,7 @@ func (m *jobManager) Cancel(id string) error {
 	go func() {
 		walkLeafTaskFn(j.Root, func(t *Task) {
 			// indicate the task is cancelled, first.
-			t.status = TaskCancelled
+			t.Status = TaskCancelled
 		})
 		walkLeafTaskFn(j.Root, func(t *Task) {
 			m.CancelTaskCh <- t

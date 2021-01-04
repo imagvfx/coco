@@ -35,6 +35,7 @@ func main() {
 	mux.HandleFunc("/", handleRoot)
 	mux.HandleFunc("/api/order", api.handleOrder)
 	mux.HandleFunc("/api/cancel", api.handleCancel)
+	mux.HandleFunc("/api/tree", api.handleTree)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
@@ -48,7 +49,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		}
 		w := <-workerman.WorkerCh
 		t = jobman.PopTask()
-		if t == nil || len(t.Commands) == 0 || t.status == TaskCancelled {
+		if t == nil || len(t.Commands) == 0 || t.Status == TaskCancelled {
 			go workerman.Waiting(w)
 			return
 		}
