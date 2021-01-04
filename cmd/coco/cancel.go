@@ -11,11 +11,11 @@ import (
 )
 
 func cancel(args []string) {
-	fset := flag.NewFlagSet("order", flag.ExitOnError)
+	fset := flag.NewFlagSet("cancel", flag.ExitOnError)
 	fset.Parse(args)
 	fargs := fset.Args()
 	if len(fargs) == 0 {
-		log.Fatal("need a json file to order")
+		log.Fatal("need a job id to cancel")
 	}
 
 	id := fargs[0]
