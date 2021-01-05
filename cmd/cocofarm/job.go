@@ -249,7 +249,7 @@ func (m *jobManager) PopTask() *Task {
 	m.Lock()
 	defer m.Unlock()
 	for {
-		if len(*m.jobs) == 0 {
+		if m.jobs.Len() == 0 {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
