@@ -25,7 +25,6 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
 	io.WriteString(w, id)
-	// TODO: return the job id
 }
 
 func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
