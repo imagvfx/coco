@@ -125,15 +125,15 @@ func (m *workerManager) sendTask(w *Worker, t *Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	pbTask := &pb.Task{}
-	pbTask.Id = t.id
+	req := &pb.RunRequest{}
+	req.Id = t.id
 	for _, c := range t.Commands {
-		pbCmd := &pb.Command{
+		reqCmd := &pb.Command{
 			Args: c,
 		}
-		pbTask.Cmds = append(pbTask.Cmds, pbCmd)
+		req.Cmds = append(req.Cmds, reqCmd)
 	}
-	_, err = c.Run(ctx, pbTask)
+	_, err = c.Run(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -157,11 +157,10 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	// only id is needed for cancelling
-	pbTask := &pb.Task{}
-	pbTask.Id = t.id
+	req := &pb.CancelRequest{}
+	req.Id = t.id
 
-	_, err = c.Cancel(ctx, pbTask)
+	_, err = c.Cancel(ctx, req)
 	if err != nil {
 		return err
 	}

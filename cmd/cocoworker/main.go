@@ -84,24 +84,24 @@ func (s *server) Abort(id string) error {
 	return nil
 }
 
-func (s *server) Run(ctx context.Context, in *pb.Task) (*pb.Empty, error) {
+func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, error) {
 	log.Printf("run: %v %v", in.Id, in.Cmds)
 	cmds := make([][]string, len(in.Cmds))
 	for i, cmd := range in.Cmds {
 		cmds[i] = cmd.Args
 	}
 	s.Start(in.Id, cmds)
-	return &pb.Empty{}, nil
+	return &pb.RunResponse{}, nil
 }
 
-func (s *server) Cancel(ctx context.Context, in *pb.Task) (*pb.Empty, error) {
+func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelResponse, error) {
 	log.Printf("cancel: %v", in.Id)
 	err := s.Abort(in.Id)
 	if err != nil {
-		return &pb.Empty{}, err
+		return &pb.CancelResponse{}, err
 	}
 	go sendWaiting("localhost:8284", "localhost:8283")
-	return &pb.Empty{}, nil
+	return &pb.CancelResponse{}, nil
 }
 
 func sendWaiting(farm, addr string) error {
@@ -115,8 +115,8 @@ func sendWaiting(farm, addr string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	pbHere := &pb.Here{Addr: addr}
-	_, err = c.Waiting(ctx, pbHere)
+	req := &pb.WaitingRequest{Addr: addr}
+	_, err = c.Waiting(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -134,8 +134,8 @@ func sendDone(farm, addr string, taskID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	pbHere := &pb.DoneRequest{Addr: addr, TaskId: taskID}
-	_, err = c.Done(ctx, pbHere)
+	req := &pb.DoneRequest{Addr: addr, TaskId: taskID}
+	_, err = c.Done(ctx, req)
 	if err != nil {
 		return err
 	}

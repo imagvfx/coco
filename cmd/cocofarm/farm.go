@@ -42,7 +42,7 @@ func (f *farmServer) Listen() {
 
 // Waiting will be called by workers through gRPC.
 // It indicates the caller is idle and waiting for commands to run.
-func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
+func (f *farmServer) Waiting(ctx context.Context, in *pb.WaitingRequest) (*pb.WaitingResponse, error) {
 	log.Printf("received: %v", in.Addr)
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
@@ -54,24 +54,24 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 		}
 	}
 	go f.workerman.Waiting(w)
-	return &pb.Empty{}, nil
+	return &pb.WaitingResponse{}, nil
 }
 
 // Done will be called by workers through gRPC.
 // It indicates the caller finished the requested task.
-func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
+func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResponse, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	t := f.jobman.GetTask(in.TaskId)
 	t.SetStatus(TaskDone)
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
-		return &pb.Empty{}, fmt.Errorf("unknown worker: %v", in.Addr)
+		return &pb.DoneResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
 	err := f.workerman.DoneBy(in.TaskId, w)
 	if err != nil {
-		return &pb.Empty{}, err
+		return &pb.DoneResponse{}, err
 	}
 	go f.workerman.Waiting(w)
-	return &pb.Empty{}, nil
+	return &pb.DoneResponse{}, nil
 }

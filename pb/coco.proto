@@ -5,32 +5,42 @@ package pb;
 option go_package = "github.com/imagvfx/coco/pb";
 
 service Worker {
-	rpc Run(Task) returns (Empty) {};
-	rpc Cancel(Task) returns (Empty) {};
+	rpc Run(RunRequest) returns (RunResponse) {};
+	rpc Cancel(CancelRequest) returns (CancelResponse) {};
 }
 
 message Command {
 	repeated string args = 1;
 }
 
-message Task {
+message RunRequest {
 	string id = 1;
 	repeated Command cmds = 2;
 }
 
-service Farm {
-	rpc Waiting(Here) returns (Empty) {};
-	rpc Done(DoneRequest) returns (Empty) {};
+message RunResponse {}
+
+message CancelRequest {
+	string id = 1;
 }
 
-message Here {
+message CancelResponse {}
+
+service Farm {
+	rpc Waiting(WaitingRequest) returns (WaitingResponse) {};
+	rpc Done(DoneRequest) returns (DoneResponse) {};
+}
+
+message WaitingRequest {
 	string addr = 1;
 }
+
+message WaitingResponse {}
 
 message DoneRequest{
 	string addr = 1;
 	string task_id = 2;
 }
 
-message Empty {}
+message DoneResponse {}
 
