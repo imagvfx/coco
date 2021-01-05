@@ -14,13 +14,15 @@ import (
 type farmServer struct {
 	pb.UnimplementedFarmServer
 	addr      string
+	jobman    *jobManager
 	workerman *workerManager
 }
 
 // newFarmServer creates a new farmServer.
-func newFarmServer(addr string, workerman *workerManager) *farmServer {
+func newFarmServer(addr string, jobman *jobManager, workerman *workerManager) *farmServer {
 	return &farmServer{
 		addr:      addr,
+		jobman:    jobman,
 		workerman: workerman,
 	}
 }
@@ -59,6 +61,8 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 // Workers will call this to indicate they are done with the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
+	t := f.jobman.GetTask(in.TaskId)
+	t.SetStatus(TaskDone)
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {

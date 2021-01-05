@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 type TaskStatus int
 
 const (
@@ -29,6 +31,8 @@ func (s TaskStatus) MarshalJSON() ([]byte, error) {
 // Leaf not having commands are valid, but barely useful.
 // A Task is either a Branch or a Leaf. It cannot be both at same time.
 type Task struct {
+	sync.Mutex
+
 	// Title is human readable title for task.
 	// Empty Title is allowed.
 	Title string
@@ -68,6 +72,12 @@ type Task struct {
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
+}
+
+func (t *Task) SetStatus(s TaskStatus) {
+	t.Lock()
+	defer t.Unlock()
+	t.Status = s
 }
 
 func (t *Task) CalcPriority() int {

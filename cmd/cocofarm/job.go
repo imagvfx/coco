@@ -99,6 +99,7 @@ type jobManager struct {
 	nextJobID    int
 	job          map[string]*Job
 	jobs         *jobHeap
+	task         map[string]*Task
 	tasks        map[*Job]*taskHeap
 	CancelTaskCh chan *Task
 }
@@ -107,6 +108,7 @@ func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.job = make(map[string]*Job)
 	m.jobs = &jobHeap{}
+	m.task = make(map[string]*Task)
 	m.tasks = make(map[*Job]*taskHeap)
 	m.CancelTaskCh = make(chan *Task)
 	return m
@@ -116,6 +118,12 @@ func (m *jobManager) Get(id string) *Job {
 	m.Lock()
 	defer m.Unlock()
 	return m.job[id]
+}
+
+func (m *jobManager) GetTask(id string) *Task {
+	m.Lock()
+	defer m.Unlock()
+	return m.task[id]
 }
 
 func (m *jobManager) Add(j *Job) (string, error) {
@@ -142,6 +150,9 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	}
 	walkLeafTaskFn(j.Root, func(t *Task) {
 		heap.Push(tasks, t)
+	})
+	walkTaskFn(j.Root, func(t *Task) {
+		m.task[t.id] = t
 	})
 
 	// set priority for the very first leaf task.

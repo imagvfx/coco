@@ -19,12 +19,12 @@ func main() {
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
 	flag.Parse()
 
+	job := newJobManager()
 	worker := newWorkerManager()
 
-	farm := newFarmServer("localhost:8284", worker)
+	farm := newFarmServer("localhost:8284", job, worker)
 	go farm.Listen()
 
-	job := newJobManager()
 	go matching(job, worker)
 	go cancelling(job, worker)
 
