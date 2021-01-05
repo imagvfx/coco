@@ -41,7 +41,7 @@ func (f *farmServer) Listen() {
 }
 
 // Waiting will be called by workers through gRPC.
-// Workers will call this to indicate they are idle and waiting for commands to run.
+// It indicates the caller is idle and waiting for commands to run.
 func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error) {
 	log.Printf("received: %v", in.Addr)
 	// TODO: need to verify the worker
@@ -58,7 +58,7 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.Here) (*pb.Empty, error
 }
 
 // Done will be called by workers through gRPC.
-// Workers will call this to indicate they are done with the requested task.
+// It indicates the caller finished the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.Empty, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	t := f.jobman.GetTask(in.TaskId)
