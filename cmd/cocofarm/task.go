@@ -1,6 +1,9 @@
 package main
 
-import "sync"
+import (
+	"encoding/json"
+	"sync"
+)
 
 type TaskStatus int
 
@@ -12,7 +15,7 @@ const (
 	TaskDone
 )
 
-func (s TaskStatus) MarshalJSON() ([]byte, error) {
+func (s TaskStatus) String() string {
 	str := map[TaskStatus]string{
 		TaskWaiting:   "waiting",
 		TaskRunning:   "running",
@@ -20,8 +23,7 @@ func (s TaskStatus) MarshalJSON() ([]byte, error) {
 		TaskFailed:    "failed",
 		TaskDone:      "done",
 	}
-	ss := "\"" + str[s] + "\""
-	return []byte(ss), nil
+	return str[s]
 }
 
 // Task has a command and/or subtasks that will be run by workers.
@@ -72,6 +74,29 @@ type Task struct {
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
+}
+
+func (t *Task) MarshalJSON() ([]byte, error) {
+	t.Lock()
+	defer t.Unlock()
+	m := struct {
+		Title          string
+		ID             string
+		Status         string
+		Priority       int
+		Subtasks       []*Task
+		SerialSubtasks bool
+		Commands       []Command
+	}{
+		Title:          t.Title,
+		ID:             t.id,
+		Status:         t.Status.String(),
+		Priority:       t.Priority,
+		Subtasks:       t.Subtasks,
+		SerialSubtasks: t.SerialSubtasks,
+		Commands:       t.Commands,
+	}
+	return json.Marshal(m)
 }
 
 func (t *Task) SetStatus(s TaskStatus) {
