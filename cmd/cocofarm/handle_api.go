@@ -36,7 +36,7 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *apiHandler) handleTree(w http.ResponseWriter, r *http.Request) {
+func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")
 	j := h.jobman.Get(id)

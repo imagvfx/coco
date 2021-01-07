@@ -101,7 +101,7 @@ func tree(args []string) {
 	data.Add("id", id)
 
 	// check the response
-	resp, err := http.PostForm("http://"+addr+"/api/tree", data)
+	resp, err := http.PostForm("http://"+addr+"/api/job", data)
 	if err != nil {
 		log.Fatal(err)
 	}
