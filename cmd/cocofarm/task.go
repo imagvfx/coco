@@ -120,19 +120,3 @@ func (t *Task) CalcPriority() int {
 func (t *Task) IsLeaf() bool {
 	return len(t.Subtasks) == 0
 }
-
-func walkTaskFn(t *Task, fn func(t *Task)) {
-	fn(t)
-	for _, t := range t.Subtasks {
-		walkTaskFn(t, fn)
-	}
-}
-
-func walkLeafTaskFn(t *Task, fn func(t *Task)) {
-	if t.IsLeaf() {
-		fn(t)
-	}
-	for _, t := range t.Subtasks {
-		walkTaskFn(t, fn)
-	}
-}

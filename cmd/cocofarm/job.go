@@ -39,6 +39,38 @@ type Job struct {
 	SerialSubtasks bool
 }
 
+func (j *Job) WalkTaskFn(fn func(t *Task)) {
+	j.Lock()
+	defer j.Unlock()
+	for _, subt := range j.Subtasks {
+		walkTaskFn(subt, fn)
+	}
+}
+
+func walkTaskFn(t *Task, fn func(t *Task)) {
+	fn(t)
+	for _, subt := range t.Subtasks {
+		walkTaskFn(subt, fn)
+	}
+}
+
+func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
+	j.Lock()
+	defer j.Unlock()
+	for _, subt := range j.Subtasks {
+		walkLeafTaskFn(subt, fn)
+	}
+}
+
+func walkLeafTaskFn(t *Task, fn func(t *Task)) {
+	if t.IsLeaf() {
+		fn(t)
+	}
+	for _, subt := range t.Subtasks {
+		walkLeafTaskFn(subt, fn)
+	}
+}
+
 type jobHeap []*Job
 
 func (h jobHeap) Len() int {
@@ -153,14 +185,12 @@ func (m *jobManager) Add(j *Job) (string, error) {
 		tasks = &taskHeap{}
 		m.tasks[j] = tasks
 	}
-	for _, subt := range j.Subtasks {
-		walkLeafTaskFn(subt, func(t *Task) {
-			heap.Push(tasks, t)
-		})
-		walkTaskFn(subt, func(t *Task) {
-			m.task[t.id] = t
-		})
-	}
+	j.WalkLeafTaskFn(func(t *Task) {
+		heap.Push(tasks, t)
+	})
+	j.WalkTaskFn(func(t *Task) {
+		m.task[t.id] = t
+	})
 
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
@@ -213,16 +243,12 @@ func (m *jobManager) Cancel(id string) error {
 	heap.Remove(m.jobs, idx)
 	go func() {
 		// indicate the task is cancelled, first.
-		for _, subt := range j.Subtasks {
-			walkLeafTaskFn(subt, func(t *Task) {
-				t.Status = TaskCancelled
-			})
-		}
-		for _, subt := range j.Subtasks {
-			walkLeafTaskFn(subt, func(t *Task) {
-				m.CancelTaskCh <- t
-			})
-		}
+		j.WalkLeafTaskFn(func(t *Task) {
+			t.Status = TaskCancelled
+		})
+		j.WalkLeafTaskFn(func(t *Task) {
+			m.CancelTaskCh <- t
+		})
 	}()
 	return nil
 }
