@@ -1,27 +1,29 @@
 {
-	"Root": {
-		"SubTasks": [
-			{
-				"Commands": [
-					["echo", "hello"]
-				]
-			},
-			{
-				"Commands": [
-					["ls"],
-					["ls", "-al"]
-				]
-			},
-			{
-				"Commands": [
-					["sleep", "5"]
-				]
-			},
-			{
-				"Commands": [
-					["echo", "bye"]
-				]
-			}
-		]
-	}
+	"Subtasks": [
+		{
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "hello"]
+					]
+				},
+				{
+					"Commands": [
+						["ls"],
+						["ls", "-al"]
+					]
+				},
+				{
+					"Commands": [
+						["sleep", "5"]
+					]
+				},
+				{
+					"Commands": [
+						["echo", "bye"]
+					]
+				}
+			]
+		}
+	]
 }

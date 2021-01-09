@@ -5,14 +5,16 @@ import "testing"
 func TestJobManagerPopTask(t *testing.T) {
 	j1 := &Job{
 		DefaultPriority: 1,
-		Root: &Task{
-			Priority: 0,
-			Subtasks: []*Task{
-				&Task{
-					Priority: 3, // 2
-				},
-				&Task{
-					Priority: 0, // 1
+		Subtasks: []*Task{
+			&Task{
+				Priority: 0, // for checking priority inheritance
+				Subtasks: []*Task{
+					&Task{
+						Priority: 3, // 2
+					},
+					&Task{
+						Priority: 0, // 1
+					},
 				},
 			},
 		},
@@ -20,14 +22,16 @@ func TestJobManagerPopTask(t *testing.T) {
 	initJob(j1)
 	j2 := &Job{
 		DefaultPriority: 2,
-		Root: &Task{
-			Priority: 0,
-			Subtasks: []*Task{
-				&Task{
-					Priority: 0, // 2
-				},
-				&Task{
-					Priority: 3, // 3
+		Subtasks: []*Task{
+			&Task{
+				Priority: 0, // for checking priority inheritance
+				Subtasks: []*Task{
+					&Task{
+						Priority: 0, // 2
+					},
+					&Task{
+						Priority: 3, // 3
+					},
 				},
 			},
 		},
@@ -37,10 +41,10 @@ func TestJobManagerPopTask(t *testing.T) {
 	m.Add(j1)
 	m.Add(j2)
 	want := []*Task{
-		j1.Root.Subtasks[0], // 2 with lower ID
-		j2.Root.Subtasks[0], // 2 with higher ID
-		j2.Root.Subtasks[1], // 1
-		j1.Root.Subtasks[1], // 3
+		j1.Subtasks[0].Subtasks[0], // 2 with lower ID
+		j2.Subtasks[0].Subtasks[0], // 2 with higher ID
+		j2.Subtasks[0].Subtasks[1], // 1
+		j1.Subtasks[0].Subtasks[1], // 3
 	}
 	got := []*Task{}
 	for {

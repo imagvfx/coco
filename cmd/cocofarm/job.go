@@ -30,8 +30,13 @@ type Job struct {
 	// priority is the job's task priority waiting at the time.
 	priority int
 
-	// Root task contains commands or subtasks to be run.
-	Root *Task
+	// Subtasks contains subtasks to be run.
+	// Job's Subtasks should have at least one subtask.
+	Subtasks []*Task
+
+	// When true, a subtask will be launched after the prior task finished.
+	// When false, a subtask will be launched right after the prior task started.
+	SerialSubtasks bool
 }
 
 type jobHeap []*Job
@@ -130,8 +135,8 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	if j == nil {
 		return "", fmt.Errorf("nil job cannot be added")
 	}
-	if j.Root == nil {
-		return "", fmt.Errorf("root task of job should not be nil")
+	if len(j.Subtasks) == 0 {
+		return "", fmt.Errorf("a job should have at least one subtask")
 	}
 	initJob(j)
 
@@ -148,12 +153,14 @@ func (m *jobManager) Add(j *Job) (string, error) {
 		tasks = &taskHeap{}
 		m.tasks[j] = tasks
 	}
-	walkLeafTaskFn(j.Root, func(t *Task) {
-		heap.Push(tasks, t)
-	})
-	walkTaskFn(j.Root, func(t *Task) {
-		m.task[t.id] = t
-	})
+	for _, subt := range j.Subtasks {
+		walkLeafTaskFn(subt, func(t *Task) {
+			heap.Push(tasks, t)
+		})
+		walkTaskFn(subt, func(t *Task) {
+			m.task[t.id] = t
+		})
+	}
 
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
@@ -163,7 +170,9 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 // initJob inits a job before it is added to jobManager.
 func initJob(j *Job) {
-	initJobTasks(j.Root, j, nil, 0)
+	for _, subt := range j.Subtasks {
+		initJobTasks(subt, j, nil, 0)
+	}
 }
 
 // initJobTasks inits a job tasks recursively.
@@ -203,13 +212,17 @@ func (m *jobManager) Cancel(id string) error {
 	}
 	heap.Remove(m.jobs, idx)
 	go func() {
-		walkLeafTaskFn(j.Root, func(t *Task) {
-			// indicate the task is cancelled, first.
-			t.Status = TaskCancelled
-		})
-		walkLeafTaskFn(j.Root, func(t *Task) {
-			m.CancelTaskCh <- t
-		})
+		// indicate the task is cancelled, first.
+		for _, subt := range j.Subtasks {
+			walkLeafTaskFn(subt, func(t *Task) {
+				t.Status = TaskCancelled
+			})
+		}
+		for _, subt := range j.Subtasks {
+			walkLeafTaskFn(subt, func(t *Task) {
+				m.CancelTaskCh <- t
+			})
+		}
 	}()
 	return nil
 }

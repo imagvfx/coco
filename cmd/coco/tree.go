@@ -12,9 +12,9 @@ import (
 )
 
 type TreeJob struct {
-	ID    string
-	Title string
-	Root  *TreeTask
+	ID       string
+	Title    string
+	Subtasks []*TreeTask
 
 	line string
 }
@@ -32,12 +32,16 @@ func fixJob(j *TreeJob) {
 	if title == "" {
 		title = "untitled"
 	}
-	if j.Root == nil {
+	if len(j.Subtasks) == 0 {
 		// it shouldn't, but not much to do here.
 		return
 	}
-	n := fixTask(j.Root)
-	j.line = fmt.Sprintf("[%v] %v (%v/%v)", j.ID, title, n, 1)
+	nDone := 0
+	for _, subt := range j.Subtasks {
+		done := fixTask(subt)
+		nDone += done
+	}
+	j.line = fmt.Sprintf("[%v] %v (%v/%v)", j.ID, title, nDone, len(j.Subtasks))
 }
 
 func fixTask(t *TreeTask) int {
@@ -67,7 +71,9 @@ func fixTaskR(t *TreeTask, nthChild int) int {
 
 func printJob(j *TreeJob) {
 	fmt.Println(j.line)
-	printTask(j.Root, 1)
+	for _, subt := range j.Subtasks {
+		printTask(subt, 1)
+	}
 }
 
 func printTask(t *TreeTask, depth int) {
