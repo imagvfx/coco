@@ -206,6 +206,7 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
+	// NOTE: but anyway, the heap operations following will hold lock on jobs.
 
 	heap.Push(m.jobs, j)
 
