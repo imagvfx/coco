@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/heap"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"sync"
@@ -40,6 +41,25 @@ type Job struct {
 	// When true, a subtask will be launched after the prior task finished.
 	// When false, a subtask will be launched right after the prior task started.
 	SerialSubtasks bool
+}
+
+func (j *Job) MarshalJSON() ([]byte, error) {
+	m := struct {
+		ID              string
+		Title           string
+		DefaultPriority int
+		Priority        int
+		Subtasks        []*Task
+		SerialSubtasks  bool
+	}{
+		ID:              j.id,
+		Title:           j.Title,
+		DefaultPriority: j.DefaultPriority,
+		Priority:        j.Priority,
+		Subtasks:        j.Subtasks,
+		SerialSubtasks:  j.SerialSubtasks,
+	}
+	return json.Marshal(m)
 }
 
 func (j *Job) WalkTaskFn(fn func(t *Task)) {
