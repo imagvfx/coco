@@ -62,7 +62,9 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.WaitingRequest) (*pb.Wa
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResponse, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	t := f.jobman.GetTask(in.TaskId)
+	t.job.Lock()
 	t.SetStatus(TaskDone)
+	t.job.Unlock()
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {

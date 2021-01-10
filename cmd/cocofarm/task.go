@@ -33,11 +33,10 @@ func (s TaskStatus) String() string {
 // Leaf not having commands are valid, but barely useful.
 // A Task is either a Branch or a Leaf. It cannot be both at same time.
 type Task struct {
-	sync.Mutex
+	// NOTE: Private fields of this struct should be read-only after the initialization.
+	// Otherwise, this program will get racy.
 
-	// Title is human readable title for task.
-	// Empty Title is allowed.
-	Title string
+	sync.Mutex
 
 	// id is a Task identifier make it distinct from all other tasks.
 	id string
@@ -46,11 +45,15 @@ type Task struct {
 	job *Job
 
 	// parent is a parent task of the task.
-	// it will be nil, if the task is a root task.
+	// It will be nil, if the task is a root task.
 	parent *Task
 
 	// num is internal order of the task in a job.
 	num int
+
+	// Title is human readable title for task.
+	// Empty Title is allowed.
+	Title string
 
 	// status indicates task status using in the farm.
 	// It should not be set from user.
@@ -77,8 +80,6 @@ type Task struct {
 }
 
 func (t *Task) MarshalJSON() ([]byte, error) {
-	t.Lock()
-	defer t.Unlock()
 	m := struct {
 		Title          string
 		ID             string
@@ -100,8 +101,6 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Task) SetStatus(s TaskStatus) {
-	t.Lock()
-	defer t.Unlock()
 	t.Status = s
 }
 

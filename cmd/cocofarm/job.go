@@ -40,8 +40,6 @@ type Job struct {
 }
 
 func (j *Job) WalkTaskFn(fn func(t *Task)) {
-	j.Lock()
-	defer j.Unlock()
 	for _, subt := range j.Subtasks {
 		walkTaskFn(subt, fn)
 	}
@@ -55,8 +53,6 @@ func walkTaskFn(t *Task, fn func(t *Task)) {
 }
 
 func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
-	j.Lock()
-	defer j.Unlock()
 	for _, subt := range j.Subtasks {
 		walkLeafTaskFn(subt, fn)
 	}
@@ -178,6 +174,10 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	m.Lock()
 	defer m.Unlock()
 	m.job[j.ID] = j
+
+	// didn't hold lock of the job as the job will not get published
+	// until Add method returns.
+
 	heap.Push(m.jobs, j)
 
 	tasks, ok := m.tasks[j]
@@ -199,13 +199,15 @@ func (m *jobManager) Add(j *Job) (string, error) {
 }
 
 // initJob inits a job before it is added to jobManager.
+// No need to hold the lock.
 func initJob(j *Job) {
 	for _, subt := range j.Subtasks {
 		initJobTasks(subt, j, nil, 0)
 	}
 }
 
-// initJobTasks inits a job tasks recursively.
+// initJobTasks inits a job's tasks recursively before it is added to jobManager.
+// No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 	t.id = xid.New().String()
 	t.job = j
@@ -242,6 +244,8 @@ func (m *jobManager) Cancel(id string) error {
 	}
 	heap.Remove(m.jobs, idx)
 	go func() {
+		j.Lock()
+		defer j.Unlock()
 		// indicate the task is cancelled, first.
 		j.WalkLeafTaskFn(func(t *Task) {
 			t.Status = TaskCancelled
@@ -298,7 +302,10 @@ func (m *jobManager) PopTask() *Task {
 		// check there is any leaf task left.
 		if tasks.Len() != 0 {
 			peek := (*tasks)[0]
+			j.Lock()
+			// the peeked task is also cared by this lock.
 			j.priority = peek.CalcPriority()
+			j.Unlock()
 			heap.Push(m.jobs, j)
 		}
 
