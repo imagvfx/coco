@@ -171,11 +171,13 @@ func (h *taskHeap) Pop() interface{} {
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID    int
-	job          map[string]*Job
+	nextJobID int
+	job       map[string]*Job
+	// jobs may have cancelled jobs.
+	// PopTask should handle this properly.
 	jobs         *jobHeap
 	task         map[string]*Task
-	tasks        map[*Job]*taskHeap
+	tasks        map[string]*taskHeap
 	CancelTaskCh chan *Task
 }
 
@@ -184,7 +186,7 @@ func newJobManager() *jobManager {
 	m.job = make(map[string]*Job)
 	m.jobs = &jobHeap{}
 	m.task = make(map[string]*Task)
-	m.tasks = make(map[*Job]*taskHeap)
+	m.tasks = make(map[string]*taskHeap)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -223,10 +225,10 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	heap.Push(m.jobs, j)
 
-	tasks, ok := m.tasks[j]
+	tasks, ok := m.tasks[j.id]
 	if !ok {
 		tasks = &taskHeap{}
-		m.tasks[j] = tasks
+		m.tasks[j.id] = tasks
 	}
 	j.WalkLeafTaskFn(func(t *Task) {
 		heap.Push(tasks, t)
@@ -274,25 +276,17 @@ func (m *jobManager) Cancel(id string) error {
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
-	// also remove the job from heap.
-	idx := -1
-	for i, j := range *m.jobs {
-		if id == j.id {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
-		return fmt.Errorf("job already done: %v", id)
-	}
-	heap.Remove(m.jobs, idx)
+	j.Lock()
+	// indicate the job and it's tasks are cancelled, first.
+	j.Status = JobCancelled
+	j.WalkLeafTaskFn(func(t *Task) {
+		t.Status = TaskCancelled
+	})
+	j.Unlock()
+	// Delete the job from m.jobs (heap) will be expensive.
+	// Let PopTask do the job.
+	delete(m.tasks, id)
 	go func() {
-		j.Lock()
-		defer j.Unlock()
-		// indicate the task is cancelled, first.
-		j.WalkLeafTaskFn(func(t *Task) {
-			t.Status = TaskCancelled
-		})
 		j.WalkLeafTaskFn(func(t *Task) {
 			m.CancelTaskCh <- t
 		})
@@ -307,17 +301,10 @@ func (m *jobManager) Delete(id string) error {
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
-	idx := -1
-	for i, j := range *m.jobs {
-		if id == j.id {
-			idx = i
-			break
-		}
-	}
-	if idx != -1 {
-		heap.Remove(m.jobs, idx)
-	}
 	delete(m.job, id)
+	// Delete the job from m.jobs (heap) will be expensive.
+	// Let PopTask do the job.
+	delete(m.tasks, id)
 	return nil
 }
 
@@ -328,7 +315,7 @@ func (m *jobManager) NextTask() *Task {
 		return nil
 	}
 	j := (*m.jobs)[0]
-	return (*m.tasks[j])[0]
+	return (*m.tasks[j.id])[0]
 }
 
 func (m *jobManager) PopTask() *Task {
@@ -339,7 +326,17 @@ func (m *jobManager) PopTask() *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		tasks := m.tasks[j]
+		_, ok := m.job[j.id]
+		if !ok {
+			// the job deleted
+			continue
+		}
+		if j.Status == JobCancelled {
+			// the job cancelled
+			continue
+		}
+
+		tasks := m.tasks[j.id]
 		t := heap.Pop(tasks).(*Task)
 
 		// check there is any leaf task left.
