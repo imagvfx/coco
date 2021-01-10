@@ -11,10 +11,13 @@ import (
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
+	// NOTE: Private fields of this struct should be read-only after the initialization.
+	// Otherwise, this program will get racy.
+
 	sync.Mutex
 
-	// ID lets a Job distinguishes from others.
-	ID string
+	// id lets a Job distinguishes from others.
+	id string
 
 	// Title is human readable title for job.
 	Title string
@@ -27,8 +30,8 @@ type Job struct {
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
 	DefaultPriority int
 
-	// priority is the job's task priority waiting at the time.
-	priority int
+	// Priority is the job's task priority waiting at the time.
+	Priority int
 
 	// Subtasks contains subtasks to be run.
 	// Job's Subtasks should have at least one subtask.
@@ -74,13 +77,17 @@ func (h jobHeap) Len() int {
 }
 
 func (h jobHeap) Less(i, j int) bool {
-	if h[i].priority > h[j].priority {
+	h[i].Lock()
+	h[j].Lock()
+	defer h[i].Unlock()
+	defer h[j].Unlock()
+	if h[i].Priority > h[j].Priority {
 		return true
 	}
-	if h[i].priority < h[j].priority {
+	if h[i].Priority < h[j].Priority {
 		return false
 	}
-	return h[i].ID < h[j].ID
+	return h[i].id < h[j].id
 }
 
 func (h jobHeap) Swap(i, j int) {
@@ -107,6 +114,8 @@ func (h taskHeap) Len() int {
 }
 
 func (h taskHeap) Less(i, j int) bool {
+	h[i].job.Lock() // h[i].job == h[j].job
+	defer h[i].job.Unlock()
 	return h[i].num < h[j].num
 }
 
@@ -168,12 +177,12 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	}
 	initJob(j)
 
-	j.ID = strconv.Itoa(m.nextJobID)
+	j.id = strconv.Itoa(m.nextJobID)
 	m.nextJobID++
 
 	m.Lock()
 	defer m.Unlock()
-	m.job[j.ID] = j
+	m.job[j.id] = j
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
@@ -194,8 +203,8 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
-	j.priority = peek.CalcPriority()
-	return j.ID, nil
+	j.Priority = peek.CalcPriority()
+	return j.id, nil
 }
 
 // initJob inits a job before it is added to jobManager.
@@ -234,7 +243,7 @@ func (m *jobManager) Cancel(id string) error {
 	// also remove the job from heap.
 	idx := -1
 	for i, j := range *m.jobs {
-		if id == j.ID {
+		if id == j.id {
 			idx = i
 			break
 		}
@@ -266,7 +275,7 @@ func (m *jobManager) Delete(id string) error {
 	}
 	idx := -1
 	for i, j := range *m.jobs {
-		if id == j.ID {
+		if id == j.id {
 			idx = i
 			break
 		}
@@ -304,7 +313,7 @@ func (m *jobManager) PopTask() *Task {
 			peek := (*tasks)[0]
 			j.Lock()
 			// the peeked task is also cared by this lock.
-			j.priority = peek.CalcPriority()
+			j.Priority = peek.CalcPriority()
 			j.Unlock()
 			heap.Push(m.jobs, j)
 		}
