@@ -49,8 +49,13 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		}
 		w := <-workerman.WorkerCh
 		t = jobman.PopTask()
+		if t == nil {
+			go workerman.Waiting(w)
+			return
+		}
+		// TODO: what if the job is deleted already?
 		t.job.Lock()
-		cancel := t == nil || len(t.Commands) == 0 || t.Status == TaskCancelled
+		cancel := len(t.Commands) == 0 || t.Status == TaskCancelled
 		t.job.Unlock()
 		if cancel {
 			go workerman.Waiting(w)
