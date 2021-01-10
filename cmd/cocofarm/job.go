@@ -10,6 +10,16 @@ import (
 	"github.com/rs/xid"
 )
 
+type JobStatus int
+
+const (
+	JobWaiting = iota
+	JobProcessing
+	JobBlocked
+	JobCancelled
+	JobDone
+)
+
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
@@ -19,6 +29,9 @@ type Job struct {
 
 	// id lets a Job distinguishes from others.
 	id string
+
+	// Status is status of a job.
+	Status JobStatus
 
 	// Title is human readable title for job.
 	Title string
