@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"sync"
 )
 
 type TaskStatus int
@@ -35,8 +34,6 @@ func (s TaskStatus) String() string {
 type Task struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
 	// Otherwise, this program will get racy.
-
-	sync.Mutex
 
 	// id is a Task identifier make it distinct from all other tasks.
 	id string
