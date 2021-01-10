@@ -276,6 +276,13 @@ func (m *jobManager) Cancel(id string) error {
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
+	if j.Status == JobCancelled {
+		return fmt.Errorf("job has already cancelled: %v", id)
+	}
+	if j.Status == JobDone {
+		// TODO: the job's status doesn't get changed to done yet.
+		return fmt.Errorf("job has already Done: %v", id)
+	}
 	j.Lock()
 	// indicate the job and it's tasks are cancelled, first.
 	j.Status = JobCancelled
