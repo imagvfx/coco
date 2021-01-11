@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 type TaskStatus int
@@ -14,15 +15,77 @@ const (
 	TaskDone
 )
 
-func (s TaskStatus) String() string {
-	str := map[TaskStatus]string{
-		TaskWaiting:   "waiting",
-		TaskRunning:   "running",
-		TaskCancelled: "cancelled",
-		TaskFailed:    "failed",
-		TaskDone:      "done",
+var leafStr = map[TaskStatus]string{
+	TaskWaiting:   "waiting",
+	TaskRunning:   "running",
+	TaskCancelled: "cancelled",
+	TaskFailed:    "failed",
+	TaskDone:      "done",
+}
+
+var branchStr = map[TaskStatus]string{
+	TaskWaiting:   "waiting",
+	TaskRunning:   "processing",
+	TaskCancelled: "cancelled",
+	TaskFailed:    "blocked",
+	TaskDone:      "done",
+}
+
+func (s TaskStatus) String(isLeaf bool) string {
+	if isLeaf {
+		return leafStr[s]
 	}
-	return str[s]
+	return branchStr[s]
+}
+
+type branchStat struct {
+	nFailed  int
+	nRunning int
+	nWaiting int
+	nDone    int
+}
+
+func (st *branchStat) Add(s TaskStatus) {
+	switch s {
+	case TaskFailed:
+		st.nFailed += 1
+	case TaskRunning:
+		st.nRunning += 1
+	case TaskWaiting:
+		st.nWaiting += 1
+	case TaskDone:
+		st.nDone += 1
+	default:
+		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
+	}
+}
+
+func (st *branchStat) Sub(s TaskStatus) {
+	switch s {
+	case TaskFailed:
+		st.nFailed -= 1
+	case TaskRunning:
+		st.nRunning -= 1
+	case TaskWaiting:
+		st.nWaiting -= 1
+	case TaskDone:
+		st.nDone -= 1
+	default:
+		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
+	}
+}
+
+func (st *branchStat) Status() TaskStatus {
+	if st.nFailed > 0 {
+		return TaskFailed
+	}
+	if st.nRunning > 0 {
+		return TaskRunning
+	}
+	if st.nWaiting > 0 {
+		return TaskWaiting
+	}
+	return TaskDone
 }
 
 // Task has a command and/or subtasks that will be run by workers.
@@ -56,6 +119,8 @@ type Task struct {
 	// It should not be set from user.
 	Status TaskStatus
 
+	Stat *branchStat
+
 	// Priority is a priority hint for the task.
 	// Priority set to zero makes it inherit nearest parent that has non-zero priority.
 	// If there isn't non-zero priority parent, it will use the job's priority.
@@ -88,7 +153,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	}{
 		Title:          t.Title,
 		ID:             t.id,
-		Status:         t.Status.String(),
+		Status:         t.Status.String(t.IsLeaf()),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
 		SerialSubtasks: t.SerialSubtasks,
@@ -113,7 +178,7 @@ func (t *Task) CalcPriority() int {
 		}
 		tt = tt.parent
 	}
-	return t.job.DefaultPriority
+	return t.job.Priority
 }
 
 func (t *Task) IsLeaf() bool {

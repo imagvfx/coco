@@ -12,7 +12,7 @@ import (
 )
 
 type TreeJob struct {
-	ID       string
+	Order    string
 	Status   string
 	Title    string
 	Subtasks []*TreeTask
@@ -42,7 +42,7 @@ func fixJob(j *TreeJob) {
 		done := fixTask(subt)
 		nDone += done
 	}
-	j.line = fmt.Sprintf("[%v] %v\n+ %v (%v/%v)", j.ID, title, j.Status, nDone, len(j.Subtasks))
+	j.line = fmt.Sprintf("[%v] %v\n+ %v (%v/%v)", j.Order, title, j.Status, nDone, len(j.Subtasks))
 }
 
 func fixTask(t *TreeTask) int {

@@ -10,77 +10,6 @@ import (
 	"github.com/rs/xid"
 )
 
-type JobStatus int
-
-const (
-	JobWaiting = iota
-	JobProcessing
-	JobBlocked
-	JobCancelled
-	JobDone
-)
-
-func (s JobStatus) String() string {
-	str := map[JobStatus]string{
-		JobCancelled:  "cancelled",
-		JobWaiting:    "waiting",
-		JobProcessing: "processing",
-		JobBlocked:    "blocked",
-		JobDone:       "done",
-	}
-	return str[s]
-}
-
-type jobStat struct {
-	nFailed  int
-	nRunning int
-	nWaiting int
-	nDone    int
-}
-
-func (st *jobStat) Add(s TaskStatus) {
-	switch s {
-	case TaskFailed:
-		st.nFailed += 1
-	case TaskRunning:
-		st.nRunning += 1
-	case TaskWaiting:
-		st.nWaiting += 1
-	case TaskDone:
-		st.nDone += 1
-	default:
-		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
-	}
-}
-
-func (st *jobStat) Sub(s TaskStatus) {
-	switch s {
-	case TaskFailed:
-		st.nFailed -= 1
-	case TaskRunning:
-		st.nRunning -= 1
-	case TaskWaiting:
-		st.nWaiting -= 1
-	case TaskDone:
-		st.nDone -= 1
-	default:
-		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
-	}
-}
-
-func (st *jobStat) Status() JobStatus {
-	if st.nFailed > 0 {
-		return JobBlocked
-	}
-	if st.nRunning > 0 {
-		return JobProcessing
-	}
-	if st.nWaiting > 0 {
-		return JobWaiting
-	}
-	return JobDone
-}
-
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
@@ -88,60 +17,51 @@ type Job struct {
 
 	sync.Mutex
 
-	// id lets a Job distinguishes from others.
-	id string
+	// order is the number of the order
+	order string
 
 	// Cancelled indicates that the job is cancelled
 	Cancelled bool
 
-	// Status is status of a job.
-	Stat jobStat
-
-	// Title is human readable title for job.
-	Title string
-
-	// DefaultPriority sets the job's default priority.
+	// Job is a Task.
+	// Some of the Task's field should be explained in Job's context.
+	//
+	// Task.Title is human readable title for job.
+	//
+	// Task.Priority sets the job's default priority.
 	// Jobs are compete each other with priority.
 	// Job's priority could be temporarily updated by a task that waits at the time.
 	// Higher values take precedence to lower values.
 	// Negative values will corrected to 0, the lowest priority value.
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
-	DefaultPriority int
+	*Task
 
-	// Priority is the job's task priority waiting at the time.
-	Priority int
-
-	// Subtasks contains subtasks to be run.
-	// Job's Subtasks should have at least one subtask.
-	Subtasks []*Task
-
-	// When true, a subtask will be launched after the prior task finished.
-	// When false, a subtask will be launched right after the prior task started.
-	SerialSubtasks bool
+	// CurrentPriority is the job's task priority waiting at the time.
+	CurrentPriority int
 }
 
-func (j *Job) Status() JobStatus {
+func (j *Job) Status() TaskStatus {
 	if j.Cancelled {
-		return JobCancelled
+		return TaskCancelled
 	}
 	return j.Stat.Status()
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
-		ID              string
+		Order           string
 		Status          string
 		Title           string
-		DefaultPriority int
 		Priority        int
+		CurrentPriority int
 		Subtasks        []*Task
 		SerialSubtasks  bool
 	}{
-		ID:              j.id,
-		Status:          j.Status().String(),
+		Order:           j.order,
+		Status:          j.Status().String(j.IsLeaf()),
 		Title:           j.Title,
-		DefaultPriority: j.DefaultPriority,
 		Priority:        j.Priority,
+		CurrentPriority: j.CurrentPriority,
 		Subtasks:        j.Subtasks,
 		SerialSubtasks:  j.SerialSubtasks,
 	}
@@ -283,14 +203,14 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	if len(j.Subtasks) == 0 {
 		return "", fmt.Errorf("a job should have at least one subtask")
 	}
-	initJob(j)
+	initJobTasks(j.Task, j, nil, 0)
 
-	j.id = strconv.Itoa(m.nextJobID)
+	j.order = strconv.Itoa(m.nextJobID)
 	m.nextJobID++
 
 	m.Lock()
 	defer m.Unlock()
-	m.job[j.id] = j
+	m.job[j.order] = j
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
@@ -298,10 +218,10 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	heap.Push(m.jobs, j)
 
-	tasks, ok := m.tasks[j.id]
+	tasks, ok := m.tasks[j.order]
 	if !ok {
 		tasks = &taskHeap{}
-		m.tasks[j.id] = tasks
+		m.tasks[j.order] = tasks
 	}
 	j.WalkLeafTaskFn(func(t *Task) {
 		heap.Push(tasks, t)
@@ -318,16 +238,8 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
-	j.Priority = peek.CalcPriority()
-	return j.id, nil
-}
-
-// initJob inits a job before it is added to jobManager.
-// No need to hold the lock.
-func initJob(j *Job) {
-	for _, subt := range j.Subtasks {
-		initJobTasks(subt, j, nil, 0)
-	}
+	j.CurrentPriority = peek.CalcPriority()
+	return j.order, nil
 }
 
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
@@ -342,6 +254,7 @@ func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 		// nagative priority is invalid.
 		t.Priority = 0
 	}
+	t.Stat = &branchStat{}
 	for _, subt := range t.Subtasks {
 		i = initJobTasks(subt, j, t, i)
 	}
@@ -360,7 +273,7 @@ func (m *jobManager) Cancel(id string) error {
 	if j.Cancelled {
 		return fmt.Errorf("job has already cancelled: %v", id)
 	}
-	if j.Status() == JobDone {
+	if j.Status() == TaskDone {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
 	}
@@ -401,7 +314,7 @@ func (m *jobManager) NextTask() *Task {
 		return nil
 	}
 	j := (*m.jobs)[0]
-	return (*m.tasks[j.id])[0]
+	return (*m.tasks[j.order])[0]
 }
 
 func (m *jobManager) PopTask() *Task {
@@ -412,7 +325,7 @@ func (m *jobManager) PopTask() *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		_, ok := m.job[j.id]
+		_, ok := m.job[j.order]
 		if !ok {
 			// the job deleted
 			continue
@@ -422,7 +335,7 @@ func (m *jobManager) PopTask() *Task {
 			continue
 		}
 
-		tasks := m.tasks[j.id]
+		tasks := m.tasks[j.order]
 		t := heap.Pop(tasks).(*Task)
 
 		// check there is any leaf task left.
@@ -430,7 +343,7 @@ func (m *jobManager) PopTask() *Task {
 			peek := (*tasks)[0]
 			j.Lock()
 			// the peeked task is also cared by this lock.
-			j.Priority = peek.CalcPriority()
+			j.CurrentPriority = peek.CalcPriority()
 			j.Unlock()
 			heap.Push(m.jobs, j)
 		}
