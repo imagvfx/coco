@@ -20,6 +20,67 @@ const (
 	JobDone
 )
 
+func (s JobStatus) String() string {
+	str := map[JobStatus]string{
+		JobCancelled:  "cancelled",
+		JobWaiting:    "waiting",
+		JobProcessing: "processing",
+		JobBlocked:    "blocked",
+		JobDone:       "done",
+	}
+	return str[s]
+}
+
+type jobStat struct {
+	nFailed  int
+	nRunning int
+	nWaiting int
+	nDone    int
+}
+
+func (st *jobStat) Add(s TaskStatus) {
+	switch s {
+	case TaskFailed:
+		st.nFailed += 1
+	case TaskRunning:
+		st.nRunning += 1
+	case TaskWaiting:
+		st.nWaiting += 1
+	case TaskDone:
+		st.nDone += 1
+	default:
+		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
+	}
+}
+
+func (st *jobStat) Sub(s TaskStatus) {
+	switch s {
+	case TaskFailed:
+		st.nFailed -= 1
+	case TaskRunning:
+		st.nRunning -= 1
+	case TaskWaiting:
+		st.nWaiting -= 1
+	case TaskDone:
+		st.nDone -= 1
+	default:
+		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
+	}
+}
+
+func (st *jobStat) Status() JobStatus {
+	if st.nFailed > 0 {
+		return JobBlocked
+	}
+	if st.nRunning > 0 {
+		return JobProcessing
+	}
+	if st.nWaiting > 0 {
+		return JobWaiting
+	}
+	return JobDone
+}
+
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
@@ -30,8 +91,11 @@ type Job struct {
 	// id lets a Job distinguishes from others.
 	id string
 
+	// Cancelled indicates that the job is cancelled
+	Cancelled bool
+
 	// Status is status of a job.
-	Status JobStatus
+	Stat jobStat
 
 	// Title is human readable title for job.
 	Title string
@@ -56,9 +120,17 @@ type Job struct {
 	SerialSubtasks bool
 }
 
+func (j *Job) Status() JobStatus {
+	if j.Cancelled {
+		return JobCancelled
+	}
+	return j.Stat.Status()
+}
+
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
 		ID              string
+		Status          string
 		Title           string
 		DefaultPriority int
 		Priority        int
@@ -66,6 +138,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		SerialSubtasks  bool
 	}{
 		ID:              j.id,
+		Status:          j.Status().String(),
 		Title:           j.Title,
 		DefaultPriority: j.DefaultPriority,
 		Priority:        j.Priority,
@@ -237,6 +310,12 @@ func (m *jobManager) Add(j *Job) (string, error) {
 		m.task[t.id] = t
 	})
 
+	nLeafs := 0
+	j.WalkLeafTaskFn(func(t *Task) {
+		nLeafs++
+	})
+	j.Stat.nWaiting = nLeafs
+
 	// set priority for the very first leaf task.
 	peek := (*tasks)[0]
 	j.Priority = peek.CalcPriority()
@@ -276,20 +355,20 @@ func (m *jobManager) Cancel(id string) error {
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
-	if j.Status == JobCancelled {
+	j.Lock()
+	defer j.Unlock()
+	if j.Cancelled {
 		return fmt.Errorf("job has already cancelled: %v", id)
 	}
-	if j.Status == JobDone {
+	if j.Status() == JobDone {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
 	}
-	j.Lock()
 	// indicate the job and it's tasks are cancelled, first.
-	j.Status = JobCancelled
+	j.Cancelled = true
 	j.WalkLeafTaskFn(func(t *Task) {
 		t.Status = TaskCancelled
 	})
-	j.Unlock()
 	// Delete the job from m.jobs (heap) will be expensive.
 	// Let PopTask do the job.
 	delete(m.tasks, id)
@@ -338,7 +417,7 @@ func (m *jobManager) PopTask() *Task {
 			// the job deleted
 			continue
 		}
-		if j.Status == JobCancelled {
+		if j.Cancelled {
 			// the job cancelled
 			continue
 		}

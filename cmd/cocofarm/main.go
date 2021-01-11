@@ -67,6 +67,10 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			// is it right decision?
 			log.Print(err)
 		}
+		// worker got the task.
+		t.job.Lock()
+		t.SetStatus(TaskRunning)
+		t.job.Unlock()
 	}
 
 	go func() {

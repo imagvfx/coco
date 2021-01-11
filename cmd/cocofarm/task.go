@@ -98,7 +98,10 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Task) SetStatus(s TaskStatus) {
+	old := t.Status
 	t.Status = s
+	t.job.Stat.Sub(old)
+	t.job.Stat.Add(s)
 }
 
 func (t *Task) CalcPriority() int {
