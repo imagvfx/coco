@@ -243,16 +243,20 @@ func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 	t.id = xid.New().String()
 	t.job = j
 	t.parent = parent
-	t.num = i
-	i++
+	if t.IsLeaf() {
+		t.num = i
+		i++
+	}
 	if t.Priority < 0 {
 		// nagative priority is invalid.
 		t.Priority = 0
 	}
 	t.Stat = &branchStat{}
+	iOld := i
 	for _, subt := range t.Subtasks {
 		i = initJobTasks(subt, j, t, i)
 	}
+	t.Stat.nWaiting = i - iOld
 	return i
 }
 

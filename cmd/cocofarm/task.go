@@ -116,7 +116,8 @@ type Task struct {
 	// It will be nil, if the task is a root task.
 	parent *Task
 
-	// num is internal order of the task in a job.
+	// num is internal order of the leaf task in a job.
+	// Only leaf task has value in num.
 	num int
 
 	// Title is human readable title for task.
