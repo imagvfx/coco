@@ -1,0 +1,2 @@
+send signal to the farm when execution failed
+run a command with the job owner's account: https://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
