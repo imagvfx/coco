@@ -4,21 +4,23 @@ import "testing"
 
 func TestTaskCalcPriority(t *testing.T) {
 	job := &Job{
-		DefaultPriority: 1,
-		Subtasks: []*Task{
-			&Task{
-				Priority: 0,
-				Subtasks: []*Task{
-					{
-						Priority: 5,
+		Task: &Task{
+			Priority: 1,
+			Subtasks: []*Task{
+				&Task{
+					Priority: 0,
+					Subtasks: []*Task{
+						{
+							Priority: 5,
+						},
 					},
 				},
-			},
-			&Task{
-				Priority: 3,
-				Subtasks: []*Task{
-					&Task{
-						Priority: 0,
+				&Task{
+					Priority: 3,
+					Subtasks: []*Task{
+						&Task{
+							Priority: 0,
+						},
 					},
 				},
 			},

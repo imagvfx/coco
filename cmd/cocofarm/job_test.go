@@ -4,16 +4,18 @@ import "testing"
 
 func TestJobManagerPopTask(t *testing.T) {
 	j1 := &Job{
-		DefaultPriority: 1,
-		Subtasks: []*Task{
-			&Task{
-				Priority: 0, // for checking priority inheritance
-				Subtasks: []*Task{
-					&Task{
-						Priority: 3, // 2
-					},
-					&Task{
-						Priority: 0, // 1
+		Task: &Task{
+			Priority: 1,
+			Subtasks: []*Task{
+				&Task{
+					Priority: 0, // for checking priority inheritance
+					Subtasks: []*Task{
+						&Task{
+							Priority: 3, // 2
+						},
+						&Task{
+							Priority: 0, // 1
+						},
 					},
 				},
 			},
@@ -21,16 +23,18 @@ func TestJobManagerPopTask(t *testing.T) {
 	}
 	initJob(j1)
 	j2 := &Job{
-		DefaultPriority: 2,
-		Subtasks: []*Task{
-			&Task{
-				Priority: 0, // for checking priority inheritance
-				Subtasks: []*Task{
-					&Task{
-						Priority: 0, // 2
-					},
-					&Task{
-						Priority: 3, // 3
+		Task: &Task{
+			Priority: 2,
+			Subtasks: []*Task{
+				&Task{
+					Priority: 0, // for checking priority inheritance
+					Subtasks: []*Task{
+						&Task{
+							Priority: 0, // 2
+						},
+						&Task{
+							Priority: 3, // 3
+						},
 					},
 				},
 			},

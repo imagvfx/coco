@@ -97,10 +97,10 @@ func (h jobHeap) Less(i, j int) bool {
 	h[j].Lock()
 	defer h[i].Unlock()
 	defer h[j].Unlock()
-	if h[i].Priority > h[j].Priority {
+	if h[i].CurrentPriority > h[j].CurrentPriority {
 		return true
 	}
-	if h[i].Priority < h[j].Priority {
+	if h[i].CurrentPriority < h[j].CurrentPriority {
 		return false
 	}
 	return h[i].id < h[j].id
@@ -230,6 +230,11 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	peek := (*tasks)[0]
 	j.CurrentPriority = peek.CalcPriority()
 	return j.order, nil
+}
+
+// initJob inits a job's tasks.
+func initJob(j *Job) {
+	initJobTasks(j.Task, j, nil, 0)
 }
 
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
