@@ -24,6 +24,25 @@
 					]
 				}
 			]
+		},
+		{
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "I mean really,"]
+					]
+				},
+				{
+					"Commands": [
+						["sleep", "2"]
+					]
+				},
+				{
+					"Commands": [
+						["echo", "bye"]
+					]
+				}
+			]
 		}
 	]
 }
