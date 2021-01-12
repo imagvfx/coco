@@ -39,14 +39,17 @@ func (s TaskStatus) String(isLeaf bool) string {
 }
 
 type branchStat struct {
-	nFailed  int
-	nRunning int
-	nWaiting int
-	nDone    int
+	nCancelled int
+	nFailed    int
+	nRunning   int
+	nWaiting   int
+	nDone      int
 }
 
 func (st *branchStat) Add(s TaskStatus) {
 	switch s {
+	case TaskCancelled:
+		st.nCancelled += 1
 	case TaskFailed:
 		st.nFailed += 1
 	case TaskRunning:
@@ -62,6 +65,8 @@ func (st *branchStat) Add(s TaskStatus) {
 
 func (st *branchStat) Sub(s TaskStatus) {
 	switch s {
+	case TaskCancelled:
+		st.nCancelled -= 1
 	case TaskFailed:
 		st.nFailed -= 1
 	case TaskRunning:
@@ -76,6 +81,9 @@ func (st *branchStat) Sub(s TaskStatus) {
 }
 
 func (st *branchStat) Status() TaskStatus {
+	if st.nCancelled > 0 {
+		return TaskCancelled
+	}
 	if st.nFailed > 0 {
 		return TaskFailed
 	}
@@ -117,8 +125,9 @@ type Task struct {
 
 	// status indicates task status using in the farm.
 	// It should not be set from user.
-	Status TaskStatus
+	status TaskStatus
 
+	// Stat aggrigates it's leafs status.
 	Stat *branchStat
 
 	// Priority is a priority hint for the task.
@@ -153,7 +162,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	}{
 		Title:          t.Title,
 		ID:             t.id,
-		Status:         t.Status.String(t.IsLeaf()),
+		Status:         t.Status().String(t.IsLeaf()),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
 		SerialSubtasks: t.SerialSubtasks,
@@ -162,11 +171,25 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+func (t *Task) Status() TaskStatus {
+	if t.IsLeaf() {
+		return t.status
+	}
+	return t.Stat.Status()
+}
+
 func (t *Task) SetStatus(s TaskStatus) {
-	old := t.Status
-	t.Status = s
-	t.job.Stat.Sub(old)
-	t.job.Stat.Add(s)
+	if !t.IsLeaf() {
+		panic("cannot set status to a branch task")
+	}
+	old := t.status
+	t.status = s
+	tt := t.parent
+	for tt != nil {
+		tt.Stat.Sub(old)
+		tt.Stat.Add(s)
+		tt = tt.parent
+	}
 }
 
 func (t *Task) CalcPriority() int {
@@ -178,7 +201,8 @@ func (t *Task) CalcPriority() int {
 		}
 		tt = tt.parent
 	}
-	return t.job.Priority
+	// the job's Priority was 0.
+	return 0
 }
 
 func (t *Task) IsLeaf() bool {

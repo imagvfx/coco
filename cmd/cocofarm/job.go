@@ -20,9 +20,6 @@ type Job struct {
 	// order is the number of the order
 	order string
 
-	// Cancelled indicates that the job is cancelled
-	Cancelled bool
-
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
 	//
@@ -38,13 +35,6 @@ type Job struct {
 
 	// CurrentPriority is the job's task priority waiting at the time.
 	CurrentPriority int
-}
-
-func (j *Job) Status() TaskStatus {
-	if j.Cancelled {
-		return TaskCancelled
-	}
-	return j.Stat.Status()
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
@@ -270,7 +260,7 @@ func (m *jobManager) Cancel(id string) error {
 	}
 	j.Lock()
 	defer j.Unlock()
-	if j.Cancelled {
+	if j.Status() == TaskCancelled {
 		return fmt.Errorf("job has already cancelled: %v", id)
 	}
 	if j.Status() == TaskDone {
@@ -278,9 +268,8 @@ func (m *jobManager) Cancel(id string) error {
 		return fmt.Errorf("job has already Done: %v", id)
 	}
 	// indicate the job and it's tasks are cancelled, first.
-	j.Cancelled = true
 	j.WalkLeafTaskFn(func(t *Task) {
-		t.Status = TaskCancelled
+		t.SetStatus(TaskCancelled)
 	})
 	// Delete the job from m.jobs (heap) will be expensive.
 	// Let PopTask do the job.
@@ -330,7 +319,7 @@ func (m *jobManager) PopTask() *Task {
 			// the job deleted
 			continue
 		}
-		if j.Cancelled {
+		if j.Status() == TaskCancelled {
 			// the job cancelled
 			continue
 		}
