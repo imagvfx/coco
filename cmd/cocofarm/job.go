@@ -130,8 +130,6 @@ func (h taskHeap) Len() int {
 }
 
 func (h taskHeap) Less(i, j int) bool {
-	h[i].job.Lock() // h[i].job == h[j].job
-	defer h[i].job.Unlock()
 	return h[i].num < h[j].num
 }
 
