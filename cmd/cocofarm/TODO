@@ -1,3 +1,3 @@
 use db to remember jobs
 retry when worker failed to run commands
-
+don't block sibling tasks when the parent has SerialSubtasks option on

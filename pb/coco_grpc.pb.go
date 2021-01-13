@@ -138,6 +138,7 @@ var _Worker_serviceDesc = grpc.ServiceDesc{
 type FarmClient interface {
 	Waiting(ctx context.Context, in *WaitingRequest, opts ...grpc.CallOption) (*WaitingResponse, error)
 	Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*DoneResponse, error)
+	Failed(ctx context.Context, in *FailedRequest, opts ...grpc.CallOption) (*FailedResponse, error)
 }
 
 type farmClient struct {
@@ -166,12 +167,22 @@ func (c *farmClient) Done(ctx context.Context, in *DoneRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *farmClient) Failed(ctx context.Context, in *FailedRequest, opts ...grpc.CallOption) (*FailedResponse, error) {
+	out := new(FailedResponse)
+	err := c.cc.Invoke(ctx, "/pb.Farm/Failed", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FarmServer is the server API for Farm service.
 // All implementations must embed UnimplementedFarmServer
 // for forward compatibility
 type FarmServer interface {
 	Waiting(context.Context, *WaitingRequest) (*WaitingResponse, error)
 	Done(context.Context, *DoneRequest) (*DoneResponse, error)
+	Failed(context.Context, *FailedRequest) (*FailedResponse, error)
 	mustEmbedUnimplementedFarmServer()
 }
 
@@ -184,6 +195,9 @@ func (UnimplementedFarmServer) Waiting(context.Context, *WaitingRequest) (*Waiti
 }
 func (UnimplementedFarmServer) Done(context.Context, *DoneRequest) (*DoneResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Done not implemented")
+}
+func (UnimplementedFarmServer) Failed(context.Context, *FailedRequest) (*FailedResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Failed not implemented")
 }
 func (UnimplementedFarmServer) mustEmbedUnimplementedFarmServer() {}
 
@@ -234,6 +248,24 @@ func _Farm_Done_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Farm_Failed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FailedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FarmServer).Failed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Farm/Failed",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FarmServer).Failed(ctx, req.(*FailedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Farm_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "pb.Farm",
 	HandlerType: (*FarmServer)(nil),
@@ -245,6 +277,10 @@ var _Farm_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Done",
 			Handler:    _Farm_Done_Handler,
+		},
+		{
+			MethodName: "Failed",
+			Handler:    _Farm_Failed_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

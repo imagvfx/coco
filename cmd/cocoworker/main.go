@@ -51,8 +51,7 @@ func (s *server) Start(tid string, cmds [][]string) {
 			s.Unlock()
 			out, err := c.CombinedOutput()
 			if err != nil {
-				// failed
-				log.Print(err)
+				sendFailed("localhost:8284", "localhost:8283", tid)
 				return
 			}
 			log.Print(string(out))
@@ -136,6 +135,25 @@ func sendDone(farm, addr string, taskID string) error {
 
 	req := &pb.DoneRequest{Addr: addr, TaskId: taskID}
 	_, err = c.Done(ctx, req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendFailed(farm, addr string, taskID string) error {
+	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	c := pb.NewFarmClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	req := &pb.FailedRequest{Addr: addr, TaskId: taskID}
+	_, err = c.Failed(ctx, req)
 	if err != nil {
 		return err
 	}

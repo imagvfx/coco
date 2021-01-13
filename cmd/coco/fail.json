@@ -1,0 +1,23 @@
+{
+	"Subtasks": [
+		{
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "next task should be failed"]
+					]
+				},
+				{
+					"Commands": [
+						["false"]
+					]
+				},
+				{
+					"Commands": [
+						["echo", "this will not be ever lanched"]
+					]
+				}
+			]
+		}
+	]
+}

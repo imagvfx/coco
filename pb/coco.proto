@@ -29,6 +29,7 @@ message CancelResponse {}
 service Farm {
 	rpc Waiting(WaitingRequest) returns (WaitingResponse) {};
 	rpc Done(DoneRequest) returns (DoneResponse) {};
+	rpc Failed(FailedRequest) returns (FailedResponse) {};
 }
 
 message WaitingRequest {
@@ -43,4 +44,11 @@ message DoneRequest{
 }
 
 message DoneResponse {}
+
+message FailedRequest{
+	string addr = 1;
+	string task_id = 2;
+}
+
+message FailedResponse {}
 

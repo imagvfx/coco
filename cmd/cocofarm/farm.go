@@ -70,10 +70,31 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	if w == nil {
 		return &pb.DoneResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	err := f.workerman.DoneBy(in.TaskId, w)
+	err := f.workerman.Unassign(in.TaskId, w)
 	if err != nil {
 		return &pb.DoneResponse{}, err
 	}
 	go f.workerman.Waiting(w)
 	return &pb.DoneResponse{}, nil
+}
+
+// Done will be called by workers through gRPC.
+// It indicates the caller finished the requested task.
+func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.FailedResponse, error) {
+	log.Printf("failed: %v %v", in.Addr, in.TaskId)
+	t := f.jobman.GetTask(in.TaskId)
+	t.job.Lock()
+	t.SetStatus(TaskFailed)
+	t.job.Unlock()
+	// TODO: need to verify the worker
+	w := f.workerman.FindByAddr(in.Addr)
+	if w == nil {
+		return &pb.FailedResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
+	}
+	err := f.workerman.Unassign(in.TaskId, w)
+	if err != nil {
+		return &pb.FailedResponse{}, err
+	}
+	go f.workerman.Waiting(w)
+	return &pb.FailedResponse{}, nil
 }

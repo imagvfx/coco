@@ -332,6 +332,11 @@ func (m *jobManager) PopTask() *Task {
 			// the job cancelled
 			continue
 		}
+		if j.Status() == TaskFailed {
+			// one or more tasks of the job failed,
+			// block the job until user retry the tasks.
+			continue
+		}
 
 		tasks := m.tasks[j.order]
 		t := heap.Pop(tasks).(*Task)

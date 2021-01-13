@@ -69,7 +69,7 @@ func (m *workerManager) Add(w *Worker) error {
 	return nil
 }
 
-func (m *workerManager) DoneBy(taskID string, w *Worker) error {
+func (m *workerManager) Unassign(taskID string, w *Worker) error {
 	// TODO: do we need DoneBy and also Waiting? merge two?
 	// this function is task centric, Waiting is worker centric.
 	// also Waiting is a blocking function.
