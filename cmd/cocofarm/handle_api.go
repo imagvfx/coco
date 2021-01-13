@@ -36,6 +36,15 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	id := r.Form.Get("id")
+	err := h.jobman.Retry(id)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("%v", err))
+	}
+}
+
 func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")

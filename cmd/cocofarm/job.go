@@ -289,6 +289,25 @@ func (m *jobManager) Cancel(id string) error {
 	return nil
 }
 
+func (m *jobManager) Retry(id string) error {
+	m.Lock()
+	defer m.Unlock()
+	j, ok := m.job[id]
+	if !ok {
+		return fmt.Errorf("cannot find the job: %v", id)
+	}
+	j.Lock()
+	j.WalkLeafTaskFn(func(t *Task) {
+		if t.Status() == TaskFailed {
+			t.SetStatus(TaskWaiting)
+			heap.Push(m.tasks[j.order], t)
+		}
+	})
+	j.Unlock()
+	heap.Push(m.jobs, j)
+	return nil
+}
+
 func (m *jobManager) Delete(id string) error {
 	m.Lock()
 	defer m.Unlock()
