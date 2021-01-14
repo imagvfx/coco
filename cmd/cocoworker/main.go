@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -16,6 +18,12 @@ import (
 type server struct {
 	pb.UnimplementedWorkerServer
 	sync.Mutex
+
+	// addr is the server's listen addr.
+	addr string
+
+	// farm is where the server is try to send grpc requests.
+	farm string
 
 	// runningTaskID is Task's id that is currently processed.
 	// when the worker is in idle, this will be empty string
@@ -51,7 +59,7 @@ func (s *server) Start(tid string, cmds [][]string) {
 			s.Unlock()
 			out, err := c.CombinedOutput()
 			if err != nil {
-				sendFailed("localhost:8284", "localhost:8283", tid)
+				sendFailed(s.farm, s.addr, tid)
 				return
 			}
 			log.Print(string(out))
@@ -60,7 +68,7 @@ func (s *server) Start(tid string, cmds [][]string) {
 		s.Lock()
 		tid := s.runningTaskID
 		s.Unlock()
-		err := sendDone("localhost:8284", "localhost:8283", tid)
+		err := sendDone(s.farm, s.addr, tid)
 		if err != nil {
 			log.Print(err)
 		}
@@ -99,7 +107,7 @@ func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelRe
 	if err != nil {
 		return &pb.CancelResponse{}, err
 	}
-	go sendWaiting("localhost:8284", "localhost:8283")
+	go sendWaiting(s.farm, s.addr)
 	return &pb.CancelResponse{}, nil
 }
 
@@ -160,9 +168,9 @@ func sendFailed(farm, addr string, taskID string) error {
 	return nil
 }
 
-func handshakeWithFarm(n int) {
+func handshakeWithFarm(addr, farm string, n int) {
 	for i := 0; i < n; i++ {
-		err := sendWaiting("localhost:8284", "localhost:8283")
+		err := sendWaiting(farm, addr)
 		if err == nil {
 			return
 		}
@@ -170,23 +178,34 @@ func handshakeWithFarm(n int) {
 		log.Print(err)
 		time.Sleep(30 * time.Second)
 	}
-	log.Fatalf("cannot find the farm")
+	log.Fatalf("cannot find the farm: %v", farm)
 }
 
 func main() {
+	var (
+		addr string
+		farm string
+	)
+	flag.StringVar(&addr, "addr", "localhost:8283", "address to bind")
+	defaultFarm := os.Getenv("COCO_FARM")
+	if defaultFarm == "" {
+		defaultFarm = "localhost:8284"
+	}
+	flag.StringVar(&farm, "farm", defaultFarm, "farm address")
+	flag.Parse()
+
 	go func() {
-		lis, err := net.Listen("tcp", "localhost:8283")
+		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
 		}
 		s := grpc.NewServer()
-		pb.RegisterWorkerServer(s, &server{})
+		pb.RegisterWorkerServer(s, &server{addr: addr, farm: farm})
 		if err := s.Serve(lis); err != nil {
-			log.Fatalf("failted to serve: %v", err)
+			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
-
-	handshakeWithFarm(5)
+	handshakeWithFarm(addr, farm, 5)
 
 	select {} // prevent exit
 }
