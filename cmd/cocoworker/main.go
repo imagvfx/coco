@@ -58,6 +58,9 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 	log.Printf("run: %v %v", in.Id, in.Cmds)
 	s.Lock()
 	defer s.Unlock()
+	if s.runningTaskID != "" {
+		return &pb.RunResponse{}, fmt.Errorf("I'm busy: %v", s.addr)
+	}
 	s.runningTaskID = in.Id
 	s.aborted = false
 	// run commands are usually taking long time,
@@ -84,6 +87,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 		// finished running the commands. let the farm knows it.
 		s.Lock()
 		tid := s.runningTaskID
+		s.runningTaskID = ""
 		s.Unlock()
 		err := sendDone(s.farm, s.addr, tid)
 		if err != nil {
