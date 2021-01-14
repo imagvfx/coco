@@ -38,43 +38,6 @@ type server struct {
 	aborted bool
 }
 
-func (s *server) Start(tid string, cmds [][]string) {
-	s.Lock()
-	s.runningTaskID = tid
-	s.aborted = false
-	s.Unlock()
-	// run commands are usually taking long time,
-	// detach it with a goroutine.
-	go func() {
-		for _, cmd := range cmds {
-			s.Lock()
-			aborted := s.aborted
-			s.Unlock()
-			if aborted {
-				return
-			}
-			c := exec.Command(cmd[0], cmd[1:]...)
-			s.Lock()
-			s.cmd = c // we might have to cancel it.
-			s.Unlock()
-			out, err := c.CombinedOutput()
-			if err != nil {
-				sendFailed(s.farm, s.addr, tid)
-				return
-			}
-			log.Print(string(out))
-		}
-		// finished running the commands. let the farm knows it.
-		s.Lock()
-		tid := s.runningTaskID
-		s.Unlock()
-		err := sendDone(s.farm, s.addr, tid)
-		if err != nil {
-			log.Print(err)
-		}
-	}()
-}
-
 func (s *server) Abort(id string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -93,11 +56,40 @@ func (s *server) Abort(id string) error {
 
 func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, error) {
 	log.Printf("run: %v %v", in.Id, in.Cmds)
-	cmds := make([][]string, len(in.Cmds))
-	for i, cmd := range in.Cmds {
-		cmds[i] = cmd.Args
-	}
-	s.Start(in.Id, cmds)
+	s.Lock()
+	defer s.Unlock()
+	s.runningTaskID = in.Id
+	s.aborted = false
+	// run commands are usually taking long time,
+	// detach it with a goroutine.
+	go func() {
+		for _, cmd := range in.Cmds {
+			s.Lock()
+			aborted := s.aborted
+			s.Unlock()
+			if aborted {
+				return
+			}
+			c := exec.Command(cmd.Args[0], cmd.Args[1:]...)
+			s.Lock()
+			s.cmd = c // we might have to cancel it.
+			s.Unlock()
+			out, err := c.CombinedOutput()
+			if err != nil {
+				sendFailed(s.farm, s.addr, in.Id)
+				return
+			}
+			log.Print(string(out))
+		}
+		// finished running the commands. let the farm knows it.
+		s.Lock()
+		tid := s.runningTaskID
+		s.Unlock()
+		err := sendDone(s.farm, s.addr, tid)
+		if err != nil {
+			log.Print(err)
+		}
+	}()
 	return &pb.RunResponse{}, nil
 }
 
