@@ -57,6 +57,31 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.WaitingRequest) (*pb.Wa
 	return &pb.WaitingResponse{}, nil
 }
 
+// Bye will be called by workers through gRPC.
+// It indicates the caller is idle and waiting for commands to run.
+func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeResponse, error) {
+	log.Printf("bye: %v", in.Addr)
+	// TODO: need to verify the worker
+	w := f.workerman.FindByAddr(in.Addr)
+	if w == nil {
+		return &pb.ByeResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
+	}
+	if w.task != "" {
+		err := f.workerman.Unassign(w.task, w)
+		if err != nil {
+			// it's farm's error
+			log.Print(err)
+		} else {
+			t := f.jobman.GetTask(w.task)
+			t.job.Lock()
+			t.SetStatus(TaskFailed)
+			t.job.Unlock()
+		}
+	}
+	f.workerman.Bye(w.addr)
+	return &pb.ByeResponse{}, nil
+}
+
 // Done will be called by workers through gRPC.
 // It indicates the caller finished the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResponse, error) {

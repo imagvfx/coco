@@ -137,6 +137,7 @@ var _Worker_serviceDesc = grpc.ServiceDesc{
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FarmClient interface {
 	Waiting(ctx context.Context, in *WaitingRequest, opts ...grpc.CallOption) (*WaitingResponse, error)
+	Bye(ctx context.Context, in *ByeRequest, opts ...grpc.CallOption) (*ByeResponse, error)
 	Done(ctx context.Context, in *DoneRequest, opts ...grpc.CallOption) (*DoneResponse, error)
 	Failed(ctx context.Context, in *FailedRequest, opts ...grpc.CallOption) (*FailedResponse, error)
 }
@@ -152,6 +153,15 @@ func NewFarmClient(cc grpc.ClientConnInterface) FarmClient {
 func (c *farmClient) Waiting(ctx context.Context, in *WaitingRequest, opts ...grpc.CallOption) (*WaitingResponse, error) {
 	out := new(WaitingResponse)
 	err := c.cc.Invoke(ctx, "/pb.Farm/Waiting", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *farmClient) Bye(ctx context.Context, in *ByeRequest, opts ...grpc.CallOption) (*ByeResponse, error) {
+	out := new(ByeResponse)
+	err := c.cc.Invoke(ctx, "/pb.Farm/Bye", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +191,7 @@ func (c *farmClient) Failed(ctx context.Context, in *FailedRequest, opts ...grpc
 // for forward compatibility
 type FarmServer interface {
 	Waiting(context.Context, *WaitingRequest) (*WaitingResponse, error)
+	Bye(context.Context, *ByeRequest) (*ByeResponse, error)
 	Done(context.Context, *DoneRequest) (*DoneResponse, error)
 	Failed(context.Context, *FailedRequest) (*FailedResponse, error)
 	mustEmbedUnimplementedFarmServer()
@@ -192,6 +203,9 @@ type UnimplementedFarmServer struct {
 
 func (UnimplementedFarmServer) Waiting(context.Context, *WaitingRequest) (*WaitingResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Waiting not implemented")
+}
+func (UnimplementedFarmServer) Bye(context.Context, *ByeRequest) (*ByeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Bye not implemented")
 }
 func (UnimplementedFarmServer) Done(context.Context, *DoneRequest) (*DoneResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Done not implemented")
@@ -226,6 +240,24 @@ func _Farm_Waiting_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(FarmServer).Waiting(ctx, req.(*WaitingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Farm_Bye_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ByeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FarmServer).Bye(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.Farm/Bye",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FarmServer).Bye(ctx, req.(*ByeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -273,6 +305,10 @@ var _Farm_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Waiting",
 			Handler:    _Farm_Waiting_Handler,
+		},
+		{
+			MethodName: "Bye",
+			Handler:    _Farm_Bye_Handler,
 		},
 		{
 			MethodName: "Done",

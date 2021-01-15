@@ -8,7 +8,9 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/imagvfx/coco/pb"
@@ -177,6 +179,25 @@ func handshakeWithFarm(addr, farm string, n int) {
 	log.Fatalf("cannot find the farm: %v", farm)
 }
 
+func bye(addr, farm string) error {
+	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	c := pb.NewFarmClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	req := &pb.ByeRequest{Addr: addr}
+	_, err = c.Bye(ctx, req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
 	var (
 		addr string
@@ -201,7 +222,19 @@ func main() {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
+
 	handshakeWithFarm(addr, farm, 5)
+
+	killed := make(chan os.Signal, 1)
+	signal.Notify(killed, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-killed
+		err := bye(addr, farm)
+		if err != nil {
+			log.Fatalf("disconnection message was not reached to the farm")
+		}
+		os.Exit(1)
+	}()
 
 	select {} // prevent exit
 }

@@ -24,6 +24,7 @@ type Worker struct {
 
 	addr   string
 	status WorkerStatus
+	task   string
 }
 
 func (w *Worker) Addr() string {
@@ -41,14 +42,14 @@ func (w *Worker) SetStatus(s WorkerStatus) {
 type workerManager struct {
 	sync.Mutex
 	workers  []*Worker
-	WorkerCh chan *Worker
+	ReadyCh  chan struct{}
 	assignee map[string]*Worker
 }
 
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
 	m.workers = make([]*Worker, 0)
-	m.WorkerCh = make(chan *Worker)
+	m.ReadyCh = make(chan struct{})
 	m.assignee = make(map[string]*Worker)
 	return m
 }
@@ -69,6 +70,35 @@ func (m *workerManager) Add(w *Worker) error {
 	return nil
 }
 
+func (m *workerManager) Bye(workerAddr string) error {
+	m.Lock()
+	defer m.Unlock()
+	idx := -1
+	for i, v := range m.workers {
+		if workerAddr == v.addr {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return fmt.Errorf("worker not found: %v", workerAddr)
+	}
+	m.workers = append(m.workers[:idx], m.workers[idx+1:]...)
+	return nil
+}
+
+func (m *workerManager) Assign(taskID string, w *Worker) error {
+	m.Lock()
+	defer m.Unlock()
+	a, ok := m.assignee[taskID]
+	if ok {
+		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
+	}
+	w.task = taskID
+	m.assignee[taskID] = w
+	return nil
+}
+
 func (m *workerManager) Unassign(taskID string, w *Worker) error {
 	// TODO: do we need DoneBy and also Waiting? merge two?
 	// this function is task centric, Waiting is worker centric.
@@ -82,13 +112,14 @@ func (m *workerManager) Unassign(taskID string, w *Worker) error {
 	if w != a {
 		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
 	}
+	w.task = ""
 	delete(m.assignee, taskID)
 	return nil
 }
 
 func (m *workerManager) Waiting(w *Worker) {
 	w.SetStatus(WorkerIdle)
-	m.WorkerCh <- w
+	go func() { m.ReadyCh <- struct{}{} }()
 }
 
 func (m *workerManager) FindByAddr(addr string) *Worker {
@@ -102,7 +133,7 @@ func (m *workerManager) FindByAddr(addr string) *Worker {
 	return nil
 }
 
-func (m *workerManager) idleWorkers() []*Worker {
+func (m *workerManager) IdleWorkers() []*Worker {
 	m.Lock()
 	defer m.Unlock()
 	workers := make([]*Worker, 0)
