@@ -123,51 +123,145 @@ func (h *jobHeap) Pop() interface{} {
 	return el
 }
 
-type taskHeap []*Task
-
-func (h taskHeap) Len() int {
-	return len(h)
+type jobTaskPopper struct {
+	job         *Job
+	pTaskGroups [][]*Task
+	// index to the next task in pTaskGroups to pop
+	i, j int
+	done bool
 }
 
-func (h taskHeap) Less(i, j int) bool {
-	return h[i].num < h[j].num
+func newJobTaskPopper(j *Job) *jobTaskPopper {
+	return &jobTaskPopper{
+		job:         j,
+		pTaskGroups: parallelTaskGroups(j),
+	}
 }
 
-func (h taskHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
+func (p *jobTaskPopper) Pop() *Task {
+	for {
+		t := p.pop()
+		if t == nil {
+			return nil
+		}
+		if t.Status() != TaskDone {
+			return t
+		}
+	}
 }
 
-func (h *taskHeap) Push(el interface{}) {
-	*h = append(*h, el.(*Task))
+func (p *jobTaskPopper) pop() *Task {
+	if len(p.pTaskGroups) == 0 {
+		// not possible, but let's not panic.
+		return nil
+	}
+	if len(p.pTaskGroups) == 1 && len(p.pTaskGroups[0]) == 0 {
+		// when the job doesn't have leaf tasks.
+		return nil
+	}
+	if p.done {
+		return nil
+	}
+	if p.j == len(p.pTaskGroups[p.i]) {
+		// all the task of the group popped, we can move to the next group
+		// only if all the tasks in current group has been done
+		p.job.Lock()
+		defer p.job.Unlock()
+		for _, t := range p.pTaskGroups[p.i] {
+			if t.Status() != TaskDone {
+				return nil
+			}
+		}
+		p.i++
+		p.j = 0
+	}
+	if p.i == len(p.pTaskGroups) {
+		p.done = true
+		return nil
+	}
+	defer func() {
+		if p.j < len(p.pTaskGroups[p.i]) {
+			p.j++
+		}
+	}()
+	return p.pTaskGroups[p.i][p.j]
 }
 
-func (h *taskHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	el := old[n-1]
-	old[n-1] = nil // avoid memory leak
-	*h = old[:n-1]
-	return el
+func (p *jobTaskPopper) Peek() *Task {
+	i := p.i
+	j := p.j
+	done := p.done
+	defer func() {
+		p.i = i
+		p.j = j
+		p.done = done
+	}()
+	return p.Pop()
+}
+
+func (p *jobTaskPopper) Reset() {
+	p.i = 0
+	p.j = 0
+	p.done = false
+}
+
+func (p *jobTaskPopper) Done() bool {
+	return p.done
+}
+
+// parallelTaskGroups returns task groups, those tasks in a group are parallelly executable.
+func parallelTaskGroups(j *Job) [][]*Task {
+	j.Lock()
+	defer j.Unlock()
+	grps := make([][]*Task, 0)
+	grps = append(grps, make([]*Task, 0))
+	for _, subt := range j.Subtasks {
+		grps = addParallelTaskGroups(subt, grps)
+	}
+	return grps
+}
+
+// addParallelTaskGroups modifies the last or adds a new task group to the input groups.
+func addParallelTaskGroups(t *Task, grps [][]*Task) [][]*Task {
+	for _, subt := range t.Subtasks {
+		if t.SerialSubtasks {
+			last := grps[len(grps)-1]
+			if len(last) != 0 {
+				grps = append(grps, make([]*Task, 0))
+			}
+		}
+		if subt.IsLeaf() {
+			last := grps[len(grps)-1]
+			last = append(last, subt)
+			// pointer to the last may changed by the append.
+			grps[len(grps)-1] = last
+			continue
+		}
+		grps = addParallelTaskGroups(subt, grps)
+	}
+	return grps
 }
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID int
-	job       map[string]*Job
+	nextJobID  int
+	job        map[string]*Job
+	jobBlocked map[string]bool
 	// jobs may have cancelled jobs.
 	// PopTask should handle this properly.
 	jobs         *jobHeap
 	task         map[string]*Task
-	tasks        map[string]*taskHeap
+	tasks        map[string]*jobTaskPopper
 	CancelTaskCh chan *Task
 }
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.job = make(map[string]*Job)
+	m.jobBlocked = make(map[string]bool)
 	m.jobs = &jobHeap{}
 	m.task = make(map[string]*Task)
-	m.tasks = make(map[string]*taskHeap)
+	m.tasks = make(map[string]*jobTaskPopper)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -208,12 +302,9 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	tasks, ok := m.tasks[j.order]
 	if !ok {
-		tasks = &taskHeap{}
+		tasks = newJobTaskPopper(j)
 		m.tasks[j.order] = tasks
 	}
-	j.WalkLeafTaskFn(func(t *Task) {
-		heap.Push(tasks, t)
-	})
 	j.WalkTaskFn(func(t *Task) {
 		m.task[t.id] = t
 	})
@@ -225,8 +316,11 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	j.Stat.nWaiting = nLeafs
 
 	// set priority for the very first leaf task.
-	peek := (*tasks)[0]
-	j.CurrentPriority = peek.CalcPriority()
+	peek := tasks.Peek()
+	// peek can be nil, when the job doesn't have any leaf task.
+	if peek != nil {
+		j.CurrentPriority = peek.CalcPriority()
+	}
 	return j.order, nil
 }
 
@@ -300,9 +394,9 @@ func (m *jobManager) Retry(id string) error {
 	j.WalkLeafTaskFn(func(t *Task) {
 		if t.Status() == TaskFailed {
 			t.SetStatus(TaskWaiting)
-			heap.Push(m.tasks[j.order], t)
 		}
 	})
+	m.tasks[j.order].Reset()
 	j.Unlock()
 	heap.Push(m.jobs, j)
 	return nil
@@ -320,16 +414,6 @@ func (m *jobManager) Delete(id string) error {
 	// Let PopTask do the job.
 	delete(m.tasks, id)
 	return nil
-}
-
-func (m *jobManager) NextTask() *Task {
-	m.Lock()
-	defer m.Unlock()
-	if m.jobs.Len() == 0 {
-		return nil
-	}
-	j := (*m.jobs)[0]
-	return (*m.tasks[j.order])[0]
 }
 
 func (m *jobManager) PopTask() *Task {
@@ -356,16 +440,21 @@ func (m *jobManager) PopTask() *Task {
 		}
 
 		tasks := m.tasks[j.order]
-		t := heap.Pop(tasks).(*Task)
+		t := tasks.Pop()
 
 		// check there is any leaf task left.
-		if tasks.Len() != 0 {
-			peek := (*tasks)[0]
-			j.Lock()
-			// the peeked task is also cared by this lock.
-			j.CurrentPriority = peek.CalcPriority()
-			j.Unlock()
-			heap.Push(m.jobs, j)
+		if !tasks.Done() {
+			peek := tasks.Peek()
+			// peek can be nil when next tasks.Pop has blocked for some reason.
+			if peek != nil {
+				j.Lock()
+				// the peeked task is also cared by this lock.
+				j.CurrentPriority = peek.CalcPriority()
+				j.Unlock()
+				heap.Push(m.jobs, j)
+			} else {
+				m.jobBlocked[j.order] = true
+			}
 		}
 
 		return t

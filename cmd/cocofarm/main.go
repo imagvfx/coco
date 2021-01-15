@@ -64,10 +64,9 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		for _, w := range workers {
 			var t *Task
 			for {
-				// find next uncancelled task.
+				// find next task.
 				t = jobman.PopTask()
 				if t == nil {
-					time.Sleep(time.Second)
 					return
 				}
 				// TODO: what if the job is deleted already?

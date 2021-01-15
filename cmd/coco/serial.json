@@ -1,0 +1,50 @@
+{
+	"Subtasks": [
+		{
+			"SerialSubtasks": true,
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "hello"]
+					]
+				},
+				{
+					"Commands": [
+						["ls"],
+						["ls", "-al"]
+					]
+				},
+				{
+					"Commands": [
+						["sleep", "5"]
+					]
+				},
+				{
+					"Commands": [
+						["echo", "bye"]
+					]
+				}
+			]
+		},
+		{
+			"SerialSubtasks": true,
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "I mean really,"]
+					]
+				},
+				{
+					"Commands": [
+						["sleep", "2"]
+					]
+				},
+				{
+					"Commands": [
+						["echo", "bye"]
+					]
+				}
+			]
+		}
+	]
+}

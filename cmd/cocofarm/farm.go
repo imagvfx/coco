@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"context"
 	"fmt"
 	"log"
@@ -90,6 +91,14 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	t.job.Lock()
 	t.SetStatus(TaskDone)
 	t.job.Unlock()
+	f.jobman.Lock()
+	if f.jobman.jobBlocked[t.job.order] {
+		if f.jobman.tasks[t.job.order].Peek() != nil {
+			delete(f.jobman.jobBlocked, t.job.order)
+			heap.Push(f.jobman.jobs, t.job)
+		}
+	}
+	f.jobman.Unlock()
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {

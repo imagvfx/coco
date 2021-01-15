@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestJobManagerPopTask(t *testing.T) {
 	j1 := &Job{
@@ -64,6 +67,90 @@ func TestJobManagerPopTask(t *testing.T) {
 	for i := range got {
 		if got[i] != want[i] {
 			t.Fatalf("%d: got %v, want %v", i, got, want)
+		}
+	}
+}
+
+func TestParallelTaskGroups(t *testing.T) {
+	job := &Job{
+		Task: &Task{
+			SerialSubtasks: true,
+			Subtasks: []*Task{
+				&Task{
+					Title:          "sim",
+					SerialSubtasks: true,
+					Subtasks: []*Task{
+						&Task{
+							Title:          "ocean",
+							SerialSubtasks: true,
+						},
+						&Task{
+							Title:          "foam",
+							SerialSubtasks: true,
+						},
+					},
+				},
+				&Task{
+					Title:          "render",
+					SerialSubtasks: true,
+					Subtasks: []*Task{
+						&Task{
+							Title:          "diffuse",
+							SerialSubtasks: false,
+							Subtasks: []*Task{
+								&Task{
+									SerialSubtasks: true,
+								},
+								&Task{
+									SerialSubtasks: true,
+								},
+							},
+						},
+						&Task{
+							Title:          "reflection",
+							SerialSubtasks: false,
+							Subtasks: []*Task{
+								&Task{
+									SerialSubtasks: true,
+								},
+								&Task{
+									SerialSubtasks: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	cases := []struct {
+		j    *Job
+		want [][]*Task
+	}{
+		{
+			j: job,
+			want: [][]*Task{
+				[]*Task{
+					job.Subtasks[0].Subtasks[0], // sim/ocean
+				},
+				[]*Task{
+					job.Subtasks[0].Subtasks[1], // sim/foam
+				},
+				[]*Task{
+					job.Subtasks[1].Subtasks[0].Subtasks[0], // render/diffuse/0
+					job.Subtasks[1].Subtasks[0].Subtasks[1], // render/diffuse/1
+				},
+				[]*Task{
+					job.Subtasks[1].Subtasks[1].Subtasks[0], // render/reflection/0
+					job.Subtasks[1].Subtasks[1].Subtasks[1], // render/reflection/1
+				},
+			},
+		},
+	}
+	for _, c := range cases {
+		got := parallelTaskGroups(job)
+		if !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("got: %v, want: %v", got, c.want)
 		}
 	}
 }
