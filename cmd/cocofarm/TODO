@@ -1,7 +1,5 @@
 use db to remember jobs
 retry when worker failed to run commands
-don't block sibling tasks when the parent doesn't have SerialSubtasks option on
 attributes
 search by attributes
-don't use channel for worker selection - hard to handle the list (eg. worker quitting)
 only one worker will do for a serial tasks.
