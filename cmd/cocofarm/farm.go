@@ -92,9 +92,9 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	t.SetStatus(TaskDone)
 	t.job.Unlock()
 	f.jobman.Lock()
-	if f.jobman.jobBlocked[t.job.order] {
-		if f.jobman.tasks[t.job.order].Peek() != nil {
-			delete(f.jobman.jobBlocked, t.job.order)
+	if f.jobman.jobBlocked[t.job.id] {
+		if f.jobman.tasks[t.job.id].Peek() != nil {
+			delete(f.jobman.jobBlocked, t.job.id)
 			heap.Push(f.jobman.jobs, t.job)
 		}
 	}

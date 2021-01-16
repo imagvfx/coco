@@ -17,8 +17,8 @@ type Job struct {
 
 	sync.Mutex
 
-	// order is the number of the order
-	order string
+	// id is the order number of the job.
+	id string
 
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
@@ -39,7 +39,7 @@ type Job struct {
 
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
-		Order           string
+		ID              string
 		Status          string
 		Title           string
 		Priority        int
@@ -47,7 +47,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		Subtasks        []*Task
 		SerialSubtasks  bool
 	}{
-		Order:           j.order,
+		ID:              j.id,
 		Status:          j.Status().String(j.IsLeaf()),
 		Title:           j.Title,
 		Priority:        j.Priority,
@@ -287,12 +287,12 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	}
 	initJobTasks(j.Task, j, nil, 0)
 
-	j.order = strconv.Itoa(m.nextJobID)
+	j.id = strconv.Itoa(m.nextJobID)
 	m.nextJobID++
 
 	m.Lock()
 	defer m.Unlock()
-	m.job[j.order] = j
+	m.job[j.id] = j
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
@@ -300,10 +300,10 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	heap.Push(m.jobs, j)
 
-	tasks, ok := m.tasks[j.order]
+	tasks, ok := m.tasks[j.id]
 	if !ok {
 		tasks = newJobTaskPopper(j)
-		m.tasks[j.order] = tasks
+		m.tasks[j.id] = tasks
 	}
 	j.WalkTaskFn(func(t *Task) {
 		m.task[t.id] = t
@@ -315,7 +315,7 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	if peek != nil {
 		j.CurrentPriority = peek.CalcPriority()
 	}
-	return j.order, nil
+	return j.id, nil
 }
 
 // initJob inits a job's tasks.
@@ -390,7 +390,7 @@ func (m *jobManager) Retry(id string) error {
 			t.SetStatus(TaskWaiting)
 		}
 	})
-	m.tasks[j.order].Reset()
+	m.tasks[j.id].Reset()
 	j.Unlock()
 	heap.Push(m.jobs, j)
 	return nil
@@ -418,7 +418,7 @@ func (m *jobManager) PopTask() *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		_, ok := m.job[j.order]
+		_, ok := m.job[j.id]
 		if !ok {
 			// the job deleted
 			continue
@@ -433,7 +433,7 @@ func (m *jobManager) PopTask() *Task {
 			continue
 		}
 
-		tasks := m.tasks[j.order]
+		tasks := m.tasks[j.id]
 		t := tasks.Pop()
 
 		// check there is any leaf task left.
@@ -447,7 +447,7 @@ func (m *jobManager) PopTask() *Task {
 				j.Unlock()
 				heap.Push(m.jobs, j)
 			} else {
-				m.jobBlocked[j.order] = true
+				m.jobBlocked[j.id] = true
 			}
 		}
 
