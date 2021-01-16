@@ -24,7 +24,10 @@ type Worker struct {
 
 	addr   string
 	status WorkerStatus
-	task   string
+
+	// task directs a task the worker is currently working.
+	// The worker is in idle when it is empty string.
+	task string
 }
 
 func (w *Worker) Addr() string {
