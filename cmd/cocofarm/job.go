@@ -309,12 +309,6 @@ func (m *jobManager) Add(j *Job) (string, error) {
 		m.task[t.id] = t
 	})
 
-	nLeafs := 0
-	j.WalkLeafTaskFn(func(t *Task) {
-		nLeafs++
-	})
-	j.Stat.nWaiting = nLeafs
-
 	// set priority for the very first leaf task.
 	peek := tasks.Peek()
 	// peek can be nil, when the job doesn't have any leaf task.
