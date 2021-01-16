@@ -19,10 +19,14 @@ const (
 	WorkerRunning
 )
 
+// Worker is a worker who continuously takes a task and run it's commands.
 type Worker struct {
 	sync.Mutex
 
-	addr   string
+	// addr is the worker's listen addr.
+	addr string
+
+	// status indicates the worker's current status.
 	status WorkerStatus
 
 	// task directs a task the worker is currently working.
