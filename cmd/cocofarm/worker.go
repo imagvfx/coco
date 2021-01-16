@@ -21,8 +21,6 @@ const (
 
 // Worker is a worker who continuously takes a task and run it's commands.
 type Worker struct {
-	sync.Mutex
-
 	// addr is the worker's listen addr.
 	addr string
 
@@ -32,18 +30,6 @@ type Worker struct {
 	// task directs a task the worker is currently working.
 	// The worker is in idle when it is empty string.
 	task string
-}
-
-func (w *Worker) Addr() string {
-	w.Lock()
-	defer w.Unlock()
-	return w.addr
-}
-
-func (w *Worker) SetStatus(s WorkerStatus) {
-	w.Lock()
-	defer w.Unlock()
-	w.status = s
 }
 
 type workerManager struct {
@@ -125,7 +111,9 @@ func (m *workerManager) Unassign(taskID string, w *Worker) error {
 }
 
 func (m *workerManager) Waiting(w *Worker) {
-	w.SetStatus(WorkerIdle)
+	m.Lock()
+	defer m.Unlock()
+	w.status = WorkerIdle
 	go func() { m.ReadyCh <- struct{}{} }()
 }
 
@@ -133,7 +121,7 @@ func (m *workerManager) FindByAddr(addr string) *Worker {
 	m.Lock()
 	defer m.Unlock()
 	for _, w := range m.workers {
-		if addr == w.Addr() {
+		if addr == w.addr {
 			return w
 		}
 	}
