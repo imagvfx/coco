@@ -32,16 +32,80 @@ type Worker struct {
 	task string
 }
 
+type uniqueWorkerQueue struct {
+	has   map[*Worker]bool
+	first *workerQueueItem
+	last  *workerQueueItem
+}
+
+type workerQueueItem struct {
+	w    *Worker
+	next *workerQueueItem
+}
+
+func newUniqueWorkerQueue() *uniqueWorkerQueue {
+	return &uniqueWorkerQueue{
+		has: make(map[*Worker]bool),
+	}
+}
+
+func (q *uniqueWorkerQueue) Push(w *Worker) {
+	if q.has[w] {
+		return
+	}
+	q.has[w] = true
+	item := &workerQueueItem{w: w}
+	if q.first == nil {
+		q.first = item
+	} else {
+		q.last.next = item
+	}
+	q.last = item
+}
+
+func (q *uniqueWorkerQueue) Pop() *Worker {
+	if q.first == nil {
+		return nil
+	}
+	w := q.first.w
+	delete(q.has, w)
+	if q.first == q.last {
+		q.first = nil
+		q.last = nil
+		return w
+	}
+	q.first = q.first.next
+	return w
+}
+
+func (q *uniqueWorkerQueue) Remove(w *Worker) bool {
+	if !q.has[w] {
+		return false
+	}
+	delete(q.has, w)
+	var prev *workerQueueItem
+	for it := q.first; it != q.last; it = it.next {
+		if it.w == w {
+			prev.next = it.next
+			break
+		}
+		prev = it
+	}
+	return true
+}
+
 type workerManager struct {
 	sync.Mutex
-	workers  []*Worker
+	worker   map[string]*Worker
+	workers  *uniqueWorkerQueue
 	ReadyCh  chan struct{}
 	assignee map[string]*Worker
 }
 
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
-	m.workers = make([]*Worker, 0)
+	m.worker = make(map[string]*Worker)
+	m.workers = newUniqueWorkerQueue()
 	m.ReadyCh = make(chan struct{})
 	m.assignee = make(map[string]*Worker)
 	return m
@@ -50,34 +114,30 @@ func newWorkerManager() *workerManager {
 func (m *workerManager) Add(w *Worker) error {
 	m.Lock()
 	defer m.Unlock()
-	found := false
-	for _, v := range m.workers {
-		if w.addr == v.addr {
-			found = true
-		}
+	_, ok := m.worker[w.addr]
+	if ok {
+		return fmt.Errorf("worker already exists: %v", w.addr)
 	}
-	if found {
-		return fmt.Errorf("worker %s already added", w.addr)
-	}
-	m.workers = append(m.workers, w)
+	m.worker[w.addr] = w
 	return nil
 }
 
 func (m *workerManager) Bye(workerAddr string) error {
 	m.Lock()
 	defer m.Unlock()
-	idx := -1
-	for i, v := range m.workers {
-		if workerAddr == v.addr {
-			idx = i
-			break
-		}
-	}
-	if idx == -1 {
+	w, ok := m.worker[workerAddr]
+	if !ok {
 		return fmt.Errorf("worker not found: %v", workerAddr)
 	}
-	m.workers = append(m.workers[:idx], m.workers[idx+1:]...)
+	delete(m.worker, workerAddr)
+	m.workers.Remove(w)
 	return nil
+}
+
+func (m *workerManager) FindByAddr(addr string) *Worker {
+	m.Lock()
+	defer m.Unlock()
+	return m.worker[addr]
 }
 
 func (m *workerManager) Assign(taskID string, w *Worker) error {
@@ -87,6 +147,7 @@ func (m *workerManager) Assign(taskID string, w *Worker) error {
 	if ok {
 		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
 	}
+	w.status = WorkerRunning
 	w.task = taskID
 	m.assignee[taskID] = w
 	return nil
@@ -114,30 +175,14 @@ func (m *workerManager) Waiting(w *Worker) {
 	m.Lock()
 	defer m.Unlock()
 	w.status = WorkerIdle
+	m.workers.Push(w)
 	go func() { m.ReadyCh <- struct{}{} }()
 }
 
-func (m *workerManager) FindByAddr(addr string) *Worker {
+func (m *workerManager) Pop() *Worker {
 	m.Lock()
 	defer m.Unlock()
-	for _, w := range m.workers {
-		if addr == w.addr {
-			return w
-		}
-	}
-	return nil
-}
-
-func (m *workerManager) IdleWorkers() []*Worker {
-	m.Lock()
-	defer m.Unlock()
-	workers := make([]*Worker, 0)
-	for _, w := range m.workers {
-		if w.status == WorkerIdle {
-			workers = append(workers, w)
-		}
-	}
-	return workers
+	return m.workers.Pop()
 }
 
 func (m *workerManager) sendTask(w *Worker, t *Task) error {

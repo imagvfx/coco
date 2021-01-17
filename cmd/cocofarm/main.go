@@ -56,17 +56,17 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		case <-time.After(time.Second):
 			break
 		}
-
-		workers := workerman.IdleWorkers()
-		if len(workers) == 0 {
-			return
-		}
-		for _, w := range workers {
+		for {
+			w := workerman.Pop()
+			if w == nil {
+				return
+			}
 			var t *Task
 			for {
 				// find next task.
 				t = jobman.PopTask()
 				if t == nil {
+					workerman.Waiting(w)
 					return
 				}
 				// TODO: what if the job is deleted already?
