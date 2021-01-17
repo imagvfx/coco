@@ -2,4 +2,4 @@ use db to remember jobs
 retry when worker failed to run commands
 attributes
 search by attributes
-only one worker will do for a serial tasks.
+worker group
