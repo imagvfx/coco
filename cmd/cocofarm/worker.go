@@ -147,16 +147,17 @@ func (m *workerManager) Assign(taskID string, w *Worker) error {
 	if ok {
 		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
 	}
-	w.status = WorkerRunning
-	w.task = taskID
-	m.assignee[taskID] = w
+	m.assign(taskID, w)
 	return nil
 }
 
+func (m *workerManager) assign(taskID string, w *Worker) {
+	w.status = WorkerRunning
+	w.task = taskID
+	m.assignee[taskID] = w
+}
+
 func (m *workerManager) Unassign(taskID string, w *Worker) error {
-	// TODO: do we need DoneBy and also Waiting? merge two?
-	// this function is task centric, Waiting is worker centric.
-	// also Waiting is a blocking function.
 	m.Lock()
 	defer m.Unlock()
 	a, ok := m.assignee[taskID]
@@ -166,11 +167,19 @@ func (m *workerManager) Unassign(taskID string, w *Worker) error {
 	if w != a {
 		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
 	}
-	w.task = ""
-	delete(m.assignee, taskID)
+	m.unassign(taskID, w)
 	return nil
 }
 
+func (m *workerManager) unassign(taskID string, w *Worker) {
+	w.task = ""
+	delete(m.assignee, taskID)
+	// Don't make the worker idle/ready, as it only can be set by the worker.
+	// see comment on Waiting.
+}
+
+// Waiting reports that a worker is waiting for a work.
+// NOTE: It should be only called by the worker through workerFarm.
 func (m *workerManager) Waiting(w *Worker) {
 	m.Lock()
 	defer m.Unlock()
@@ -185,7 +194,7 @@ func (m *workerManager) Pop() *Worker {
 	return m.workers.Pop()
 }
 
-func (m *workerManager) sendTask(w *Worker, t *Task) error {
+func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -204,19 +213,20 @@ func (m *workerManager) sendTask(w *Worker, t *Task) error {
 		}
 		req.Cmds = append(req.Cmds, reqCmd)
 	}
+
+	// Lock before we send run message, in case the running is done by the worker
+	// ever before the server assigning the worker, which makes the server messy.
+	m.Lock()
+	defer m.Unlock()
 	_, err = c.Run(ctx, req)
 	if err != nil {
 		return err
 	}
-
-	m.Lock()
-	defer m.Unlock()
-	m.assignee[t.id] = w
-	w.status = WorkerRunning
+	m.assign(t.id, w)
 	return nil
 }
 
-func (m *workerManager) sendCancelTask(w *Worker, t *Task) error {
+func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	log.Printf("cancel: %v %v", w.addr, t.id)
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
@@ -231,13 +241,14 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) error {
 	req := &pb.CancelRequest{}
 	req.Id = t.id
 
+	// Lock before we send cancel message, in case the cancelling is done by the worker
+	// even before the server assigning the worker, which makes the server messy.
+	m.Lock()
+	defer m.Unlock()
 	_, err = c.Cancel(ctx, req)
 	if err != nil {
 		return err
 	}
-
-	m.Lock()
-	defer m.Unlock()
-	delete(m.assignee, t.id)
+	m.unassign(t.id, w)
 	return nil
 }
