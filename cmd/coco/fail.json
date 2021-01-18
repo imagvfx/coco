@@ -1,6 +1,7 @@
 {
 	"Subtasks": [
 		{
+			"SerialSubtasks": true,
 			"Subtasks": [
 				{
 					"Commands": [
