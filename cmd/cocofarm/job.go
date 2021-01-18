@@ -59,30 +59,40 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 }
 
 func (j *Job) WalkTaskFn(fn func(t *Task)) {
-	for _, subt := range j.Subtasks {
-		walkTaskFn(subt, fn)
-	}
-}
-
-func walkTaskFn(t *Task, fn func(t *Task)) {
-	fn(t)
-	for _, subt := range t.Subtasks {
-		walkTaskFn(subt, fn)
-	}
+	walkFromFn(j.Task, fn)
 }
 
 func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
-	for _, subt := range j.Subtasks {
-		walkLeafTaskFn(subt, fn)
+	leafFn := func(t *Task) {
+		if t.IsLeaf() {
+			fn(t)
+		}
 	}
+	walkFromFn(j.Task, leafFn)
 }
 
-func walkLeafTaskFn(t *Task, fn func(t *Task)) {
-	if t.IsLeaf() {
-		fn(t)
-	}
-	for _, subt := range t.Subtasks {
-		walkLeafTaskFn(subt, fn)
+func walkFromFn(t *Task, fn func(t *Task)) {
+	down := true
+	for {
+		if down {
+			fn(t)
+			if len(t.Subtasks) != 0 {
+				t = t.Subtasks[0]
+				continue
+			}
+		}
+		if t.next != nil {
+			down = true
+			t = t.next
+			continue
+		}
+		if t.parent != nil {
+			down = false
+			t = t.parent
+			continue
+		}
+		// back to root
+		return
 	}
 }
 
@@ -339,8 +349,13 @@ func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 	}
 	t.Stat = &branchStat{}
 	iOld := i
+	var prev *Task
 	for _, subt := range t.Subtasks {
+		if prev != nil {
+			prev.next = subt
+		}
 		i = initJobTasks(subt, j, t, i)
+		prev = subt
 	}
 	t.Stat.nWaiting = i - iOld
 	return i

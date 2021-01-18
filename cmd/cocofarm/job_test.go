@@ -1,9 +1,71 @@
 package main
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
+
+var job = &Job{
+	Task: &Task{
+		Title:          "root",
+		SerialSubtasks: true,
+		Subtasks: []*Task{
+			&Task{
+				Title:          "sim",
+				SerialSubtasks: true,
+				Subtasks: []*Task{
+					&Task{
+						Title:          "ocean",
+						SerialSubtasks: true,
+					},
+					&Task{
+						Title:          "foam",
+						SerialSubtasks: true,
+					},
+				},
+			},
+			&Task{
+				Title:          "render",
+				SerialSubtasks: true,
+				Subtasks: []*Task{
+					&Task{
+						Title:          "diffuse",
+						SerialSubtasks: false,
+						Subtasks: []*Task{
+							&Task{
+								Title:          "1",
+								SerialSubtasks: true,
+							},
+							&Task{
+								Title:          "2",
+								SerialSubtasks: true,
+							},
+						},
+					},
+					&Task{
+						Title:          "reflection",
+						SerialSubtasks: false,
+						Subtasks: []*Task{
+							&Task{
+								Title:          "1",
+								SerialSubtasks: true,
+							},
+							&Task{
+								Title:          "2",
+								SerialSubtasks: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	},
+}
+
+func init() {
+	initJob(job)
+}
 
 func TestJobManagerPopTask(t *testing.T) {
 	j1 := &Job{
@@ -72,57 +134,6 @@ func TestJobManagerPopTask(t *testing.T) {
 }
 
 func TestParallelTaskGroups(t *testing.T) {
-	job := &Job{
-		Task: &Task{
-			SerialSubtasks: true,
-			Subtasks: []*Task{
-				&Task{
-					Title:          "sim",
-					SerialSubtasks: true,
-					Subtasks: []*Task{
-						&Task{
-							Title:          "ocean",
-							SerialSubtasks: true,
-						},
-						&Task{
-							Title:          "foam",
-							SerialSubtasks: true,
-						},
-					},
-				},
-				&Task{
-					Title:          "render",
-					SerialSubtasks: true,
-					Subtasks: []*Task{
-						&Task{
-							Title:          "diffuse",
-							SerialSubtasks: false,
-							Subtasks: []*Task{
-								&Task{
-									SerialSubtasks: true,
-								},
-								&Task{
-									SerialSubtasks: true,
-								},
-							},
-						},
-						&Task{
-							Title:          "reflection",
-							SerialSubtasks: false,
-							Subtasks: []*Task{
-								&Task{
-									SerialSubtasks: true,
-								},
-								&Task{
-									SerialSubtasks: true,
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
 	cases := []struct {
 		j    *Job
 		want [][]*Task
@@ -153,4 +164,53 @@ func TestParallelTaskGroups(t *testing.T) {
 			t.Fatalf("got: %v, want: %v", got, c.want)
 		}
 	}
+}
+
+func ExampleWalkTaskFn() {
+	fn := func(t *Task) {
+		fmt.Println(t.Title)
+	}
+	job.WalkTaskFn(fn)
+	// Output:
+	// root
+	// sim
+	// ocean
+	// foam
+	// render
+	// diffuse
+	// 1
+	// 2
+	// reflection
+	// 1
+	// 2
+}
+
+func ExampleWalkLeafTaskFn() {
+	fn := func(t *Task) {
+		fmt.Println(t.Title)
+	}
+	job.WalkLeafTaskFn(fn)
+	// Output:
+	// ocean
+	// foam
+	// 1
+	// 2
+	// 1
+	// 2
+}
+
+func ExampleWalkFromFn() {
+	fn := func(t *Task) {
+		fmt.Println(t.Title)
+	}
+	walkFromFn(job.Subtasks[0].Subtasks[1], fn)
+	// Output:
+	// foam
+	// render
+	// diffuse
+	// 1
+	// 2
+	// reflection
+	// 1
+	// 2
 }
