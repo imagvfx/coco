@@ -153,6 +153,8 @@ type Task struct {
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
+
+	popIdx int
 }
 
 func (t *Task) MarshalJSON() ([]byte, error) {
@@ -174,6 +176,41 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Commands:       t.Commands,
 	}
 	return json.Marshal(m)
+}
+
+func (t *Task) Pop() (*Task, bool) {
+	if t.popIdx < 0 {
+		return nil, true
+	}
+	if t.IsLeaf() {
+		t.popIdx = -1
+		return t, true
+	}
+	// branch
+	if t.SerialSubtasks {
+		subt := t.Subtasks[t.popIdx]
+		popt, _ := subt.Pop()
+		return popt, false
+	}
+	// parallel branch
+	i := t.popIdx
+	for i < len(t.Subtasks) {
+		subt := t.Subtasks[i]
+		popt, done := subt.Pop()
+		if done {
+			// caching the result for next pop
+			t.popIdx = i + 1
+		}
+		if popt != nil {
+			return popt, false
+		}
+		i++
+	}
+	if t.popIdx == len(t.Subtasks) {
+		t.popIdx = -1
+		return nil, true
+	}
+	return nil, false
 }
 
 func (t *Task) Status() TaskStatus {
