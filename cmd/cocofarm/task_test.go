@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -59,67 +59,109 @@ func TestTaskCalcPriority(t *testing.T) {
 	}
 }
 
-func ExampleTaskPop() {
-	c := &Task{
-		SerialSubtasks: true,
-		Subtasks: []*Task{
-			&Task{
-				Title:          "render",
-				SerialSubtasks: false,
-				Subtasks: []*Task{
-					{
-						Title:          "diffuse",
-						SerialSubtasks: false,
-						Subtasks: []*Task{
-							{Title: "d1"},
-							{Title: "d2"},
-							{Title: "d3"},
-							{Title: "d4"},
-							{Title: "d5"},
-						},
-					},
-					{
-						Title:          "reflection",
-						SerialSubtasks: false,
-						Subtasks: []*Task{
-							{Title: "r1"},
-							{Title: "r2"},
-							{Title: "r3"},
-							{Title: "r4"},
-							{Title: "r5"},
-						},
-					},
-				},
-			},
-			&Task{
-				Title:          "cleanup",
+func TestTaskPop(t *testing.T) {
+	cases := []struct {
+		t    *Task
+		want []string
+	}{
+		{
+			t: &Task{
 				SerialSubtasks: true,
 				Subtasks: []*Task{
-					{Title: "c1"},
-					{Title: "c2"},
+					&Task{
+						Title:          "render",
+						SerialSubtasks: false,
+						Subtasks: []*Task{
+							{
+								Title:          "diffuse",
+								SerialSubtasks: false,
+								Subtasks: []*Task{
+									{Title: "d1"},
+									{Title: "d2"},
+								},
+							},
+							{
+								Title:          "reflection",
+								SerialSubtasks: false,
+								Subtasks: []*Task{
+									{Title: "r1"},
+									{Title: "r2"},
+								},
+							},
+						},
+					},
+					&Task{
+						Title:          "cleanup",
+						SerialSubtasks: true,
+						Subtasks: []*Task{
+							{Title: "c1"},
+							{Title: "c2"},
+						},
+					},
 				},
 			},
+			want: []string{"d1", "d2", "r1", "r2"},
+		},
+		{
+			t: &Task{
+				SerialSubtasks: true,
+				Subtasks: []*Task{
+					&Task{
+						Title:          "sim",
+						SerialSubtasks: false,
+						Subtasks: []*Task{
+							{
+								Title:          "destruction",
+								SerialSubtasks: true,
+								Subtasks: []*Task{
+									{Title: "d1"},
+									{Title: "d2"},
+								},
+							},
+							{
+								Title:          "fire",
+								SerialSubtasks: true,
+								Subtasks: []*Task{
+									{Title: "f1"},
+									{Title: "f2"},
+								},
+							},
+							{
+								Title:          "particle",
+								SerialSubtasks: true,
+								Subtasks: []*Task{
+									{Title: "p1"},
+									{Title: "p2"},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: []string{"d1", "f1", "p1"},
 		},
 	}
-	for {
-		popt, done := c.Pop()
-		if done {
-			break
+
+	titles := func(tasks []*Task) []string {
+		sl := make([]string, len(tasks))
+		for i, t := range tasks {
+			sl[i] = t.Title
 		}
-		if popt == nil {
-			break
-		}
-		fmt.Println(popt.Title)
+		return sl
 	}
-	// Output:
-	// d1
-	// d2
-	// d3
-	// d4
-	// d5
-	// r1
-	// r2
-	// r3
-	// r4
-	// r5
+
+	for _, c := range cases {
+		ts := make([]*Task, 0)
+		for {
+			t, _ := c.t.Pop()
+			if t == nil {
+				break
+			}
+			ts = append(ts, t)
+		}
+		got := titles(ts)
+		if !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("got: %v, want: %v", got, c.want)
+		}
+	}
 }
