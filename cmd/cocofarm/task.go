@@ -116,6 +116,9 @@ type Task struct {
 	// It will be nil, if the task is a root task.
 	parent *Task
 
+	// nthChild indicates this task is nth child of the parent task.
+	nthChild int
+
 	// next is a next sibling.
 	// It will be nil, if the task is alone or last sibling.
 	next *Task
@@ -179,38 +182,56 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Task) Pop() (*Task, bool) {
+	if t.IsLeaf() {
+		// A parallel leaf task will always return done == true.
+		// On the other hand a serial leaf task will return done == true,
+		// only when the task has really finished.
+		done := true
+		if t.parent.SerialSubtasks && t.status != TaskDone {
+			done = false
+		}
+		if t.popIdx != -1 {
+			t.popIdx = -1
+			return t, done
+		}
+		return nil, done
+	}
+	// branch
 	if t.popIdx < 0 {
 		return nil, true
 	}
-	if t.IsLeaf() {
-		t.popIdx = -1
-		return t, true
-	}
-	// branch
-	if t.SerialSubtasks {
-		subt := t.Subtasks[t.popIdx]
-		popt, _ := subt.Pop()
-		return popt, false
-	}
-	// parallel branch
 	i := t.popIdx
+	var popt *Task
+	alldone := true // all done until the subtask
 	for i < len(t.Subtasks) {
 		subt := t.Subtasks[i]
-		popt, done := subt.Pop()
+		p, done := subt.Pop()
+		popt = p
 		if done {
-			// caching the result for next pop
-			t.popIdx = i + 1
+			if alldone {
+				// caching the result for next pop
+				t.popIdx = i + 1
+			}
+			// this subtask has done, but one of the prior task hasn't done yet.
+			// cannot jump to this subtask.
+		} else {
+			alldone = false
+			if t.SerialSubtasks {
+				// should wait the subtask has done
+				break
+			}
 		}
-		if popt != nil {
-			return popt, false
+		if p != nil {
+			break
 		}
+		// popt nil but not done
+		// don't touch t.popIdx
 		i++
 	}
 	if t.popIdx == len(t.Subtasks) {
 		t.popIdx = -1
-		return nil, true
 	}
-	return nil, false
+	return popt, t.popIdx == -1
 }
 
 func (t *Task) Status() TaskStatus {
@@ -226,11 +247,21 @@ func (t *Task) SetStatus(s TaskStatus) {
 	}
 	old := t.status
 	t.status = s
-	tt := t.parent
-	for tt != nil {
-		tt.Stat.Sub(old)
-		tt.Stat.Add(s)
-		tt = tt.parent
+	parent := t.parent
+	child := t
+	for parent != nil {
+		n := child.nthChild
+		if s == TaskWaiting || s == TaskFailed {
+			if n < parent.popIdx {
+				parent.popIdx = n
+			}
+		}
+
+		parent.Stat.Sub(old)
+		parent.Stat.Add(s)
+
+		child = parent
+		parent = parent.parent
 	}
 }
 

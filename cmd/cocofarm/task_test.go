@@ -61,107 +61,137 @@ func TestTaskCalcPriority(t *testing.T) {
 
 func TestTaskPop(t *testing.T) {
 	cases := []struct {
-		t    *Task
+		j    *Job
 		want []string
 	}{
 		{
-			t: &Task{
-				SerialSubtasks: true,
-				Subtasks: []*Task{
-					&Task{
-						Title:          "render",
-						SerialSubtasks: false,
-						Subtasks: []*Task{
-							{
-								Title:          "diffuse",
-								SerialSubtasks: false,
-								Subtasks: []*Task{
-									{Title: "d1"},
-									{Title: "d2"},
-								},
-							},
-							{
-								Title:          "reflection",
-								SerialSubtasks: false,
-								Subtasks: []*Task{
-									{Title: "r1"},
-									{Title: "r2"},
-								},
-							},
-						},
-					},
-					&Task{
-						Title:          "cleanup",
-						SerialSubtasks: true,
-						Subtasks: []*Task{
-							{Title: "c1"},
-							{Title: "c2"},
-						},
+			j: initJob(&Job{
+				Task: &Task{
+					Title:          "simple serial",
+					SerialSubtasks: true,
+					Subtasks: []*Task{
+						{Title: "1"},
+						{Title: "2"},
+						{Title: "3"},
 					},
 				},
-			},
-			want: []string{"d1", "d2", "r1", "r2"},
+			}),
+			want: []string{"1", "", "2", "", "3", ""},
 		},
 		{
-			t: &Task{
-				SerialSubtasks: true,
-				Subtasks: []*Task{
-					&Task{
-						Title:          "sim",
-						SerialSubtasks: false,
-						Subtasks: []*Task{
-							{
-								Title:          "destruction",
-								SerialSubtasks: true,
-								Subtasks: []*Task{
-									{Title: "d1"},
-									{Title: "d2"},
+			j: initJob(&Job{
+				Task: &Task{
+					Title:          "simple parallel",
+					SerialSubtasks: false,
+					Subtasks: []*Task{
+						{Title: "1"},
+						{Title: "2"},
+						{Title: "3"},
+					},
+				},
+			}),
+			want: []string{"1", "2", "3"},
+		},
+		{
+			j: initJob(&Job{
+				Task: &Task{
+					Title:          "render",
+					SerialSubtasks: true,
+					Subtasks: []*Task{
+						&Task{
+							Title:          "layer",
+							SerialSubtasks: false,
+							Subtasks: []*Task{
+								{
+									Title:          "diffuse",
+									SerialSubtasks: false,
+									Subtasks: []*Task{
+										{Title: "d1"},
+										{Title: "d2"},
+									},
+								},
+								{
+									Title:          "reflection",
+									SerialSubtasks: false,
+									Subtasks: []*Task{
+										{Title: "r1"},
+										{Title: "r2"},
+									},
 								},
 							},
-							{
-								Title:          "fire",
-								SerialSubtasks: true,
-								Subtasks: []*Task{
-									{Title: "f1"},
-									{Title: "f2"},
-								},
-							},
-							{
-								Title:          "particle",
-								SerialSubtasks: true,
-								Subtasks: []*Task{
-									{Title: "p1"},
-									{Title: "p2"},
-								},
+						},
+						&Task{
+							Title:          "cleanup",
+							SerialSubtasks: true,
+							Subtasks: []*Task{
+								{Title: "c1"},
+								{Title: "c2"},
 							},
 						},
 					},
 				},
-			},
-			want: []string{"d1", "f1", "p1"},
+			}),
+			want: []string{"d1", "d2", "r1", "r2", "c1", "", "c2", ""},
 		},
-	}
-
-	titles := func(tasks []*Task) []string {
-		sl := make([]string, len(tasks))
-		for i, t := range tasks {
-			sl[i] = t.Title
-		}
-		return sl
+		{
+			j: initJob(&Job{
+				Task: &Task{
+					Title:          "sim",
+					SerialSubtasks: false,
+					Subtasks: []*Task{
+						{
+							Title:          "destruction",
+							SerialSubtasks: true,
+							Subtasks: []*Task{
+								{Title: "d1"},
+								{Title: "d2"},
+							},
+						},
+						{
+							Title:          "fire",
+							SerialSubtasks: true,
+							Subtasks: []*Task{
+								{Title: "f1"},
+								{Title: "f2"},
+							},
+						},
+						{
+							Title:          "particle",
+							SerialSubtasks: true,
+							Subtasks: []*Task{
+								{Title: "p1"},
+								{Title: "p2"},
+							},
+						},
+					},
+				},
+			}),
+			want: []string{"d1", "f1", "p1", "", "d2", "f2", "p2", ""},
+		},
 	}
 
 	for _, c := range cases {
-		ts := make([]*Task, 0)
+		got := make([]string, 0)
+		tasks := make([]*Task, 0)
 		for {
-			t, _ := c.t.Pop()
+			t, done := c.j.Pop()
 			if t == nil {
-				break
+				if done {
+					break
+				}
+				got = append(got, "")
+				for _, t := range tasks {
+					t.SetStatus(TaskDone)
+				}
+				tasks = tasks[:0]
+			} else {
+				got = append(got, t.Title)
+				tasks = append(tasks, t)
 			}
-			ts = append(ts, t)
+
 		}
-		got := titles(ts)
 		if !reflect.DeepEqual(got, c.want) {
-			t.Fatalf("got: %v, want: %v", got, c.want)
+			t.Fatalf("%v: got: %v, want: %v", c.j.Title, got, c.want)
 		}
 	}
 }

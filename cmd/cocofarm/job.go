@@ -295,7 +295,7 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	if len(j.Subtasks) == 0 {
 		return "", fmt.Errorf("a job should have at least one subtask")
 	}
-	initJobTasks(j.Task, j, nil, 0)
+	initJob(j)
 
 	j.id = strconv.Itoa(m.nextJobID)
 	m.nextJobID++
@@ -329,16 +329,20 @@ func (m *jobManager) Add(j *Job) (string, error) {
 }
 
 // initJob inits a job's tasks.
-func initJob(j *Job) {
-	initJobTasks(j.Task, j, nil, 0)
+// initJob returns unmodified pointer of the job, for in case
+// when user wants to directly assign to a variable. (see test code)
+func initJob(j *Job) *Job {
+	initJobTasks(j.Task, j, nil, 0, 0)
+	return j
 }
 
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
-func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
+func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 	t.id = xid.New().String()
 	t.job = j
 	t.parent = parent
+	t.nthChild = nth
 	if t.IsLeaf() {
 		t.num = i
 		i++
@@ -350,11 +354,11 @@ func initJobTasks(t *Task, j *Job, parent *Task, i int) int {
 	t.Stat = &branchStat{}
 	iOld := i
 	var prev *Task
-	for _, subt := range t.Subtasks {
+	for nth, subt := range t.Subtasks {
 		if prev != nil {
 			prev.next = subt
 		}
-		i = initJobTasks(subt, j, t, i)
+		i = initJobTasks(subt, j, t, nth, i)
 		prev = subt
 	}
 	t.Stat.nWaiting = i - iOld
