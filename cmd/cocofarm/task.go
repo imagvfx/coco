@@ -190,6 +190,12 @@ func (t *Task) Pop() (*Task, bool) {
 		if t.parent.SerialSubtasks && t.status != TaskDone {
 			done = false
 		}
+		if t.status == TaskFailed || t.status == TaskCancelled {
+			// When a task failed or cancelled,
+			// make the task block any leaf task on the next stages.
+			// For a temporary error, user can restart the task to make it done.
+			done = false
+		}
 		if t.popIdx != -1 {
 			t.popIdx = -1
 			return t, done
