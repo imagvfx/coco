@@ -230,8 +230,6 @@ func (t *Task) Pop() (*Task, bool) {
 		if p != nil {
 			break
 		}
-		// popt nil but not done
-		// don't touch t.popIdx
 		i++
 	}
 	if t.popIdx == len(t.Subtasks) {
