@@ -96,48 +96,55 @@ func walkFromFn(t *Task, fn func(t *Task)) {
 	}
 }
 
-type jobHeap []*Job
+type jobHeap struct {
+	heap     []*Job
+	priority map[string]int
+}
+
+func newJobHeap(priority map[string]int) *jobHeap {
+	return &jobHeap{
+		heap:     make([]*Job, 0),
+		priority: priority,
+	}
+}
 
 func (h jobHeap) Len() int {
-	return len(h)
+	return len(h.heap)
 }
 
 func (h jobHeap) Less(i, j int) bool {
-	h[i].Lock()
-	h[j].Lock()
-	defer h[i].Unlock()
-	defer h[j].Unlock()
-	if h[i].CurrentPriority > h[j].CurrentPriority {
+	if h.priority[h.heap[i].id] > h.priority[h.heap[j].id] {
 		return true
 	}
-	if h[i].CurrentPriority < h[j].CurrentPriority {
+	if h.priority[h.heap[i].id] < h.priority[h.heap[j].id] {
 		return false
 	}
-	return h[i].id < h[j].id
+	return h.heap[i].id < h.heap[j].id
 }
 
 func (h jobHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
+	h.heap[i], h.heap[j] = h.heap[j], h.heap[i]
 }
 
 func (h *jobHeap) Push(el interface{}) {
-	*h = append(*h, el.(*Job))
+	h.heap = append(h.heap, el.(*Job))
 }
 
 func (h *jobHeap) Pop() interface{} {
-	old := *h
+	old := h.heap
 	n := len(old)
 	el := old[n-1]
 	old[n-1] = nil // avoid memory leak
-	*h = old[:n-1]
+	h.heap = old[:n-1]
 	return el
 }
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID  int
-	job        map[string]*Job
-	jobBlocked map[string]bool
+	nextJobID   int
+	job         map[string]*Job
+	jobPriority map[string]int
+	jobBlocked  map[string]bool
 	// jobs may have cancelled jobs.
 	// PopTask should handle this properly.
 	jobs         *jobHeap
@@ -149,7 +156,8 @@ func newJobManager() *jobManager {
 	m := &jobManager{}
 	m.job = make(map[string]*Job)
 	m.jobBlocked = make(map[string]bool)
-	m.jobs = &jobHeap{}
+	m.jobPriority = make(map[string]int)
+	m.jobs = newJobHeap(m.jobPriority)
 	m.task = make(map[string]*Task)
 	m.CancelTaskCh = make(chan *Task)
 	return m
@@ -185,7 +193,6 @@ func (m *jobManager) Add(j *Job) (string, error) {
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
-	// NOTE: but anyway, the heap operations following will hold lock on jobs.
 
 	heap.Push(m.jobs, j)
 
@@ -197,7 +204,7 @@ func (m *jobManager) Add(j *Job) (string, error) {
 	peek := j.Peek()
 	// peek can be nil, when the job doesn't have any leaf task.
 	if peek != nil {
-		j.CurrentPriority = peek.CalcPriority()
+		m.jobPriority[j.id] = peek.CalcPriority()
 	}
 	return j.id, nil
 }
@@ -339,7 +346,10 @@ func (m *jobManager) PopTask() *Task {
 			// peek can be nil when next Job.Pop has blocked for some reason.
 			if peek != nil {
 				// the peeked task is also cared by this lock.
-				j.CurrentPriority = peek.CalcPriority()
+				p := peek.CalcPriority()
+				m.jobPriority[j.id] = p
+				// also keep the info in the Job.
+				j.CurrentPriority = p
 			} else {
 				m.jobBlocked[j.id] = true
 			}
