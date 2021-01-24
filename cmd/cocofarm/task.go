@@ -238,6 +238,15 @@ func (t *Task) Pop() (*Task, bool) {
 	return popt, t.popIdx == -1
 }
 
+func (t *Task) Peek() *Task {
+	popt := t
+	for !popt.IsLeaf() {
+		// There should be no popIdx == -1 here, I believe.
+		popt = popt.Subtasks[popt.popIdx]
+	}
+	return popt
+}
+
 func (t *Task) Status() TaskStatus {
 	if t.IsLeaf() {
 		return t.status
