@@ -73,10 +73,12 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 			// it's farm's error
 			log.Print(err)
 		} else {
-			t := f.jobman.GetTask(w.task)
+			f.jobman.Lock()
+			defer f.jobman.Unlock()
+			t := f.jobman.task[w.task]
 			t.job.Lock()
+			defer t.job.Unlock()
 			t.SetStatus(TaskFailed)
-			t.job.Unlock()
 		}
 	}
 	f.workerman.Bye(w.addr)
@@ -87,21 +89,19 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 // It indicates the caller finished the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResponse, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
-	t := f.jobman.GetTask(in.TaskId)
-	t.job.Lock()
-	t.SetStatus(TaskDone)
-	t.job.Unlock()
 	f.jobman.Lock()
+	defer f.jobman.Unlock()
+	t := f.jobman.task[in.TaskId]
+	t.job.Lock()
+	defer t.job.Unlock()
+	t.SetStatus(TaskDone)
 	if f.jobman.jobBlocked[t.job.id] {
-		t.job.Lock()
 		peek := f.jobman.job[t.job.id].Peek()
-		t.job.Unlock()
 		if peek != nil {
 			delete(f.jobman.jobBlocked, t.job.id)
 			heap.Push(f.jobman.jobs, t.job)
 		}
 	}
-	f.jobman.Unlock()
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
@@ -119,10 +119,12 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 // It indicates the caller finished the requested task.
 func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.FailedResponse, error) {
 	log.Printf("failed: %v %v", in.Addr, in.TaskId)
-	t := f.jobman.GetTask(in.TaskId)
+	f.jobman.Lock()
+	defer f.jobman.Unlock()
+	t := f.jobman.task[in.TaskId]
 	t.job.Lock()
+	defer t.job.Unlock()
 	t.SetStatus(TaskFailed)
-	t.job.Unlock()
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {

@@ -284,12 +284,12 @@ func (m *jobManager) Retry(id string) error {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	j.Lock()
+	defer j.Unlock()
 	j.WalkLeafTaskFn(func(t *Task) {
 		if t.Status() == TaskFailed {
 			t.SetStatus(TaskWaiting)
 		}
 	})
-	j.Unlock()
 	heap.Push(m.jobs, j)
 	return nil
 }
@@ -330,19 +330,12 @@ func (m *jobManager) PopTask() *Task {
 			continue
 		}
 
-		var peek *Task
-		defer func() {
-			if peek != nil {
-				heap.Push(m.jobs, j)
-			}
-		}()
-
 		j.Lock()
 		defer j.Unlock()
 		t, done := j.Pop()
 		// check there is any leaf task left.
 		if !done {
-			peek = j.Peek()
+			peek := j.Peek()
 			// peek can be nil when next Job.Pop has blocked for some reason.
 			if peek != nil {
 				// the peeked task is also cared by this lock.
@@ -350,6 +343,7 @@ func (m *jobManager) PopTask() *Task {
 				m.jobPriority[j.id] = p
 				// also keep the info in the Job.
 				j.CurrentPriority = p
+				heap.Push(m.jobs, j)
 			} else {
 				m.jobBlocked[j.id] = true
 			}
