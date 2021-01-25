@@ -250,6 +250,9 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 	return i
 }
 
+// Cancel cancels a job.
+// Running tasks of the job will be canceled and remaining tasks
+// will not be processed.
 func (m *jobManager) Cancel(id string) error {
 	m.Lock()
 	defer m.Unlock()
@@ -266,15 +269,17 @@ func (m *jobManager) Cancel(id string) error {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
 	}
-	// indicate the job and it's tasks are canceled, first.
 	j.WalkLeafTaskFn(func(t *Task) {
-		t.SetStatus(TaskCanceled)
+		if t.status == TaskRunning {
+			go func() {
+				// Let worker knows that the task is canceled.
+				m.CancelTaskCh <- t
+			}()
+		}
+		if t.status != TaskDone {
+			t.SetStatus(TaskCanceled)
+		}
 	})
-	go func() {
-		j.WalkLeafTaskFn(func(t *Task) {
-			m.CancelTaskCh <- t
-		})
-	}()
 	return nil
 }
 
