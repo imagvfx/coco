@@ -105,11 +105,11 @@ func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelRe
 	if err != nil {
 		return &pb.CancelResponse{}, err
 	}
-	go sendWaiting(s.farm, s.addr)
+	go sendReady(s.farm, s.addr)
 	return &pb.CancelResponse{}, nil
 }
 
-func sendWaiting(farm, addr string) error {
+func sendReady(farm, addr string) error {
 	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -120,8 +120,8 @@ func sendWaiting(farm, addr string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req := &pb.WaitingRequest{Addr: addr}
-	_, err = c.Waiting(ctx, req)
+	req := &pb.ReadyRequest{Addr: addr}
+	_, err = c.Ready(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func sendFailed(farm, addr string, taskID string) error {
 
 func handshakeWithFarm(addr, farm string, n int) {
 	for i := 0; i < n; i++ {
-		err := sendWaiting(farm, addr)
+		err := sendReady(farm, addr)
 		if err == nil {
 			return
 		}

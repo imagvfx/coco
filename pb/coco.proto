@@ -27,17 +27,17 @@ message CancelRequest {
 message CancelResponse {}
 
 service Farm {
-	rpc Waiting(WaitingRequest) returns (WaitingResponse) {};
+	rpc Ready(ReadyRequest) returns (ReadyResponse) {};
 	rpc Bye(ByeRequest) returns (ByeResponse) {};
 	rpc Done(DoneRequest) returns (DoneResponse) {};
 	rpc Failed(FailedRequest) returns (FailedResponse) {};
 }
 
-message WaitingRequest {
+message ReadyRequest {
 	string addr = 1;
 }
 
-message WaitingResponse {}
+message ReadyResponse {}
 
 message ByeRequest {
 	string addr = 1;

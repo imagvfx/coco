@@ -179,9 +179,9 @@ func (m *workerManager) unassign(taskID string, w *Worker) {
 	// see comment on Waiting.
 }
 
-// Waiting reports that a worker is waiting for a work.
+// Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
-func (m *workerManager) Waiting(w *Worker) {
+func (m *workerManager) Ready(w *Worker) {
 	m.Lock()
 	defer m.Unlock()
 	w.status = WorkerIdle

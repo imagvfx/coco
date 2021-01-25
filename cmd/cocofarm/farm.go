@@ -41,10 +41,10 @@ func (f *farmServer) Listen() {
 	}
 }
 
-// Waiting will be called by workers through gRPC.
+// Ready will be called by workers through gRPC.
 // It indicates the caller is idle and waiting for commands to run.
-func (f *farmServer) Waiting(ctx context.Context, in *pb.WaitingRequest) (*pb.WaitingResponse, error) {
-	log.Printf("received: %v", in.Addr)
+func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyResponse, error) {
+	log.Printf("ready: %v", in.Addr)
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
@@ -54,8 +54,8 @@ func (f *farmServer) Waiting(ctx context.Context, in *pb.WaitingRequest) (*pb.Wa
 			log.Print(err)
 		}
 	}
-	go f.workerman.Waiting(w)
-	return &pb.WaitingResponse{}, nil
+	go f.workerman.Ready(w)
+	return &pb.ReadyResponse{}, nil
 }
 
 // Bye will be called by workers through gRPC.
@@ -111,7 +111,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	if err != nil {
 		return &pb.DoneResponse{}, err
 	}
-	go f.workerman.Waiting(w)
+	go f.workerman.Ready(w)
 	return &pb.DoneResponse{}, nil
 }
 
@@ -134,6 +134,6 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	if err != nil {
 		return &pb.FailedResponse{}, err
 	}
-	go f.workerman.Waiting(w)
+	go f.workerman.Ready(w)
 	return &pb.FailedResponse{}, nil
 }
