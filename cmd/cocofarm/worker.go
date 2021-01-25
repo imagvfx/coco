@@ -96,8 +96,9 @@ func (q *uniqueWorkerQueue) Remove(w *Worker) bool {
 
 type workerManager struct {
 	sync.Mutex
-	worker   map[string]*Worker
-	workers  *uniqueWorkerQueue
+	worker  map[string]*Worker
+	workers *uniqueWorkerQueue
+	// ReadyCh tries fast matching of a worker and a task.
 	ReadyCh  chan struct{}
 	assignee map[string]*Worker
 }
