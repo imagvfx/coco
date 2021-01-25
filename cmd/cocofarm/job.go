@@ -145,7 +145,7 @@ type jobManager struct {
 	job         map[string]*Job
 	jobPriority map[string]int
 	jobBlocked  map[string]bool
-	// jobs may have cancelled jobs.
+	// jobs may have canceled jobs.
 	// PopTask should handle this properly.
 	jobs         *jobHeap
 	task         map[string]*Task
@@ -255,16 +255,16 @@ func (m *jobManager) Cancel(id string) error {
 	}
 	j.Lock()
 	defer j.Unlock()
-	if j.Status() == TaskCancelled {
-		return fmt.Errorf("job has already cancelled: %v", id)
+	if j.Status() == TaskCanceled {
+		return fmt.Errorf("job has already canceled: %v", id)
 	}
 	if j.Status() == TaskDone {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
 	}
-	// indicate the job and it's tasks are cancelled, first.
+	// indicate the job and it's tasks are canceled, first.
 	j.WalkLeafTaskFn(func(t *Task) {
-		t.SetStatus(TaskCancelled)
+		t.SetStatus(TaskCanceled)
 	})
 	// Delete the job from m.jobs (heap) will be expensive.
 	// Let PopTask do the job.
@@ -320,8 +320,8 @@ func (m *jobManager) PopTask() *Task {
 			// the job deleted
 			continue
 		}
-		if j.Status() == TaskCancelled {
-			// the job cancelled
+		if j.Status() == TaskCanceled {
+			// the job canceled
 			continue
 		}
 		if j.Status() == TaskFailed {

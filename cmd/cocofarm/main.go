@@ -26,7 +26,7 @@ func main() {
 	go farm.Listen()
 
 	go matching(job, worker)
-	go cancelling(job, worker)
+	go canceling(job, worker)
 
 	api := &apiHandler{
 		jobman: job,
@@ -71,7 +71,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 				}
 				// TODO: what if the job is deleted already?
 				t.job.Lock()
-				cancel := len(t.Commands) == 0 || t.Status() == TaskCancelled
+				cancel := len(t.Commands) == 0 || t.Status() == TaskCanceled
 				t.job.Unlock()
 				if cancel {
 					continue
@@ -98,7 +98,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 	}()
 }
 
-func cancelling(jobman *jobManager, workerman *workerManager) {
+func canceling(jobman *jobManager, workerman *workerManager) {
 	cancel := func() {
 		t := <-jobman.CancelTaskCh
 		w, ok := workerman.assignee[t.id]

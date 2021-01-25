@@ -248,7 +248,7 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	req := &pb.CancelRequest{}
 	req.Id = t.id
 
-	// Lock before we send cancel message, in case the cancelling is done by the worker
+	// Lock before we send cancel message, in case the canceling is done by the worker
 	// even before the server assigning the worker, which makes the server messy.
 	m.Lock()
 	defer m.Unlock()

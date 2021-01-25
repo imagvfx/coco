@@ -10,25 +10,25 @@ type TaskStatus int
 const (
 	TaskWaiting = TaskStatus(iota)
 	TaskRunning
-	TaskCancelled
+	TaskCanceled
 	TaskFailed
 	TaskDone
 )
 
 var leafStr = map[TaskStatus]string{
-	TaskWaiting:   "waiting",
-	TaskRunning:   "running",
-	TaskCancelled: "cancelled",
-	TaskFailed:    "failed",
-	TaskDone:      "done",
+	TaskWaiting:  "waiting",
+	TaskRunning:  "running",
+	TaskCanceled: "canceled",
+	TaskFailed:   "failed",
+	TaskDone:     "done",
 }
 
 var branchStr = map[TaskStatus]string{
-	TaskWaiting:   "waiting",
-	TaskRunning:   "processing",
-	TaskCancelled: "cancelled",
-	TaskFailed:    "blocked",
-	TaskDone:      "done",
+	TaskWaiting:  "waiting",
+	TaskRunning:  "processing",
+	TaskCanceled: "canceled",
+	TaskFailed:   "blocked",
+	TaskDone:     "done",
 }
 
 func (s TaskStatus) String(isLeaf bool) string {
@@ -39,17 +39,17 @@ func (s TaskStatus) String(isLeaf bool) string {
 }
 
 type branchStat struct {
-	nCancelled int
-	nFailed    int
-	nRunning   int
-	nWaiting   int
-	nDone      int
+	nCanceled int
+	nFailed   int
+	nRunning  int
+	nWaiting  int
+	nDone     int
 }
 
 func (st *branchStat) Add(s TaskStatus) {
 	switch s {
-	case TaskCancelled:
-		st.nCancelled += 1
+	case TaskCanceled:
+		st.nCanceled += 1
 	case TaskFailed:
 		st.nFailed += 1
 	case TaskRunning:
@@ -65,8 +65,8 @@ func (st *branchStat) Add(s TaskStatus) {
 
 func (st *branchStat) Sub(s TaskStatus) {
 	switch s {
-	case TaskCancelled:
-		st.nCancelled -= 1
+	case TaskCanceled:
+		st.nCanceled -= 1
 	case TaskFailed:
 		st.nFailed -= 1
 	case TaskRunning:
@@ -81,8 +81,8 @@ func (st *branchStat) Sub(s TaskStatus) {
 }
 
 func (st *branchStat) Status() TaskStatus {
-	if st.nCancelled > 0 {
-		return TaskCancelled
+	if st.nCanceled > 0 {
+		return TaskCanceled
 	}
 	if st.nFailed > 0 {
 		return TaskFailed
@@ -190,8 +190,8 @@ func (t *Task) Pop() (*Task, bool) {
 		if t.parent.SerialSubtasks && t.status != TaskDone {
 			done = false
 		}
-		if t.status == TaskFailed || t.status == TaskCancelled {
-			// When a task failed or cancelled,
+		if t.status == TaskFailed || t.status == TaskCanceled {
+			// When a task failed or canceled,
 			// make the task block any leaf task on the next stages.
 			// For a temporary error, user can restart the task to make it done.
 			done = false
