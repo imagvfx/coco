@@ -68,6 +68,13 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 	// run commands are usually taking long time,
 	// detach it with a goroutine.
 	go func() {
+		defer func() {
+			// wait the next task, whether this task ends with success or not
+			s.Lock()
+			s.runningTaskID = ""
+			s.aborted = false
+			s.Unlock()
+		}()
 		for _, cmd := range in.Cmds {
 			s.Lock()
 			aborted := s.aborted
@@ -89,7 +96,6 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 		// finished running the commands. let the farm knows it.
 		s.Lock()
 		tid := s.runningTaskID
-		s.runningTaskID = ""
 		s.Unlock()
 		err := sendDone(s.farm, s.addr, tid)
 		if err != nil {
