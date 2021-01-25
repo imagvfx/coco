@@ -141,14 +141,18 @@ func (h *jobHeap) Pop() interface{} {
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID   int
+	nextJobID int
+
+	// Job related informations.
+	// When a job is deleted, those related info should be deleted all toghther,
+	// except `jobs` heap. It is expensive to search an item from heap.
+	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
 	job         map[string]*Job
 	jobPriority map[string]int
 	jobBlocked  map[string]bool
-	// jobs may have canceled jobs.
-	// PopTask should handle this properly.
-	jobs         *jobHeap
-	task         map[string]*Task
+	task        map[string]*Task
+	jobs        *jobHeap
+
 	CancelTaskCh chan *Task
 }
 
@@ -266,8 +270,6 @@ func (m *jobManager) Cancel(id string) error {
 	j.WalkLeafTaskFn(func(t *Task) {
 		t.SetStatus(TaskCanceled)
 	})
-	// Delete the job from m.jobs (heap) will be expensive.
-	// Let PopTask do the job.
 	go func() {
 		j.WalkLeafTaskFn(func(t *Task) {
 			m.CancelTaskCh <- t
@@ -294,16 +296,20 @@ func (m *jobManager) Retry(id string) error {
 	return nil
 }
 
+// Delete deletes a job irrecoverablely.
 func (m *jobManager) Delete(id string) error {
 	m.Lock()
 	defer m.Unlock()
-	_, ok := m.job[id]
+	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	delete(m.job, id)
-	// Delete the job from m.jobs (heap) will be expensive.
-	// Let PopTask do the job.
+	delete(m.jobPriority, id)
+	delete(m.jobBlocked, id)
+	j.WalkTaskFn(func(t *Task) {
+		delete(m.task, t.id)
+	})
 	return nil
 }
 
