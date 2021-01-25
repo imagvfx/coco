@@ -54,7 +54,7 @@ func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyR
 			log.Print(err)
 		}
 	}
-	go f.workerman.Ready(w)
+	f.workerman.Ready(w)
 	return &pb.ReadyResponse{}, nil
 }
 
@@ -111,7 +111,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	if err != nil {
 		return &pb.DoneResponse{}, err
 	}
-	go f.workerman.Ready(w)
+	f.workerman.Ready(w)
 	return &pb.DoneResponse{}, nil
 }
 
@@ -134,6 +134,6 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	if err != nil {
 		return &pb.FailedResponse{}, err
 	}
-	go f.workerman.Ready(w)
+	f.workerman.Ready(w)
 	return &pb.FailedResponse{}, nil
 }
