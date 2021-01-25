@@ -15,7 +15,7 @@ type WorkerStatus int
 
 const (
 	WorkerNotFound = WorkerStatus(iota)
-	WorkerIdle
+	WorkerReady
 	WorkerRunning
 )
 
@@ -184,7 +184,7 @@ func (m *workerManager) unassign(taskID string, w *Worker) {
 func (m *workerManager) Ready(w *Worker) {
 	m.Lock()
 	defer m.Unlock()
-	w.status = WorkerIdle
+	w.status = WorkerReady
 	m.workers.Push(w)
 	go func() { m.ReadyCh <- struct{}{} }()
 }

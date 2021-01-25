@@ -48,7 +48,7 @@ func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyR
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
-		w = &Worker{addr: in.Addr, status: WorkerIdle}
+		w = &Worker{addr: in.Addr, status: WorkerReady}
 		err := f.workerman.Add(w)
 		if err != nil {
 			log.Print(err)
