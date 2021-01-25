@@ -1,1 +1,4 @@
+authorization
+subcommand: list
+subcommand: delete
 
