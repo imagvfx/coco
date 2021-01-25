@@ -66,7 +66,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 				// find next task.
 				t = jobman.PopTask()
 				if t == nil {
-					workerman.Ready(w)
+					workerman.Push(w)
 					return
 				}
 				// TODO: what if the job is deleted already?

@@ -195,6 +195,12 @@ func (m *workerManager) Pop() *Worker {
 	return m.workers.Pop()
 }
 
+func (m *workerManager) Push(w *Worker) {
+	m.Lock()
+	defer m.Unlock()
+	m.workers.Push(w)
+}
+
 func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
