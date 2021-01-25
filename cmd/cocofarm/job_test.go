@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-var job = &Job{
+var job = initJob(&Job{
 	Task: &Task{
 		Title:          "root",
 		SerialSubtasks: true,
@@ -60,14 +60,10 @@ var job = &Job{
 			},
 		},
 	},
-}
-
-func init() {
-	initJob(job)
-}
+})
 
 func TestJobManagerPopTask(t *testing.T) {
-	j1 := &Job{
+	j1 := initJob(&Job{
 		Task: &Task{
 			Priority: 1,
 			Subtasks: []*Task{
@@ -84,9 +80,8 @@ func TestJobManagerPopTask(t *testing.T) {
 				},
 			},
 		},
-	}
-	initJob(j1)
-	j2 := &Job{
+	})
+	j2 := initJob(&Job{
 		Task: &Task{
 			Priority: 2,
 			Subtasks: []*Task{
@@ -103,8 +98,7 @@ func TestJobManagerPopTask(t *testing.T) {
 				},
 			},
 		},
-	}
-	initJob(j2)
+	})
 	m := newJobManager()
 	m.Add(j1)
 	m.Add(j2)
