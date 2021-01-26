@@ -71,7 +71,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 				}
 				// TODO: what if the job is deleted already?
 				t.job.Lock()
-				cancel := len(t.Commands) == 0 || t.Status() == TaskCanceled
+				cancel := len(t.Commands) == 0 || t.Status() == TaskFailed // eg. user canceled this task
 				t.job.Unlock()
 				if cancel {
 					continue

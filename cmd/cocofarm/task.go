@@ -10,46 +10,28 @@ type TaskStatus int
 const (
 	TaskWaiting = TaskStatus(iota)
 	TaskRunning
-	TaskCanceled
 	TaskFailed
 	TaskDone
 )
 
-var leafStr = map[TaskStatus]string{
-	TaskWaiting:  "waiting",
-	TaskRunning:  "running",
-	TaskCanceled: "canceled",
-	TaskFailed:   "failed",
-	TaskDone:     "done",
-}
-
-var branchStr = map[TaskStatus]string{
-	TaskWaiting:  "waiting",
-	TaskRunning:  "processing",
-	TaskCanceled: "canceled",
-	TaskFailed:   "blocked",
-	TaskDone:     "done",
-}
-
-func (s TaskStatus) String(isLeaf bool) string {
-	if isLeaf {
-		return leafStr[s]
-	}
-	return branchStr[s]
+func (s TaskStatus) String() string {
+	return map[TaskStatus]string{
+		TaskWaiting: "waiting",
+		TaskRunning: "running",
+		TaskFailed:  "failed",
+		TaskDone:    "done",
+	}[s]
 }
 
 type branchStat struct {
-	nCanceled int
-	nFailed   int
-	nRunning  int
-	nWaiting  int
-	nDone     int
+	nFailed  int
+	nRunning int
+	nWaiting int
+	nDone    int
 }
 
 func (st *branchStat) Add(s TaskStatus) {
 	switch s {
-	case TaskCanceled:
-		st.nCanceled += 1
 	case TaskFailed:
 		st.nFailed += 1
 	case TaskRunning:
@@ -65,8 +47,6 @@ func (st *branchStat) Add(s TaskStatus) {
 
 func (st *branchStat) Sub(s TaskStatus) {
 	switch s {
-	case TaskCanceled:
-		st.nCanceled -= 1
 	case TaskFailed:
 		st.nFailed -= 1
 	case TaskRunning:
@@ -81,9 +61,6 @@ func (st *branchStat) Sub(s TaskStatus) {
 }
 
 func (st *branchStat) Status() TaskStatus {
-	if st.nCanceled > 0 {
-		return TaskCanceled
-	}
 	if st.nFailed > 0 {
 		return TaskFailed
 	}
@@ -172,7 +149,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	}{
 		Title:          t.Title,
 		ID:             t.id,
-		Status:         t.Status().String(t.IsLeaf()),
+		Status:         t.Status().String(),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
 		SerialSubtasks: t.SerialSubtasks,
@@ -190,9 +167,8 @@ func (t *Task) Pop() (*Task, bool) {
 		if t.parent.SerialSubtasks && t.status != TaskDone {
 			done = false
 		}
-		if t.status == TaskFailed || t.status == TaskCanceled {
-			// When a task failed or canceled,
-			// make the task block any leaf task on the next stages.
+		if t.status == TaskFailed {
+			// Make the task block any leaf task on the next stages.
 			// For a temporary error, user can restart the task to make it done.
 			done = false
 		}

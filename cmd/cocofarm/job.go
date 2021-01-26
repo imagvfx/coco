@@ -48,7 +48,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		SerialSubtasks  bool
 	}{
 		ID:              j.id,
-		Status:          j.Status().String(j.IsLeaf()),
+		Status:          j.Status().String(),
 		Title:           j.Title,
 		Priority:        j.Priority,
 		CurrentPriority: j.CurrentPriority,
@@ -251,8 +251,8 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 }
 
 // Cancel cancels a job.
-// Running tasks of the job will be canceled and remaining tasks
-// will not be processed.
+// Both running and waiting tasks of the job will be marked as failed,
+// and commands executing from running tasks will be canceled right away.
 func (m *jobManager) Cancel(id string) error {
 	m.Lock()
 	defer m.Unlock()
@@ -262,9 +262,6 @@ func (m *jobManager) Cancel(id string) error {
 	}
 	j.Lock()
 	defer j.Unlock()
-	if j.Status() == TaskCanceled {
-		return fmt.Errorf("job has already canceled: %v", id)
-	}
 	if j.Status() == TaskDone {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
@@ -277,7 +274,7 @@ func (m *jobManager) Cancel(id string) error {
 			}()
 		}
 		if t.status != TaskDone {
-			t.SetStatus(TaskCanceled)
+			t.SetStatus(TaskFailed)
 		}
 	})
 	return nil
@@ -329,10 +326,6 @@ func (m *jobManager) PopTask() *Task {
 		_, ok := m.job[j.id]
 		if !ok {
 			// the job deleted
-			continue
-		}
-		if j.Status() == TaskCanceled {
-			// the job canceled
 			continue
 		}
 		if j.Status() == TaskFailed {
