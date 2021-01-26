@@ -27,6 +27,10 @@ type server struct {
 	// farm is where the server is try to send grpc requests.
 	farm string
 
+	// farmClientConn is a connection to the farm, which is
+	// needed for talking, not for listening.
+	farmClientConn *grpc.ClientConn
+
 	// runningTaskID is Task's id that is currently processed.
 	// when the worker is in idle, this will be empty string
 	runningTaskID string
@@ -88,7 +92,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 			s.Unlock()
 			out, err := c.CombinedOutput()
 			if err != nil {
-				sendFailed(s.farm, s.addr, in.Id)
+				s.sendFailed(in.Id)
 				return
 			}
 			log.Print(string(out))
@@ -97,7 +101,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 		s.Lock()
 		tid := s.runningTaskID
 		s.Unlock()
-		err := sendDone(s.farm, s.addr, tid)
+		err := s.sendDone(tid)
 		if err != nil {
 			log.Print(err)
 		}
@@ -111,70 +115,52 @@ func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelRe
 	if err != nil {
 		return &pb.CancelResponse{}, err
 	}
-	go sendReady(s.farm, s.addr)
+	go s.sendReady()
 	return &pb.CancelResponse{}, nil
 }
 
-func sendReady(farm, addr string) error {
-	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	c := pb.NewFarmClient(conn)
+func (s *server) sendReady() error {
+	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req := &pb.ReadyRequest{Addr: addr}
-	_, err = c.Ready(ctx, req)
+	req := &pb.ReadyRequest{Addr: s.addr}
+	_, err := c.Ready(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendDone(farm, addr string, taskID string) error {
-	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	c := pb.NewFarmClient(conn)
+func (s *server) sendDone(taskID string) error {
+	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req := &pb.DoneRequest{Addr: addr, TaskId: taskID}
-	_, err = c.Done(ctx, req)
+	req := &pb.DoneRequest{Addr: s.addr, TaskId: taskID}
+	_, err := c.Done(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendFailed(farm, addr string, taskID string) error {
-	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	c := pb.NewFarmClient(conn)
+func (s *server) sendFailed(taskID string) error {
+	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req := &pb.FailedRequest{Addr: addr, TaskId: taskID}
-	_, err = c.Failed(ctx, req)
+	req := &pb.FailedRequest{Addr: s.addr, TaskId: taskID}
+	_, err := c.Failed(ctx, req)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func handshakeWithFarm(addr, farm string, n int) {
+func (s *server) handshakeWithFarm(n int) {
 	for i := 0; i < n; i++ {
-		err := sendReady(farm, addr)
+		err := s.sendReady()
 		if err == nil {
 			return
 		}
@@ -182,22 +168,16 @@ func handshakeWithFarm(addr, farm string, n int) {
 		log.Print(err)
 		time.Sleep(30 * time.Second)
 	}
-	log.Fatalf("cannot find the farm: %v", farm)
+	log.Fatalf("cannot find the farm: %v", s.farm)
 }
 
-func bye(addr, farm string) error {
-	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	c := pb.NewFarmClient(conn)
+func (s *server) bye() error {
+	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	req := &pb.ByeRequest{Addr: addr}
-	_, err = c.Bye(ctx, req)
+	req := &pb.ByeRequest{Addr: s.addr}
+	_, err := c.Bye(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -217,25 +197,32 @@ func main() {
 	flag.StringVar(&farm, "farm", defaultFarm, "farm address")
 	flag.Parse()
 
+	conn, err := grpc.Dial(farm, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+	if err != nil {
+		log.Fatalf("failed to connect to farm: %v", err)
+	}
+	defer conn.Close()
+	srv := &server{addr: addr, farm: farm, farmClientConn: conn}
+
 	go func() {
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
 			log.Fatalf("failed to listen: %v", err)
 		}
 		s := grpc.NewServer()
-		pb.RegisterWorkerServer(s, &server{addr: addr, farm: farm})
+		pb.RegisterWorkerServer(s, srv)
 		if err := s.Serve(lis); err != nil {
 			log.Fatalf("failed to serve: %v", err)
 		}
 	}()
 
-	handshakeWithFarm(addr, farm, 5)
+	srv.handshakeWithFarm(5)
 
 	killed := make(chan os.Signal, 1)
 	signal.Notify(killed, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-killed
-		err := bye(addr, farm)
+		err := srv.bye()
 		if err != nil {
 			log.Fatalf("disconnection message was not reached to the farm")
 		}
