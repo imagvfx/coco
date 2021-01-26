@@ -148,6 +148,7 @@ func (m *workerManager) Ready(w *Worker) {
 	m.Lock()
 	defer m.Unlock()
 	w.status = WorkerReady
+	w.task = ""
 	m.workers.Push(w)
 	go func() { m.ReadyCh <- struct{}{} }()
 }
