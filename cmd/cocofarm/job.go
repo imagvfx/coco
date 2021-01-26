@@ -153,6 +153,7 @@ type jobManager struct {
 	task        map[string]*Task
 	jobs        *jobHeap
 
+	assignee     map[string]*Worker
 	CancelTaskCh chan *Task
 }
 
@@ -163,6 +164,7 @@ func newJobManager() *jobManager {
 	m.jobPriority = make(map[string]int)
 	m.jobs = newJobHeap(m.jobPriority)
 	m.task = make(map[string]*Task)
+	m.assignee = make(map[string]*Worker)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -355,4 +357,37 @@ func (m *jobManager) PopTask() *Task {
 
 		return t
 	}
+}
+
+func (m *jobManager) Assign(taskID string, w *Worker) error {
+	m.Lock()
+	defer m.Unlock()
+	return m.assign(taskID, w)
+}
+
+func (m *jobManager) assign(taskID string, w *Worker) error {
+	a, ok := m.assignee[taskID]
+	if ok {
+		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
+	}
+	m.assignee[taskID] = w
+	return nil
+}
+
+func (m *jobManager) Unassign(taskID string, w *Worker) error {
+	m.Lock()
+	defer m.Unlock()
+	return m.unassign(taskID, w)
+}
+
+func (m *jobManager) unassign(taskID string, w *Worker) error {
+	a, ok := m.assignee[taskID]
+	if !ok {
+		return fmt.Errorf("task isn't assigned to any worker: %v", taskID)
+	}
+	if w != a {
+		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
+	}
+	delete(m.assignee, taskID)
+	return nil
 }

@@ -68,19 +68,14 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 		return &pb.ByeResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
 	if w.task != "" {
-		err := f.workerman.Unassign(w.task, w)
+		f.jobman.Lock()
+		defer f.jobman.Unlock()
+		err := f.jobman.unassign(w.task, w)
 		if err != nil {
-			// it's farm's error
+			// It's farm's error, no need to send back the error to worker.
 			log.Print(err)
 		} else {
-			f.jobman.Lock()
-			defer f.jobman.Unlock()
-			t, ok := f.jobman.task[w.task]
-			if !ok {
-				err := fmt.Errorf("task not found: %v", w.task)
-				fmt.Print(err)
-				return &pb.ByeResponse{}, err
-			}
+			t := f.jobman.task[w.task]
 			t.job.Lock()
 			defer t.job.Unlock()
 			t.SetStatus(TaskFailed)
@@ -112,7 +107,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	if w == nil {
 		return &pb.DoneResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	err := f.workerman.Unassign(in.TaskId, w)
+	err := f.jobman.unassign(in.TaskId, w)
 	if err != nil {
 		return &pb.DoneResponse{}, err
 	}
@@ -135,7 +130,7 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	if w == nil {
 		return &pb.FailedResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	err := f.workerman.Unassign(in.TaskId, w)
+	err := f.jobman.unassign(in.TaskId, w)
 	if err != nil {
 		return &pb.FailedResponse{}, err
 	}

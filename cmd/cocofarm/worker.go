@@ -17,10 +17,13 @@ const (
 	WorkerNotFound = WorkerStatus(iota)
 	WorkerReady
 	WorkerRunning
+	WorkerCooling
 )
 
 // Worker is a worker who continuously takes a task and run it's commands.
 type Worker struct {
+	sync.Mutex
+
 	// addr is the worker's listen addr.
 	addr string
 
@@ -99,8 +102,7 @@ type workerManager struct {
 	worker  map[string]*Worker
 	workers *uniqueWorkerQueue
 	// ReadyCh tries fast matching of a worker and a task.
-	ReadyCh  chan struct{}
-	assignee map[string]*Worker
+	ReadyCh chan struct{}
 }
 
 func newWorkerManager() *workerManager {
@@ -108,7 +110,6 @@ func newWorkerManager() *workerManager {
 	m.worker = make(map[string]*Worker)
 	m.workers = newUniqueWorkerQueue()
 	m.ReadyCh = make(chan struct{})
-	m.assignee = make(map[string]*Worker)
 	return m
 }
 
@@ -139,44 +140,6 @@ func (m *workerManager) FindByAddr(addr string) *Worker {
 	m.Lock()
 	defer m.Unlock()
 	return m.worker[addr]
-}
-
-func (m *workerManager) Assign(taskID string, w *Worker) error {
-	m.Lock()
-	defer m.Unlock()
-	a, ok := m.assignee[taskID]
-	if ok {
-		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
-	}
-	m.assign(taskID, w)
-	return nil
-}
-
-func (m *workerManager) assign(taskID string, w *Worker) {
-	w.status = WorkerRunning
-	w.task = taskID
-	m.assignee[taskID] = w
-}
-
-func (m *workerManager) Unassign(taskID string, w *Worker) error {
-	m.Lock()
-	defer m.Unlock()
-	a, ok := m.assignee[taskID]
-	if !ok {
-		return fmt.Errorf("task isn't assigned to any worker: %v", taskID)
-	}
-	if w != a {
-		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
-	}
-	m.unassign(taskID, w)
-	return nil
-}
-
-func (m *workerManager) unassign(taskID string, w *Worker) {
-	w.task = ""
-	delete(m.assignee, taskID)
-	// Don't make the worker idle/ready, as it only can be set by the worker.
-	// see comment on Waiting.
 }
 
 // Ready reports that a worker is ready for a new task.
@@ -229,7 +192,8 @@ func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 	if err != nil {
 		return err
 	}
-	m.assign(t.id, w)
+	w.status = WorkerRunning
+	w.task = t.id
 	return nil
 }
 
@@ -256,6 +220,7 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	if err != nil {
 		return err
 	}
-	m.unassign(t.id, w)
+	w.status = WorkerCooling
+	w.task = ""
 	return nil
 }

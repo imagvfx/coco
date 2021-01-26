@@ -83,7 +83,9 @@ func matching(jobman *jobManager, workerman *workerManager) {
 				// TODO: currently, it skips the commands if failed to communicate with the worker.
 				// is it right decision?
 				log.Print(err)
+				return
 			}
+			jobman.Assign(t.id, w)
 			// worker got the task.
 			t.job.Lock()
 			t.SetStatus(TaskRunning)
@@ -101,14 +103,18 @@ func matching(jobman *jobManager, workerman *workerManager) {
 func canceling(jobman *jobManager, workerman *workerManager) {
 	cancel := func() {
 		t := <-jobman.CancelTaskCh
-		w, ok := workerman.assignee[t.id]
+		jobman.Lock()
+		defer jobman.Unlock()
+		w, ok := jobman.assignee[t.id]
 		if !ok {
 			return
 		}
 		err := workerman.sendCancelTask(w, t)
 		if err != nil {
 			log.Print(err)
+			return
 		}
+		jobman.unassign(t.id, w)
 	}
 
 	go func() {
