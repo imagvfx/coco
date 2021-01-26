@@ -27,9 +27,9 @@ type server struct {
 	// farm is where the server is try to send grpc requests.
 	farm string
 
-	// farmClientConn is a connection to the farm, which is
+	// farmClient is a connection to the farm, which is
 	// needed for talking, not for listening.
-	farmClientConn *grpc.ClientConn
+	farmClient pb.FarmClient
 
 	// runningTaskID is Task's id that is currently processed.
 	// when the worker is in idle, this will be empty string
@@ -120,12 +120,11 @@ func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelRe
 }
 
 func (s *server) sendReady() error {
-	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	req := &pb.ReadyRequest{Addr: s.addr}
-	_, err := c.Ready(ctx, req)
+	_, err := s.farmClient.Ready(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -133,12 +132,11 @@ func (s *server) sendReady() error {
 }
 
 func (s *server) sendDone(taskID string) error {
-	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	req := &pb.DoneRequest{Addr: s.addr, TaskId: taskID}
-	_, err := c.Done(ctx, req)
+	_, err := s.farmClient.Done(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -146,12 +144,11 @@ func (s *server) sendDone(taskID string) error {
 }
 
 func (s *server) sendFailed(taskID string) error {
-	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	req := &pb.FailedRequest{Addr: s.addr, TaskId: taskID}
-	_, err := c.Failed(ctx, req)
+	_, err := s.farmClient.Failed(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -172,12 +169,11 @@ func (s *server) handshakeWithFarm(n int) {
 }
 
 func (s *server) bye() error {
-	c := pb.NewFarmClient(s.farmClientConn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	req := &pb.ByeRequest{Addr: s.addr}
-	_, err := c.Bye(ctx, req)
+	_, err := s.farmClient.Bye(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -202,7 +198,8 @@ func main() {
 		log.Fatalf("failed to connect to farm: %v", err)
 	}
 	defer conn.Close()
-	srv := &server{addr: addr, farm: farm, farmClientConn: conn}
+	cli := pb.NewFarmClient(conn)
+	srv := &server{addr: addr, farm: farm, farmClient: cli}
 
 	go func() {
 		lis, err := net.Listen("tcp", addr)
