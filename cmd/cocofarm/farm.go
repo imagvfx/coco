@@ -75,7 +75,12 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 		} else {
 			f.jobman.Lock()
 			defer f.jobman.Unlock()
-			t := f.jobman.task[w.task]
+			t, ok := f.jobman.task[w.task]
+			if !ok {
+				err := fmt.Errorf("task not found: %v", w.task)
+				fmt.Print(err)
+				return &pb.ByeResponse{}, err
+			}
 			t.job.Lock()
 			defer t.job.Unlock()
 			t.SetStatus(TaskFailed)
