@@ -54,6 +54,19 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	id, err := strconv.Atoi(r.Form.Get("id"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("job id is not valid: %v", err), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Delete(JobID(id))
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("%v", err))
+	}
+}
+
 func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id, err := strconv.Atoi(r.Form.Get("id"))

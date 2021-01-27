@@ -36,6 +36,7 @@ func main() {
 	mux.HandleFunc("/api/order", api.handleOrder)
 	mux.HandleFunc("/api/cancel", api.handleCancel)
 	mux.HandleFunc("/api/retry", api.handleRetry)
+	mux.HandleFunc("/api/delete", api.handleDelete)
 	mux.HandleFunc("/api/job", api.handleJob)
 	mux.HandleFunc("/api/list", api.handleList)
 

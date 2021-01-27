@@ -20,6 +20,8 @@ func main() {
 		cancel(args[1:])
 	case "retry":
 		retry(args[1:])
+	case "delete":
+		delete(args[1:])
 	case "tree":
 		tree(args[1:])
 	case "list":
