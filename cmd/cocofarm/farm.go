@@ -91,7 +91,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.task[in.TaskId]
+	t := f.jobman.task[TaskID(in.TaskId)]
 	t.job.Lock()
 	defer t.job.Unlock()
 	t.SetStatus(TaskDone)
@@ -107,7 +107,7 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	if w == nil {
 		return &pb.DoneResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	err := f.jobman.unassign(in.TaskId, w)
+	err := f.jobman.unassign(TaskID(in.TaskId), w)
 	if err != nil {
 		return &pb.DoneResponse{}, err
 	}
@@ -121,7 +121,7 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	log.Printf("failed: %v %v", in.Addr, in.TaskId)
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.task[in.TaskId]
+	t := f.jobman.task[TaskID(in.TaskId)]
 	t.job.Lock()
 	defer t.job.Unlock()
 	t.SetStatus(TaskFailed)
@@ -130,7 +130,7 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	if w == nil {
 		return &pb.FailedResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
 	}
-	err := f.jobman.unassign(in.TaskId, w)
+	err := f.jobman.unassign(TaskID(in.TaskId), w)
 	if err != nil {
 		return &pb.FailedResponse{}, err
 	}

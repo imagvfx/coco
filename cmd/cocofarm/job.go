@@ -151,10 +151,10 @@ type jobManager struct {
 	job         map[JobID]*Job
 	jobPriority map[JobID]int
 	jobBlocked  map[JobID]bool
-	task        map[string]*Task
+	task        map[TaskID]*Task
 	jobs        *jobHeap
 
-	assignee     map[string]*Worker
+	assignee     map[TaskID]*Worker
 	CancelTaskCh chan *Task
 }
 
@@ -164,8 +164,8 @@ func newJobManager() *jobManager {
 	m.jobBlocked = make(map[JobID]bool)
 	m.jobPriority = make(map[JobID]int)
 	m.jobs = newJobHeap(m.jobPriority)
-	m.task = make(map[string]*Task)
-	m.assignee = make(map[string]*Worker)
+	m.task = make(map[TaskID]*Task)
+	m.assignee = make(map[TaskID]*Worker)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -176,7 +176,7 @@ func (m *jobManager) Get(id JobID) *Job {
 	return m.job[id]
 }
 
-func (m *jobManager) GetTask(id string) *Task {
+func (m *jobManager) GetTask(id TaskID) *Task {
 	m.Lock()
 	defer m.Unlock()
 	return m.task[id]
@@ -227,7 +227,7 @@ func initJob(j *Job) *Job {
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
-	t.id = xid.New().String()
+	t.id = TaskID(xid.New().String())
 	t.job = j
 	t.parent = parent
 	t.nthChild = nth
@@ -360,35 +360,35 @@ func (m *jobManager) PopTask() *Task {
 	}
 }
 
-func (m *jobManager) Assign(taskID string, w *Worker) error {
+func (m *jobManager) Assign(id TaskID, w *Worker) error {
 	m.Lock()
 	defer m.Unlock()
-	return m.assign(taskID, w)
+	return m.assign(id, w)
 }
 
-func (m *jobManager) assign(taskID string, w *Worker) error {
-	a, ok := m.assignee[taskID]
+func (m *jobManager) assign(id TaskID, w *Worker) error {
+	a, ok := m.assignee[id]
 	if ok {
-		return fmt.Errorf("task is assigned to a different worker: %v - %v", taskID, a.addr)
+		return fmt.Errorf("task is assigned to a different worker: %v - %v", id, a.addr)
 	}
-	m.assignee[taskID] = w
+	m.assignee[id] = w
 	return nil
 }
 
-func (m *jobManager) Unassign(taskID string, w *Worker) error {
+func (m *jobManager) Unassign(id TaskID, w *Worker) error {
 	m.Lock()
 	defer m.Unlock()
-	return m.unassign(taskID, w)
+	return m.unassign(id, w)
 }
 
-func (m *jobManager) unassign(taskID string, w *Worker) error {
-	a, ok := m.assignee[taskID]
+func (m *jobManager) unassign(id TaskID, w *Worker) error {
+	a, ok := m.assignee[id]
 	if !ok {
-		return fmt.Errorf("task isn't assigned to any worker: %v", taskID)
+		return fmt.Errorf("task isn't assigned to any worker: %v", id)
 	}
 	if w != a {
-		return fmt.Errorf("task is assigned to a different worker: %v", taskID)
+		return fmt.Errorf("task is assigned to a different worker: %v", id)
 	}
-	delete(m.assignee, taskID)
+	delete(m.assignee, id)
 	return nil
 }

@@ -32,7 +32,7 @@ type Worker struct {
 
 	// task directs a task the worker is currently working.
 	// The worker is in idle when it is empty string.
-	task string
+	task TaskID
 }
 
 type uniqueWorkerQueue struct {
@@ -177,7 +177,7 @@ func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.RunRequest{}
-	req.Id = t.id
+	req.Id = string(t.id)
 	for _, c := range t.Commands {
 		reqCmd := &pb.Command{
 			Args: c,
@@ -211,7 +211,7 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.CancelRequest{}
-	req.Id = t.id
+	req.Id = string(t.id)
 
 	// Lock before we send cancel message, in case the canceling is done by the worker
 	// even before the server assigning the worker, which makes the server messy.
