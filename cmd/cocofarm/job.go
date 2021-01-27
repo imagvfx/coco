@@ -300,7 +300,7 @@ func (m *jobManager) Retry(id string) error {
 	return nil
 }
 
-// Delete deletes a job irrecoverablely.
+// Delete deletes a job irrecoverably.
 func (m *jobManager) Delete(id string) error {
 	m.Lock()
 	defer m.Unlock()
