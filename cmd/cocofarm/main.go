@@ -37,6 +37,7 @@ func main() {
 	mux.HandleFunc("/api/cancel", api.handleCancel)
 	mux.HandleFunc("/api/retry", api.handleRetry)
 	mux.HandleFunc("/api/job", api.handleJob)
+	mux.HandleFunc("/api/list", api.handleList)
 
 	log.Fatal(http.ListenAndServe(addr, mux))
 }

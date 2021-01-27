@@ -22,6 +22,8 @@ func main() {
 		retry(args[1:])
 	case "tree":
 		tree(args[1:])
+	case "list":
+		list(args[1:])
 	default:
 		log.Fatalf("unknown subcommand: %s", subcmd)
 	}

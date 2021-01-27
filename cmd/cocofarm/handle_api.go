@@ -67,9 +67,16 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	enc := json.NewEncoder(w)
-	j.Lock()
-	defer j.Unlock()
 	err = enc.Encode(j)
+	if err != nil {
+		io.WriteString(w, fmt.Sprintf("%v", err))
+	}
+}
+
+func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
+	jobs := h.jobman.Jobs()
+	enc := json.NewEncoder(w)
+	err := enc.Encode(jobs)
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}

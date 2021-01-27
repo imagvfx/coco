@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/rs/xid"
@@ -39,6 +40,11 @@ type Job struct {
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
+	// We need to lock the job before marshal it.
+	// Of course, we can lock the job at the call site.
+	// Unfotunately I couldn't find the way to handle marshaling []*Job gracefully.
+	j.Lock()
+	defer j.Unlock()
 	m := struct {
 		ID              JobID
 		Status          string
@@ -251,6 +257,19 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 	}
 	t.Stat.nWaiting = i - iOld
 	return i
+}
+
+func (m *jobManager) Jobs() []*Job {
+	m.Lock()
+	defer m.Unlock()
+	jobs := make([]*Job, 0, len(m.job))
+	for _, j := range m.job {
+		jobs = append(jobs, j)
+	}
+	sort.Slice(jobs, func(i, j int) bool {
+		return jobs[i].id < jobs[j].id
+	})
+	return jobs
 }
 
 // Cancel cancels a job.
