@@ -12,7 +12,7 @@ import (
 )
 
 type TreeJob struct {
-	ID       string
+	ID       int
 	Status   string
 	Title    string
 	Subtasks []*TreeTask

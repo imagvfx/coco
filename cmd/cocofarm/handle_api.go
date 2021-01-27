@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type apiHandler struct {
@@ -24,13 +25,17 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
-	io.WriteString(w, id)
+	io.WriteString(w, fmt.Sprintf("%v", id))
 }
 
 func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id := r.Form.Get("id")
-	err := h.jobman.Cancel(id)
+	id, err := strconv.Atoi(r.Form.Get("id"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("job id is not valid: %v", err), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Cancel(JobID(id))
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
@@ -38,8 +43,12 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id := r.Form.Get("id")
-	err := h.jobman.Retry(id)
+	id, err := strconv.Atoi(r.Form.Get("id"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("job id is not valid: %v", err), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Retry(JobID(id))
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}
@@ -47,8 +56,12 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id := r.Form.Get("id")
-	j := h.jobman.Get(id)
+	id, err := strconv.Atoi(r.Form.Get("id"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("job id is not valid: %v", err), http.StatusBadRequest)
+		return
+	}
+	j := h.jobman.Get(JobID(id))
 	if j == nil {
 		http.Error(w, fmt.Sprintf("job not found by id: %v", id), http.StatusBadRequest)
 		return
@@ -56,7 +69,7 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	j.Lock()
 	defer j.Unlock()
-	err := enc.Encode(j)
+	err = enc.Encode(j)
 	if err != nil {
 		io.WriteString(w, fmt.Sprintf("%v", err))
 	}

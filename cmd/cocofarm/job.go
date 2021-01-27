@@ -4,11 +4,12 @@ import (
 	"container/heap"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"sync"
 
 	"github.com/rs/xid"
 )
+
+type JobID int
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
@@ -18,7 +19,7 @@ type Job struct {
 	sync.Mutex
 
 	// id is the order number of the job.
-	id string
+	id JobID
 
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
@@ -39,7 +40,7 @@ type Job struct {
 
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
-		ID              string
+		ID              JobID
 		Status          string
 		Title           string
 		Priority        int
@@ -98,10 +99,10 @@ func walkFromFn(t *Task, fn func(t *Task)) {
 
 type jobHeap struct {
 	heap     []*Job
-	priority map[string]int
+	priority map[JobID]int
 }
 
-func newJobHeap(priority map[string]int) *jobHeap {
+func newJobHeap(priority map[JobID]int) *jobHeap {
 	return &jobHeap{
 		heap:     make([]*Job, 0),
 		priority: priority,
@@ -141,15 +142,15 @@ func (h *jobHeap) Pop() interface{} {
 
 type jobManager struct {
 	sync.Mutex
-	nextJobID int
+	nextJobID JobID
 
 	// Job related informations.
 	// When a job is deleted, those related info should be deleted all toghther,
 	// except `jobs` heap. It is expensive to search an item from heap.
 	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
-	job         map[string]*Job
-	jobPriority map[string]int
-	jobBlocked  map[string]bool
+	job         map[JobID]*Job
+	jobPriority map[JobID]int
+	jobBlocked  map[JobID]bool
 	task        map[string]*Task
 	jobs        *jobHeap
 
@@ -159,9 +160,9 @@ type jobManager struct {
 
 func newJobManager() *jobManager {
 	m := &jobManager{}
-	m.job = make(map[string]*Job)
-	m.jobBlocked = make(map[string]bool)
-	m.jobPriority = make(map[string]int)
+	m.job = make(map[JobID]*Job)
+	m.jobBlocked = make(map[JobID]bool)
+	m.jobPriority = make(map[JobID]int)
 	m.jobs = newJobHeap(m.jobPriority)
 	m.task = make(map[string]*Task)
 	m.assignee = make(map[string]*Worker)
@@ -169,7 +170,7 @@ func newJobManager() *jobManager {
 	return m
 }
 
-func (m *jobManager) Get(id string) *Job {
+func (m *jobManager) Get(id JobID) *Job {
 	m.Lock()
 	defer m.Unlock()
 	return m.job[id]
@@ -181,16 +182,16 @@ func (m *jobManager) GetTask(id string) *Task {
 	return m.task[id]
 }
 
-func (m *jobManager) Add(j *Job) (string, error) {
+func (m *jobManager) Add(j *Job) (JobID, error) {
 	if j == nil {
-		return "", fmt.Errorf("nil job cannot be added")
+		return -1, fmt.Errorf("nil job cannot be added")
 	}
 	if len(j.Subtasks) == 0 {
-		return "", fmt.Errorf("a job should have at least one subtask")
+		return -1, fmt.Errorf("a job should have at least one subtask")
 	}
 	initJob(j)
 
-	j.id = strconv.Itoa(m.nextJobID)
+	j.id = m.nextJobID
 	m.nextJobID++
 
 	m.Lock()
@@ -255,7 +256,7 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 // Cancel cancels a job.
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
-func (m *jobManager) Cancel(id string) error {
+func (m *jobManager) Cancel(id JobID) error {
 	m.Lock()
 	defer m.Unlock()
 	j, ok := m.job[id]
@@ -282,7 +283,7 @@ func (m *jobManager) Cancel(id string) error {
 	return nil
 }
 
-func (m *jobManager) Retry(id string) error {
+func (m *jobManager) Retry(id JobID) error {
 	m.Lock()
 	defer m.Unlock()
 	j, ok := m.job[id]
@@ -301,7 +302,7 @@ func (m *jobManager) Retry(id string) error {
 }
 
 // Delete deletes a job irrecoverably.
-func (m *jobManager) Delete(id string) error {
+func (m *jobManager) Delete(id JobID) error {
 	m.Lock()
 	defer m.Unlock()
 	j, ok := m.job[id]
