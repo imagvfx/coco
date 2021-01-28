@@ -226,6 +226,9 @@ func (m *jobManager) Add(j *Job) (JobID, error) {
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
 func initJob(j *Job) *Job {
+	if j.Title == "" {
+		j.Title = "untitled"
+	}
 	initJobTasks(j.Task, j, nil, 0, 0)
 	return j
 }
