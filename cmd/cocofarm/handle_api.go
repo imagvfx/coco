@@ -18,12 +18,14 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	j := &Job{}
 	err := dec.Decode(j)
 	if err != nil {
-		log.Print(err)
+		http.Error(w, fmt.Sprintf("invalid json: %v"), http.StatusBadRequest)
+		return
 	}
 
 	id, err := h.jobman.Add(j)
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	io.WriteString(w, fmt.Sprintf("%v", id))
 }
@@ -37,7 +39,8 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.jobman.Cancel(JobID(id))
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 }
 
@@ -50,7 +53,8 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.jobman.Retry(JobID(id))
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 }
 
@@ -63,7 +67,8 @@ func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.jobman.Delete(JobID(id))
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 }
 
@@ -82,7 +87,9 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	err = enc.Encode(j)
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		log.Print(err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -91,6 +98,8 @@ func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	err := enc.Encode(jobs)
 	if err != nil {
-		io.WriteString(w, fmt.Sprintf("%v", err))
+		log.Print(err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
 	}
 }
