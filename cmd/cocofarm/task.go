@@ -238,6 +238,11 @@ func (t *Task) SetStatus(s TaskStatus) {
 	}
 	old := t.status
 	t.status = s
+	if s == TaskWaiting {
+		// retry the task
+		// TODO: maybe better not to use popIdx for leaf tasks. investigate.
+		t.popIdx = 0
+	}
 	parent := t.parent
 	child := t
 	for parent != nil {
