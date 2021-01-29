@@ -5,12 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/rs/xid"
 )
 
 type JobID int
+
+type JobFilter struct {
+	Tag string
+}
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
@@ -37,6 +42,8 @@ type Job struct {
 
 	// CurrentPriority is the job's task priority waiting at the time.
 	CurrentPriority int
+
+	Tags []string
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
@@ -192,8 +199,9 @@ func (m *jobManager) Add(j *Job) (JobID, error) {
 	if j == nil {
 		return -1, fmt.Errorf("nil job cannot be added")
 	}
-	if len(j.Subtasks) == 0 {
-		return -1, fmt.Errorf("a job should have at least one subtask")
+	err := j.Validate()
+	if err != nil {
+		return -1, err
 	}
 	initJob(j)
 
@@ -222,13 +230,31 @@ func (m *jobManager) Add(j *Job) (JobID, error) {
 	return j.id, nil
 }
 
+// Validate validates a raw Job that is sended from user.
+func (j *Job) Validate() error {
+	if len(j.Subtasks) == 0 {
+		return fmt.Errorf("a job should have at least one subtask")
+	}
+	if j.Title == "" {
+		j.Title = "untitled"
+	}
+	for i, t := range j.Tags {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		if strings.Contains(t, " ") {
+			return fmt.Errorf("a tag shouldn't have space in it")
+		}
+		j.Tags[i] = t
+	}
+	return nil
+}
+
 // initJob inits a job's tasks.
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
 func initJob(j *Job) *Job {
-	if j.Title == "" {
-		j.Title = "untitled"
-	}
 	initJobTasks(j.Task, j, nil, 0, 0)
 	return j
 }
@@ -262,12 +288,27 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 	return i
 }
 
-func (m *jobManager) Jobs() []*Job {
+func (m *jobManager) Jobs(filter JobFilter) []*Job {
 	m.Lock()
 	defer m.Unlock()
+	tag := strings.TrimSpace(filter.Tag)
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
-		jobs = append(jobs, j)
+		if tag == "" {
+			jobs = append(jobs, j)
+			continue
+		}
+		// list only jobs having the tag
+		match := false
+		for _, t := range j.Tags {
+			if t == tag {
+				match = true
+				break
+			}
+		}
+		if match {
+			jobs = append(jobs, j)
+		}
 	}
 	sort.Slice(jobs, func(i, j int) bool {
 		return jobs[i].id < jobs[j].id

@@ -1,5 +1,3 @@
 use db to remember jobs
 retry when worker failed to run commands
-attributes
-search by attributes
 worker group

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -33,16 +34,20 @@ func cutOrFill(s string, n int, fillLeft bool) string {
 
 func list(args []string) {
 	fset := flag.NewFlagSet("list", flag.ExitOnError)
+	var tag string
+	fset.StringVar(&tag, "tag", "", "list jobs that having the tag.")
 	fset.Parse(args)
-	// nothing to do with args yet
 
 	addr := os.Getenv("COCO_ADDR")
 	if addr == "" {
 		addr = "localhost:8282"
 	}
 
+	data := url.Values{}
+	data.Add("tag", tag)
+
 	// check the response
-	resp, err := http.PostForm("http://"+addr+"/api/list", nil)
+	resp, err := http.PostForm("http://"+addr+"/api/list", data)
 	if err != nil {
 		log.Fatal(err)
 	}
