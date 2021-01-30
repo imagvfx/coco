@@ -18,7 +18,7 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	j := &Job{}
 	err := dec.Decode(j)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid json: %v"), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("invalid json: %v", err), http.StatusBadRequest)
 		return
 	}
 
