@@ -77,6 +77,9 @@ func ipFilterFromString(s string) (IPFilter, error) {
 		}
 		n, err := strconv.Atoi(p)
 		if err == nil {
+			if n < 0 || n >= 256 {
+				return nil, fmt.Errorf("an ip part should be 0-255 when it is a number")
+			}
 			filter[i] = IPPartSingleMatcher{n}
 			continue
 		}
