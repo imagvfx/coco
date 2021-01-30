@@ -17,7 +17,7 @@ func TestIPFilterMatch(t *testing.T) {
 		{
 			filter:    "127.0.0.*",
 			matches:   []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
-			unmatches: []string{"127.0.1.1", "127.0.0.256"},
+			unmatches: []string{"127.0.1.1", "127.0.0.256", "127.0.0.-1"},
 		},
 		{
 			filter:    "127.0.*.*",

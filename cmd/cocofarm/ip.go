@@ -53,14 +53,14 @@ func ipFilterFromString(s string) (IPFilter, error) {
 		if err != nil {
 			return -1, -1
 		}
-		if s >= 256 {
+		if s < 0 || s >= 256 {
 			return -1, -1
 		}
 		e, err := strconv.Atoi(rng[1])
 		if err != nil {
 			return -1, -1
 		}
-		if e >= 256 {
+		if e < 0 || e >= 256 {
 			return -1, 01
 		}
 		return s, e
@@ -100,7 +100,7 @@ func (f IPFilter) Match(ip string) bool {
 		if err != nil {
 			return false
 		}
-		if n >= 256 {
+		if n < 0 || n >= 256 {
 			return false
 		}
 		if !f[i].Match(n) {
