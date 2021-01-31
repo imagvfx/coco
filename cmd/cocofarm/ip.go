@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// IPFilter matches to an ip or more.
-type IPFilter []IPPartMatcher
+// IPMatcher matches to an ip or more.
+type IPMatcher []IPPartMatcher
 
 type IPPartMatcher interface {
 	Match(int) bool
@@ -40,7 +40,7 @@ func (m IPPartRangeMatcher) Match(n int) bool {
 
 // I don't know how to handle IPv6 yet.
 // So, for now I will focus on IPv4.
-func ipFilterFromString(s string) (IPFilter, error) {
+func ipMatcherFromString(s string) (IPMatcher, error) {
 	ipRange := func(p string) (int, int) {
 		if !strings.HasPrefix(p, "[") || !strings.HasSuffix(p, "]") {
 			return -1, -1
@@ -69,7 +69,7 @@ func ipFilterFromString(s string) (IPFilter, error) {
 	if len(parts) != 4 {
 		return nil, fmt.Errorf("ip does not consists of 4 parts: %v", s)
 	}
-	filter := make(IPFilter, 4)
+	filter := make(IPMatcher, 4)
 	for i, p := range parts {
 		if p == "*" {
 			filter[i] = IPPartAllMatcher{}
@@ -93,7 +93,7 @@ func ipFilterFromString(s string) (IPFilter, error) {
 	return filter, nil
 }
 
-func (f IPFilter) Match(ip string) bool {
+func (f IPMatcher) Match(ip string) bool {
 	parts := strings.Split(ip, ".")
 	if len(parts) != 4 {
 		return false

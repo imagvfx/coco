@@ -2,54 +2,54 @@ package main
 
 import "testing"
 
-func TestIPFilterMatch(t *testing.T) {
+func TestIPMatcherMatch(t *testing.T) {
 	cases := []struct {
 		label     string
-		filter    string
+		matcher   string
 		matches   []string
 		unmatches []string
 	}{
 		{
-			filter:    "127.0.0.1",
+			matcher:   "127.0.0.1",
 			matches:   []string{"127.0.0.1"},
 			unmatches: []string{"127.0.0.2", "127.0.0.3"},
 		},
 		{
-			filter:    "127.0.0.*",
+			matcher:   "127.0.0.*",
 			matches:   []string{"127.0.0.1", "127.0.0.2", "127.0.0.3"},
 			unmatches: []string{"127.0.1.1", "127.0.0.256", "127.0.0.-1"},
 		},
 		{
-			filter:    "127.0.*.*",
+			matcher:   "127.0.*.*",
 			matches:   []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.1.1", "127.0.2.1"},
 			unmatches: []string{"127.0.0.256", "127.0.256.0"},
 		},
 		{
-			filter:    "*.*.*.*",
+			matcher:   "*.*.*.*",
 			matches:   []string{"0.0.0.0", "255.255.255.255"},
 			unmatches: []string{"127.0.0.256", "127.0.256.0"},
 		},
 		{
-			filter:    "127.0.[0-2].*",
+			matcher:   "127.0.[0-2].*",
 			matches:   []string{"127.0.0.1", "127.0.0.2", "127.0.0.3", "127.0.1.1", "127.0.2.1"},
 			unmatches: []string{"127.0.3.1", "127.0.4.1"},
 		},
 	}
 	for _, c := range cases {
-		f, err := ipFilterFromString(c.filter)
+		f, err := ipMatcherFromString(c.matcher)
 		if err != nil {
-			t.Fatalf("filter %v: ipFilterFromString: %v", c.filter, err)
+			t.Fatalf("matcher %v: ipFilterFromString: %v", c.matcher, err)
 		}
 		for _, m := range c.matches {
 			match := f.Match(m)
 			if !match {
-				t.Fatalf("filter %v: want match, got unmatch: %v", c.filter, m)
+				t.Fatalf("matcher %v: want match, got unmatch: %v", c.matcher, m)
 			}
 		}
 		for _, um := range c.unmatches {
 			match := f.Match(um)
 			if match {
-				t.Fatalf("filter %v: want unmatch, got match: %v", c.filter, um)
+				t.Fatalf("matcher %v: want unmatch, got match: %v", c.matcher, um)
 			}
 		}
 	}
