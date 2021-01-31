@@ -52,9 +52,16 @@ func (q *uniqueQueue) Remove(v interface{}) bool {
 	}
 	delete(q.has, v)
 	var prev *queueItem
-	for it := q.first; it != q.last; it = it.next {
+	for it := q.first; it != nil; it = it.next {
 		if it.v == v {
-			prev.next = it.next
+			if it == q.first {
+				q.first = q.first.next
+			} else {
+				prev.next = it.next
+			}
+			if it == q.last {
+				q.last = prev
+			}
 			break
 		}
 		prev = it
