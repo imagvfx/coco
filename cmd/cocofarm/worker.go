@@ -35,72 +35,10 @@ type Worker struct {
 	task TaskID
 }
 
-type uniqueWorkerQueue struct {
-	has   map[*Worker]bool
-	first *workerQueueItem
-	last  *workerQueueItem
-}
-
-type workerQueueItem struct {
-	w    *Worker
-	next *workerQueueItem
-}
-
-func newUniqueWorkerQueue() *uniqueWorkerQueue {
-	return &uniqueWorkerQueue{
-		has: make(map[*Worker]bool),
-	}
-}
-
-func (q *uniqueWorkerQueue) Push(w *Worker) {
-	if q.has[w] {
-		return
-	}
-	q.has[w] = true
-	item := &workerQueueItem{w: w}
-	if q.first == nil {
-		q.first = item
-	} else {
-		q.last.next = item
-	}
-	q.last = item
-}
-
-func (q *uniqueWorkerQueue) Pop() *Worker {
-	if q.first == nil {
-		return nil
-	}
-	w := q.first.w
-	delete(q.has, w)
-	if q.first == q.last {
-		q.first = nil
-		q.last = nil
-		return w
-	}
-	q.first = q.first.next
-	return w
-}
-
-func (q *uniqueWorkerQueue) Remove(w *Worker) bool {
-	if !q.has[w] {
-		return false
-	}
-	delete(q.has, w)
-	var prev *workerQueueItem
-	for it := q.first; it != q.last; it = it.next {
-		if it.w == w {
-			prev.next = it.next
-			break
-		}
-		prev = it
-	}
-	return true
-}
-
 type workerManager struct {
 	sync.Mutex
 	worker  map[string]*Worker
-	workers *uniqueWorkerQueue
+	workers *uniqueQueue
 	// ReadyCh tries fast matching of a worker and a task.
 	ReadyCh chan struct{}
 }
@@ -108,7 +46,7 @@ type workerManager struct {
 func newWorkerManager() *workerManager {
 	m := &workerManager{}
 	m.worker = make(map[string]*Worker)
-	m.workers = newUniqueWorkerQueue()
+	m.workers = newUniqueQueue()
 	m.ReadyCh = make(chan struct{})
 	return m
 }
@@ -156,7 +94,11 @@ func (m *workerManager) Ready(w *Worker) {
 func (m *workerManager) Pop() *Worker {
 	m.Lock()
 	defer m.Unlock()
-	return m.workers.Pop()
+	v := m.workers.Pop()
+	if v == nil {
+		return nil
+	}
+	return v.(*Worker)
 }
 
 func (m *workerManager) Push(w *Worker) {
