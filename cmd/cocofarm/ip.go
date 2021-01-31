@@ -16,6 +16,9 @@ type IPPartMatcher interface {
 type IPPartAllMatcher struct{}
 
 func (m IPPartAllMatcher) Match(n int) bool {
+	if n < 0 || n >= 256 {
+		return false
+	}
 	return true
 }
 
@@ -24,6 +27,9 @@ type IPPartSingleMatcher struct {
 }
 
 func (m IPPartSingleMatcher) Match(n int) bool {
+	if n < 0 || n >= 256 {
+		return false
+	}
 	return n == m.n
 }
 
@@ -32,6 +38,9 @@ type IPPartRangeMatcher struct {
 }
 
 func (m IPPartRangeMatcher) Match(n int) bool {
+	if n < 0 || n >= 256 {
+		return false
+	}
 	if m.start <= n && n <= m.end {
 		return true
 	}
@@ -101,9 +110,6 @@ func (f IPMatcher) Match(ip string) bool {
 	for i, p := range parts {
 		n, err := strconv.Atoi(p)
 		if err != nil {
-			return false
-		}
-		if n < 0 || n >= 256 {
 			return false
 		}
 		if !f[i].Match(n) {
