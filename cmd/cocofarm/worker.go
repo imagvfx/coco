@@ -73,7 +73,7 @@ func newWorkerManager(wgrps []*WorkerGroup) *workerManager {
 	return m
 }
 
-func (m *workerManager) ServableTags() []string {
+func (m *workerManager) ServableTargets() []string {
 	servable := make([]string, 0)
 	for t, n := range m.nForTag {
 		if n != 0 {

@@ -64,7 +64,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			break
 		}
 
-		t := jobman.PopTask(workerman.ServableTags())
+		t := jobman.PopTask(workerman.ServableTargets())
 		if t == nil {
 			return
 		}
