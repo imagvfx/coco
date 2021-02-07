@@ -1,0 +1,12 @@
+# A worker can only belong to one group.
+# If multiple group's ip pattern matches to the worker address,
+# The worker will belong to the first group.
+
+[A]
+Workers = ["127.0.0.1"]
+ServeTags = ["3d"]
+
+[B]
+Workers = ["192.168.*.*"]
+ServeTags = ["2d"]
+

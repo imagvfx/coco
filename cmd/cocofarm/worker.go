@@ -35,6 +35,21 @@ type Worker struct {
 	task TaskID
 }
 
+type WorkerGroup struct {
+	Name      string
+	Matchers  []IPMatcher
+	ServeTags []string
+}
+
+func (g WorkerGroup) Match(addr string) bool {
+	for _, m := range g.Matchers {
+		if m.Match(addr) {
+			return true
+		}
+	}
+	return false
+}
+
 type workerManager struct {
 	sync.Mutex
 	worker  map[string]*Worker
