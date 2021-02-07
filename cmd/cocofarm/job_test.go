@@ -102,9 +102,6 @@ func TestJobManagerPopTask(t *testing.T) {
 			},
 		},
 	})
-	m := newJobManager()
-	m.Add(j1)
-	m.Add(j2)
 
 	cases := []struct {
 		targets []string
