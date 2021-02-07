@@ -51,7 +51,7 @@ func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyR
 		w = &Worker{addr: in.Addr, status: WorkerReady}
 		err := f.workerman.Add(w)
 		if err != nil {
-			log.Print(err)
+			return &pb.ReadyResponse{}, err
 		}
 	}
 	f.workerman.Ready(w)

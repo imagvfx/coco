@@ -20,7 +20,12 @@ func main() {
 	flag.Parse()
 
 	job := newJobManager()
-	worker := newWorkerManager()
+
+	wgrps, err := loadWorkerGroupsFromConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	worker := newWorkerManager(wgrps)
 
 	farm := newFarmServer("localhost:8284", job, worker)
 	go farm.Listen()
@@ -58,41 +63,33 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		case <-time.After(time.Second):
 			break
 		}
-		for {
-			w := workerman.Pop()
-			if w == nil {
-				return
-			}
-			var t *Task
-			for {
-				// find next task.
-				t = jobman.PopTask()
-				if t == nil {
-					workerman.Push(w)
-					return
-				}
-				// TODO: what if the job is deleted already?
-				t.job.Lock()
-				cancel := len(t.Commands) == 0 || t.Status() == TaskFailed // eg. user canceled this task
-				t.job.Unlock()
-				if cancel {
-					continue
-				}
-				break
-			}
-			err := workerman.sendTask(w, t)
-			if err != nil {
-				// TODO: currently, it skips the commands if failed to communicate with the worker.
-				// is it right decision?
-				log.Print(err)
-				return
-			}
-			jobman.Assign(t.id, w)
-			// worker got the task.
-			t.job.Lock()
-			t.SetStatus(TaskRunning)
-			t.job.Unlock()
+
+		t := jobman.PopTask(workerman.ServableTags())
+		if t == nil {
+			return
 		}
+		// TODO: what if the job is deleted already?
+		j := t.job
+		j.Lock()
+		defer j.Unlock()
+		cancel := len(t.Commands) == 0 || t.Status() == TaskFailed // eg. user canceled this task
+		if cancel {
+			return
+		}
+		w := workerman.Pop(t.job.Target)
+		if w == nil {
+			panic("at least one worker should be able to serve this tag")
+		}
+		err := workerman.sendTask(w, t)
+		if err != nil {
+			// TODO: currently, it skips the commands if failed to communicate with the worker.
+			// is it right decision?
+			log.Print(err)
+			return
+		}
+		jobman.Assign(t.id, w)
+		// worker got the task.
+		t.SetStatus(TaskRunning)
 	}
 
 	go func() {

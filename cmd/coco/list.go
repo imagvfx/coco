@@ -34,8 +34,8 @@ func cutOrFill(s string, n int, fillLeft bool) string {
 
 func list(args []string) {
 	fset := flag.NewFlagSet("list", flag.ExitOnError)
-	var tag string
-	fset.StringVar(&tag, "tag", "", "list jobs that having the tag.")
+	var target string
+	fset.StringVar(&target, "target", "", "list jobs with the target.")
 	fset.Parse(args)
 
 	addr := os.Getenv("COCO_ADDR")
@@ -44,7 +44,7 @@ func list(args []string) {
 	}
 
 	data := url.Values{}
-	data.Add("tag", tag)
+	data.Add("target", target)
 
 	// check the response
 	resp, err := http.PostForm("http://"+addr+"/api/list", data)

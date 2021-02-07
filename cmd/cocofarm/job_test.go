@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -64,6 +65,7 @@ var job = initJob(&Job{
 
 func TestJobManagerPopTask(t *testing.T) {
 	j1 := initJob(&Job{
+		Target: "2d",
 		Task: &Task{
 			Priority: 1,
 			Subtasks: []*Task{
@@ -82,6 +84,7 @@ func TestJobManagerPopTask(t *testing.T) {
 		},
 	})
 	j2 := initJob(&Job{
+		Target: "3d",
 		Task: &Task{
 			Priority: 2,
 			Subtasks: []*Task{
@@ -102,26 +105,66 @@ func TestJobManagerPopTask(t *testing.T) {
 	m := newJobManager()
 	m.Add(j1)
 	m.Add(j2)
-	want := []*Task{
-		j1.Subtasks[0].Subtasks[0], // 2 with lower ID
-		j2.Subtasks[0].Subtasks[0], // 2 with higher ID
-		j2.Subtasks[0].Subtasks[1], // 1
-		j1.Subtasks[0].Subtasks[1], // 3
+
+	cases := []struct {
+		targets []string
+		want    []*Task
+	}{
+		{
+			targets: []string{"*"},
+			want: []*Task{
+				j1.Subtasks[0].Subtasks[0], // 2 with lower ID
+				j2.Subtasks[0].Subtasks[0], // 2 with higher ID
+				j2.Subtasks[0].Subtasks[1], // 1
+				j1.Subtasks[0].Subtasks[1], // 3
+			},
+		},
+		{
+			targets: []string{"2d", "3d"},
+			want: []*Task{
+				j1.Subtasks[0].Subtasks[0],
+				j2.Subtasks[0].Subtasks[0],
+				j2.Subtasks[0].Subtasks[1],
+				j1.Subtasks[0].Subtasks[1],
+			},
+		},
+		{
+			targets: []string{"2d"},
+			want: []*Task{
+				j1.Subtasks[0].Subtasks[0],
+				j1.Subtasks[0].Subtasks[1],
+			},
+		},
+		{
+			targets: []string{"3d"},
+			want: []*Task{
+				j2.Subtasks[0].Subtasks[0], // 2 with higher ID
+				j2.Subtasks[0].Subtasks[1], // 1
+			},
+		},
+		{
+			targets: []string{},
+			want:    []*Task{},
+		},
 	}
-	got := []*Task{}
-	for {
-		t := m.PopTask()
-		if t == nil {
-			break
+	for _, c := range cases {
+		m := newJobManager()
+		m.Add(j1)
+		m.Add(j2)
+
+		got := []*Task{}
+		for {
+			t := m.PopTask(c.targets)
+			if t == nil {
+				break
+			}
+			got = append(got, t)
 		}
-		got = append(got, t)
-	}
-	if len(got) != len(want) {
-		t.Fatalf("length: got %v, want %v", got, want)
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			t.Fatalf("%d: got %v, want %v", i, got, want)
+		if len(got) != len(c.want) {
+			t.Fatalf("targets %v: length: got %v, want %v", c.targets, got, c.want)
+		}
+		if !reflect.DeepEqual(got, c.want) {
+			t.Fatalf("targets %v: got %v, want %v", c.targets, got, c.want)
 		}
 	}
 }

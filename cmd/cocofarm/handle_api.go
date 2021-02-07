@@ -95,9 +95,9 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	tag := r.Form.Get("tag")
+	target := r.Form.Get("target")
 	filter := JobFilter{
-		Tag: tag,
+		Target: target,
 	}
 	jobs := h.jobman.Jobs(filter)
 	enc := json.NewEncoder(w)

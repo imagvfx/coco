@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/rs/xid"
@@ -14,7 +13,7 @@ import (
 type JobID int
 
 type JobFilter struct {
-	Tag string
+	Target string
 }
 
 // Job is a job, user sended to server to run them in a farm.
@@ -43,7 +42,11 @@ type Job struct {
 	// CurrentPriority is the job's task priority waiting at the time.
 	CurrentPriority int
 
-	Tags []string
+	// Target defines which worker groups should work for the job.
+	// A target can be served by multiple worker groups.
+	// If the target is not defined, it can be served with worker groups
+	// those can serve all targets.
+	Target string
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
@@ -238,16 +241,6 @@ func (j *Job) Validate() error {
 	if j.Title == "" {
 		j.Title = "untitled"
 	}
-	for i, t := range j.Tags {
-		t = strings.TrimSpace(t)
-		if t == "" {
-			continue
-		}
-		if strings.Contains(t, " ") {
-			return fmt.Errorf("a tag shouldn't have space in it")
-		}
-		j.Tags[i] = t
-	}
 	return nil
 }
 
@@ -285,26 +278,23 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 		prev = subt
 	}
 	t.Stat.nWaiting = i - iOld
+	t.popIdx = 0
 	return i
 }
 
 func (m *jobManager) Jobs(filter JobFilter) []*Job {
 	m.Lock()
 	defer m.Unlock()
-	tag := strings.TrimSpace(filter.Tag)
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
-		if tag == "" {
+		if filter.Target == "" {
 			jobs = append(jobs, j)
 			continue
 		}
 		// list only jobs having the tag
 		match := false
-		for _, t := range j.Tags {
-			if t == tag {
-				match = true
-				break
-			}
+		if filter.Target == j.Target {
+			match = true
 		}
 		if match {
 			jobs = append(jobs, j)
@@ -381,7 +371,10 @@ func (m *jobManager) Delete(id JobID) error {
 	return nil
 }
 
-func (m *jobManager) PopTask() *Task {
+func (m *jobManager) PopTask(targets []string) *Task {
+	if len(targets) == 0 {
+		return nil
+	}
 	m.Lock()
 	defer m.Unlock()
 	for {
@@ -397,6 +390,22 @@ func (m *jobManager) PopTask() *Task {
 		if j.Status() == TaskFailed {
 			// one or more tasks of the job failed,
 			// block the job until user retry the tasks.
+			continue
+		}
+
+		servable := false
+		for _, t := range targets {
+			if t == "*" || t == j.Target {
+				servable = true
+				break
+			}
+		}
+		if !servable {
+			defer func() {
+				// The job has remaing tasks. So, push back this job
+				// after we've found a servable job.
+				m.jobs.Push(j)
+			}()
 			continue
 		}
 

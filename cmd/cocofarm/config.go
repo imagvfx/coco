@@ -52,8 +52,8 @@ func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
 	}
 
 	type WorkerGroupConfig struct {
-		Workers   []string
-		ServeTags []string
+		Workers      []string
+		ServeTargets []string
 	}
 	wgrpCfgs := make(map[string]*WorkerGroupConfig)
 	err = config.Unmarshal(&wgrpCfgs)
@@ -73,7 +73,7 @@ func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
 			}
 			g.Matchers = append(g.Matchers, m)
 		}
-		g.ServeTags = cfg.ServeTags
+		g.ServeTargets = cfg.ServeTargets
 		wgrps = append(wgrps, g)
 	}
 	return wgrps, nil

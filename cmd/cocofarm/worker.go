@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,12 +34,14 @@ type Worker struct {
 	// task directs a task the worker is currently working.
 	// The worker is in idle when it is empty string.
 	task TaskID
+
+	group *WorkerGroup
 }
 
 type WorkerGroup struct {
-	Name      string
-	Matchers  []IPMatcher
-	ServeTags []string
+	Name         string
+	Matchers     []IPMatcher
+	ServeTargets []string
 }
 
 func (g WorkerGroup) Match(addr string) bool {
@@ -52,18 +55,32 @@ func (g WorkerGroup) Match(addr string) bool {
 
 type workerManager struct {
 	sync.Mutex
-	worker  map[string]*Worker
-	workers *uniqueQueue
+	worker       map[string]*Worker
+	workers      *uniqueQueue
+	workerGroups []*WorkerGroup
+	nForTag      map[string]int
 	// ReadyCh tries fast matching of a worker and a task.
 	ReadyCh chan struct{}
 }
 
-func newWorkerManager() *workerManager {
+func newWorkerManager(wgrps []*WorkerGroup) *workerManager {
 	m := &workerManager{}
 	m.worker = make(map[string]*Worker)
 	m.workers = newUniqueQueue()
+	m.workerGroups = wgrps
+	m.nForTag = make(map[string]int)
 	m.ReadyCh = make(chan struct{})
 	return m
+}
+
+func (m *workerManager) ServableTags() []string {
+	servable := make([]string, 0)
+	for t, n := range m.nForTag {
+		if n != 0 {
+			servable = append(servable, t)
+		}
+	}
+	return servable
 }
 
 func (m *workerManager) Add(w *Worker) error {
@@ -72,6 +89,18 @@ func (m *workerManager) Add(w *Worker) error {
 	_, ok := m.worker[w.addr]
 	if ok {
 		return fmt.Errorf("worker already exists: %v", w.addr)
+	}
+	addr := strings.Split(w.addr, ":")[0] // remove port
+	find := false
+	for _, g := range m.workerGroups {
+		if g.Match(addr) {
+			find = true
+			w.group = g
+			break
+		}
+	}
+	if !find {
+		return fmt.Errorf("worker address not defined any groups")
 	}
 	m.worker[w.addr] = w
 	return nil
@@ -86,6 +115,12 @@ func (m *workerManager) Bye(workerAddr string) error {
 	}
 	delete(m.worker, workerAddr)
 	m.workers.Remove(w)
+	for _, t := range w.group.ServeTargets {
+		m.nForTag[t] -= 1
+		if m.nForTag[t] < 0 {
+			panic("shouldn't happen")
+		}
+	}
 	return nil
 }
 
@@ -103,17 +138,41 @@ func (m *workerManager) Ready(w *Worker) {
 	w.status = WorkerReady
 	w.task = ""
 	m.workers.Push(w)
+	for _, t := range w.group.ServeTargets {
+		m.nForTag[t] += 1
+	}
 	go func() { m.ReadyCh <- struct{}{} }()
 }
 
-func (m *workerManager) Pop() *Worker {
+func (m *workerManager) Pop(target string) *Worker {
 	m.Lock()
 	defer m.Unlock()
-	v := m.workers.Pop()
-	if v == nil {
-		return nil
+	var w *Worker
+	for {
+		v := m.workers.Pop()
+		if v == nil {
+			return nil
+		}
+		w = v.(*Worker)
+		servable := false
+		for _, t := range w.group.ServeTargets {
+			if t == "*" || t == target {
+				servable = true
+				break
+			}
+		}
+		if servable {
+			break
+		}
+		defer func() { m.workers.Push(w) }()
 	}
-	return v.(*Worker)
+	for _, t := range w.group.ServeTargets {
+		m.nForTag[t] -= 1
+		if m.nForTag[t] < 0 {
+			panic("shouldn't happen")
+		}
+	}
+	return w
 }
 
 func (m *workerManager) Push(w *Worker) {

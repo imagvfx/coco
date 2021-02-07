@@ -1,5 +1,5 @@
 {
-	"Tags": ["2d"],
+	"Target": "2d",
 	"Subtasks": [
 		{
 			"SerialSubtasks": true,
