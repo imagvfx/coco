@@ -78,10 +78,10 @@ func ipMatcherFromString(s string) (IPMatcher, error) {
 	if len(parts) != 4 {
 		return nil, fmt.Errorf("ip does not consists of 4 parts: %v", s)
 	}
-	filter := make(IPMatcher, 4)
+	matcher := make(IPMatcher, 4)
 	for i, p := range parts {
 		if p == "*" {
-			filter[i] = IPPartAllMatcher{}
+			matcher[i] = IPPartAllMatcher{}
 			continue
 		}
 		n, err := strconv.Atoi(p)
@@ -89,20 +89,20 @@ func ipMatcherFromString(s string) (IPMatcher, error) {
 			if n < 0 || n >= 256 {
 				return nil, fmt.Errorf("an ip part should be 0-255 when it is a number")
 			}
-			filter[i] = IPPartSingleMatcher{n}
+			matcher[i] = IPPartSingleMatcher{n}
 			continue
 		}
 		s, e := ipRange(p)
 		if s != -1 {
-			filter[i] = IPPartRangeMatcher{s, e}
+			matcher[i] = IPPartRangeMatcher{s, e}
 			continue
 		}
 		return nil, fmt.Errorf("unknown formatting for ip part: %v", p)
 	}
-	return filter, nil
+	return matcher, nil
 }
 
-func (f IPMatcher) Match(ip string) bool {
+func (m IPMatcher) Match(ip string) bool {
 	parts := strings.Split(ip, ".")
 	if len(parts) != 4 {
 		return false
@@ -112,7 +112,7 @@ func (f IPMatcher) Match(ip string) bool {
 		if err != nil {
 			return false
 		}
-		if !f[i].Match(n) {
+		if !m[i].Match(n) {
 			return false
 		}
 	}
