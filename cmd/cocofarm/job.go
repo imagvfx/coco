@@ -49,6 +49,7 @@ type Job struct {
 	Target string
 }
 
+// MarshalJSON implements json.Marshaler interface.
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
 		ID              JobID
@@ -70,10 +71,12 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+// WalkTaskFn walks the job's tasks regardless they are branches or leaves.
 func (j *Job) WalkTaskFn(fn func(t *Task)) {
 	walkFromFn(j.Task, fn)
 }
 
+// WalkLeafTaskFn walks the job's leaf tasks.
 func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
 	leafFn := func(t *Task) {
 		if t.IsLeaf() {
