@@ -264,7 +264,7 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 		i++
 	}
 	if t.Priority < 0 {
-		// nagative priority is invalid.
+		// negative priority is invalid.
 		t.Priority = 0
 	}
 	t.Stat = &branchStat{}
