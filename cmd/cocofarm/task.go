@@ -98,8 +98,8 @@ type Task struct {
 	// nthChild indicates this task is nth child of the parent task.
 	nthChild int
 
-	// next is a next sibling.
-	// It will be nil, if the task is alone or last sibling.
+	// next is the next task for walking a job's tasks.
+	// When it is nil, the task is last task of the job.
 	next *Task
 
 	// num is internal order of the leaf task in a job.

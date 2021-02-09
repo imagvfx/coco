@@ -88,28 +88,12 @@ func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
 	walkFromFn(j.Task, leafFn)
 }
 
+// walkFromFn walks a job's task tree from given task,
+// and run a function for each task until it reaches to end.
 func walkFromFn(t *Task, fn func(t *Task)) {
-	down := true
-	for {
-		if down {
-			fn(t)
-			if len(t.Subtasks) != 0 {
-				t = t.Subtasks[0]
-				continue
-			}
-		}
-		if t.next != nil {
-			down = true
-			t = t.next
-			continue
-		}
-		if t.parent != nil {
-			down = false
-			t = t.parent
-			continue
-		}
-		// back to root
-		return
+	for t != nil {
+		fn(t)
+		t = t.next
 	}
 }
 
@@ -248,13 +232,13 @@ func (j *Job) Validate() error {
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
 func initJob(j *Job) *Job {
-	initJobTasks(j.Task, j, nil, 0, 0)
+	initJobTasks(j.Task, j, nil, nil, 0, 0)
 	return j
 }
 
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
-func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
+func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) {
 	t.id = TaskID(xid.New().String())
 	t.job = j
 	t.parent = parent
@@ -269,17 +253,16 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int) int {
 	}
 	t.Stat = &branchStat{}
 	iOld := i
-	var prev *Task
+	if prev != nil {
+		prev.next = t
+	}
+	prev = t
 	for nth, subt := range t.Subtasks {
-		if prev != nil {
-			prev.next = subt
-		}
-		i = initJobTasks(subt, j, t, nth, i)
-		prev = subt
+		prev, i = initJobTasks(subt, j, t, prev, nth, i)
 	}
 	t.Stat.nWaiting = i - iOld
 	t.popIdx = 0
-	return i
+	return prev, i
 }
 
 func (m *jobManager) Jobs(filter JobFilter) []*Job {
