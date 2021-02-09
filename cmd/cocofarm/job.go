@@ -50,11 +50,6 @@ type Job struct {
 }
 
 func (j *Job) MarshalJSON() ([]byte, error) {
-	// We need to lock the job before marshal it.
-	// Of course, we can lock the job at the call site.
-	// Unfotunately I couldn't find the way to handle marshaling []*Job gracefully.
-	j.Lock()
-	defer j.Unlock()
 	m := struct {
 		ID              JobID
 		Status          string

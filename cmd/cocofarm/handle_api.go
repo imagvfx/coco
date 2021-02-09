@@ -84,6 +84,8 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("job not found by id: %v", id), http.StatusBadRequest)
 		return
 	}
+	j.Lock()
+	defer j.Unlock()
 	enc := json.NewEncoder(w)
 	err = enc.Encode(j)
 	if err != nil {
@@ -100,6 +102,10 @@ func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
 		Target: target,
 	}
 	jobs := h.jobman.Jobs(filter)
+	for _, j := range jobs {
+		j.Lock()
+		defer j.Unlock()
+	}
 	enc := json.NewEncoder(w)
 	err := enc.Encode(jobs)
 	if err != nil {
