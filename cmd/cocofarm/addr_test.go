@@ -54,3 +54,52 @@ func TestIPMatcherMatch(t *testing.T) {
 		}
 	}
 }
+
+func TestDomainMatcherMatch(t *testing.T) {
+	cases := []struct {
+		label     string
+		matcher   string
+		matches   []string
+		unmatches []string
+	}{
+		{
+			matcher:   "localhost",
+			matches:   []string{"localhost"},
+			unmatches: []string{"remotehost", "mylocalhost"},
+		},
+		{
+			matcher:   "imagvfx.com",
+			matches:   []string{"imagvfx.com"},
+			unmatches: []string{"a.imagvfx.com", "b.imagvfx.com"},
+		},
+		{
+			matcher:   "*.imagvfx.com",
+			matches:   []string{"a.imagvfx.com", "b.imagvfx.com"},
+			unmatches: []string{"imagvfx.com"},
+		},
+		{
+			// possible, but not recommended
+			matcher:   "*.*.*",
+			matches:   []string{"a.imagvfx.com", "b.imagvfx.com"},
+			unmatches: []string{"imagvfx.com"},
+		},
+	}
+	for _, c := range cases {
+		f, err := domainMatcherFromString(c.matcher)
+		if err != nil {
+			t.Fatalf("matcher %v: domainMatcherFromString: %v", c.matcher, err)
+		}
+		for _, m := range c.matches {
+			match := f.Match(m)
+			if !match {
+				t.Fatalf("matcher %v: want match, got unmatch: %v", c.matcher, m)
+			}
+		}
+		for _, um := range c.unmatches {
+			match := f.Match(um)
+			if match {
+				t.Fatalf("matcher %v: want unmatch, got match: %v", c.matcher, um)
+			}
+		}
+	}
+}

@@ -52,7 +52,8 @@ func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
 	}
 
 	type WorkerGroupConfig struct {
-		Workers      []string
+		IPs          []string
+		Domains      []string
 		ServeTargets []string
 	}
 	wgrpCfgs := make(map[string]*WorkerGroupConfig)
@@ -66,8 +67,15 @@ func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
 		g := &WorkerGroup{}
 		g.Name = grp
 		cfg := wgrpCfgs[grp]
-		for _, w := range cfg.Workers {
+		for _, w := range cfg.IPs {
 			m, err := ipMatcherFromString(w)
+			if err != nil {
+				log.Fatalf("%v", err)
+			}
+			g.Matchers = append(g.Matchers, m)
+		}
+		for _, w := range cfg.Domains {
+			m, err := domainMatcherFromString(w)
 			if err != nil {
 				log.Fatalf("%v", err)
 			}

@@ -1,3 +1,2 @@
 use db to remember jobs
 retry when worker failed to run commands
-allow domain name addr for workers?

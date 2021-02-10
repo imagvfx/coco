@@ -40,7 +40,7 @@ type Worker struct {
 
 type WorkerGroup struct {
 	Name         string
-	Matchers     []IPMatcher
+	Matchers     []AddressMatcher
 	ServeTargets []string
 }
 

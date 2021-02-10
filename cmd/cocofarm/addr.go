@@ -6,8 +6,31 @@ import (
 	"strings"
 )
 
+// AddressMatcher matches to a range of ips or domains.
+// It is used to check whether a worker belongs to a worker group.
+type AddressMatcher interface {
+	Match(string) bool
+}
+
 // IPMatcher matches to an ip or more.
 type IPMatcher []IPPartMatcher
+
+func (m IPMatcher) Match(ip string) bool {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return false
+	}
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			return false
+		}
+		if !m[i].Match(n) {
+			return false
+		}
+	}
+	return true
+}
 
 type IPPartMatcher interface {
 	Match(int) bool
@@ -102,19 +125,58 @@ func ipMatcherFromString(s string) (IPMatcher, error) {
 	return matcher, nil
 }
 
-func (m IPMatcher) Match(ip string) bool {
-	parts := strings.Split(ip, ".")
-	if len(parts) != 4 {
+// DomainMatcher matches to a range of domains.
+type DomainMatcher []DomainPartMatcher
+
+func domainMatcherFromString(s string) (DomainMatcher, error) {
+	if s == "" {
+		return nil, fmt.Errorf("cannot create a domain matcher from empty string")
+	}
+	parts := strings.Split(s, ".")
+	m := make(DomainMatcher, len(parts))
+	for i, p := range parts {
+		if p == "*" {
+			m[i] = DomainPartAllMatcher{}
+		} else {
+			m[i] = DomainPartSingleMatcher{p}
+		}
+	}
+	return m, nil
+}
+
+func (m DomainMatcher) Match(s string) bool {
+	if len(m) == 0 {
+		return false
+	}
+	if s == "" {
+		return false
+	}
+	parts := strings.Split(s, ".")
+	if len(m) != len(parts) {
 		return false
 	}
 	for i, p := range parts {
-		n, err := strconv.Atoi(p)
-		if err != nil {
-			return false
-		}
-		if !m[i].Match(n) {
+		if !m[i].Match(p) {
 			return false
 		}
 	}
 	return true
+}
+
+type DomainPartMatcher interface {
+	Match(string) bool
+}
+
+type DomainPartAllMatcher struct{}
+
+func (m DomainPartAllMatcher) Match(s string) bool {
+	return true
+}
+
+type DomainPartSingleMatcher struct {
+	s string
+}
+
+func (m DomainPartSingleMatcher) Match(s string) bool {
+	return s == m.s
 }

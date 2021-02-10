@@ -1,12 +1,14 @@
-# A worker can only belong to one group.
-# If multiple group's ip pattern matches to the worker address,
-# The worker will belong to the first group.
+# NOTE: A worker can only belong to one group.
+# If multiple group's address (IPs, Domains) pattern matches
+# to the worker's address, the worker will belong to the first group.
 
 [A]
-Workers = ["127.0.0.1"]
+IPs = ["127.0.0.1"]
+Domains = ["localhost"]
 ServeTargets = ["*"]
 
 [B]
-Workers = ["192.168.*.*"]
+IPs = ["192.168.*.*"]
+Domains = ["*.imagvfx.com"]
 ServeTargets = ["2d"]
 
