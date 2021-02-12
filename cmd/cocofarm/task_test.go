@@ -172,21 +172,26 @@ func TestTaskPop(t *testing.T) {
 
 	for _, c := range cases {
 		got := make([]string, 0)
-		tasks := make([]*Task, 0)
+		popTasks := make([]*Task, 0)
 		for {
-			t, done := c.j.Pop()
-			if t == nil {
+			popt, done := c.j.Pop()
+			if popt == nil {
 				if done {
 					break
 				}
-				got = append(got, "")
-				for _, t := range tasks {
-					t.SetStatus(TaskDone)
+				// pop blocked
+				peek := c.j.Peek()
+				if peek != nil {
+					t.Fatalf("%v: peek should return nil when blocked", c.j.Title)
 				}
-				tasks = tasks[:0]
+				got = append(got, "") // make the blocking point visible
+				for _, pt := range popTasks {
+					pt.SetStatus(TaskDone)
+				}
+				popTasks = popTasks[:0]
 			} else {
-				got = append(got, t.Title)
-				tasks = append(tasks, t)
+				got = append(got, popt.Title)
+				popTasks = append(popTasks, popt)
 			}
 
 		}

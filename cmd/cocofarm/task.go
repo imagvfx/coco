@@ -160,25 +160,33 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+func (t *Task) Blocking() bool {
+	if !t.IsLeaf() {
+		panic("shouldn't call Task.Blocking on non-leaf task")
+	}
+	// A parallel leaf task will always return done == true.
+	// On the other hand a serial leaf task will return done == true,
+	// only when the task has really finished.
+	block := false
+	if t.parent.SerialSubtasks && t.status != TaskDone {
+		block = true
+	}
+	if t.status == TaskFailed {
+		// Make the task block any leaf task on the next stages.
+		// For a temporary error, user can restart the task to make it done.
+		block = true
+	}
+	return block
+}
+
 func (t *Task) Pop() (*Task, bool) {
 	if t.IsLeaf() {
-		// A parallel leaf task will always return done == true.
-		// On the other hand a serial leaf task will return done == true,
-		// only when the task has really finished.
-		done := true
-		if t.parent.SerialSubtasks && t.status != TaskDone {
-			done = false
-		}
-		if t.status == TaskFailed {
-			// Make the task block any leaf task on the next stages.
-			// For a temporary error, user can restart the task to make it done.
-			done = false
-		}
+		block := t.Blocking()
 		if t.popIdx != -1 {
 			t.popIdx = -1
-			return t, done
+			return t, !block
 		}
-		return nil, done
+		return nil, !block
 	}
 	// branch
 	if t.popIdx < 0 {
@@ -217,10 +225,17 @@ func (t *Task) Pop() (*Task, bool) {
 }
 
 func (t *Task) Peek() *Task {
+	if t.popIdx == -1 {
+		// t and it's subtasks has all done
+		return nil
+	}
 	popt := t
 	for !popt.IsLeaf() {
-		// There should be no popIdx == -1 here, I believe.
+		// There should be no popIdx == -1, if t hasn't done yet.
 		popt = popt.Subtasks[popt.popIdx]
+	}
+	if popt.Blocking() {
+		return nil
 	}
 	return popt
 }
