@@ -240,6 +240,30 @@ func (t *Task) Peek() *Task {
 	return popt
 }
 
+// Push pushes the popped task to the job again.
+// This can be used to retry of the task.
+// Set the task's status to TaskWaiting, first. Otherwise, it will panic.
+func (t *Task) Push() {
+	if !t.IsLeaf() {
+		panic("cannot push a branch task")
+	}
+	if t.status != TaskWaiting {
+		// TODO: is the panic best?
+		panic("the task's status should be TaskWaiting when pushed")
+	}
+	t.popIdx = 0
+	parent := t.parent
+	child := t
+	for parent != nil {
+		n := child.nthChild
+		if n < parent.popIdx {
+			parent.popIdx = n
+		}
+		child = parent
+		parent = parent.parent
+	}
+}
+
 func (t *Task) Status() TaskStatus {
 	if t.IsLeaf() {
 		return t.status
@@ -253,25 +277,10 @@ func (t *Task) SetStatus(s TaskStatus) {
 	}
 	old := t.status
 	t.status = s
-	if s == TaskWaiting {
-		// retry the task
-		// TODO: maybe better not to use popIdx for leaf tasks. investigate.
-		t.popIdx = 0
-	}
 	parent := t.parent
-	child := t
 	for parent != nil {
-		n := child.nthChild
-		if s == TaskWaiting || s == TaskFailed {
-			if n < parent.popIdx {
-				parent.popIdx = n
-			}
-		}
-
 		parent.Stat.Sub(old)
 		parent.Stat.Add(s)
-
-		child = parent
 		parent = parent.parent
 	}
 }

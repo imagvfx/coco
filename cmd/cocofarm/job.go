@@ -329,6 +329,7 @@ func (m *jobManager) Retry(id JobID) error {
 	j.WalkLeafTaskFn(func(t *Task) {
 		if t.Status() == TaskFailed {
 			t.SetStatus(TaskWaiting)
+			t.Push()
 		}
 	})
 	heap.Push(m.jobs, j)
