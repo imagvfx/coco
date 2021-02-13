@@ -238,6 +238,9 @@ func initJob(j *Job) *Job {
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) {
 	t.id = TaskID(xid.New().String())
+	if t.Title == "" {
+		t.Title = "untitled"
+	}
 	t.job = j
 	t.parent = parent
 	t.nthChild = nth
@@ -412,6 +415,31 @@ func (m *jobManager) PopTask(targets []string) *Task {
 
 		return t
 	}
+}
+
+func (m *jobManager) PushTask(t *Task) {
+	m.Lock()
+	defer m.Unlock()
+	j := t.job
+	j.Lock()
+	defer j.Unlock()
+
+	peek := j.Peek()
+	if peek == nil {
+		// The job has blocked or popped all tasks.
+		// The job isn't in m.jobs for both cases.
+		// But the job's priority should be recalculated first.
+		defer func() {
+			heap.Push(m.jobs, j)
+			delete(m.jobBlocked, j.id)
+		}()
+	}
+	t.Push()
+	// Peek again to reflect possible change of the job's priority.
+	peek = j.Peek() // peek should not be nil
+	p := peek.CalcPriority()
+	m.jobPriority[j.id] = p
+	j.CurrentPriority = p
 }
 
 func (m *jobManager) Assign(id TaskID, w *Worker) error {

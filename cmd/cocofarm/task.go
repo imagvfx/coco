@@ -256,7 +256,7 @@ func (t *Task) Push() {
 	child := t
 	for parent != nil {
 		n := child.nthChild
-		if n < parent.popIdx {
+		if parent.popIdx == -1 || n < parent.popIdx {
 			parent.popIdx = n
 		}
 		child = parent
