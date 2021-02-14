@@ -82,9 +82,9 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		}
 		err := workerman.sendTask(w, t)
 		if err != nil {
-			// TODO: currently, it skips the commands if failed to communicate with the worker.
-			// is it right decision?
+			// Failed to communicate with the worker.
 			log.Print(err)
+			jobman.PushTask(t)
 			return
 		}
 		jobman.Assign(t.id, w)
