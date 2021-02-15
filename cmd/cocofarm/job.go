@@ -47,6 +47,10 @@ type Job struct {
 	// If the target is not defined, it can be served with worker groups
 	// those can serve all targets.
 	Target string
+
+	// AutoRetry is number of maximum auto retry for tasks when they are failed.
+	// When user retries the job, retry count for tasks will be reset to 0.
+	AutoRetry int
 }
 
 // MarshalJSON implements json.Marshaler interface.
@@ -320,6 +324,8 @@ func (m *jobManager) Cancel(id JobID) error {
 	return nil
 }
 
+// Retry resets all tasks of the job's retry count to 0,
+// then retries all of the failed tasks,
 func (m *jobManager) Retry(id JobID) error {
 	m.Lock()
 	defer m.Unlock()
@@ -330,12 +336,17 @@ func (m *jobManager) Retry(id JobID) error {
 	j.Lock()
 	defer j.Unlock()
 	j.WalkLeafTaskFn(func(t *Task) {
+		t.retry = 0
 		if t.Status() == TaskFailed {
 			t.SetStatus(TaskWaiting)
 			t.Push()
 		}
 	})
-	heap.Push(m.jobs, j)
+	if j.Peek() == nil {
+		// The job has blocked or popped all tasks.
+		// The job isn't in m.jobs for both cases.
+		heap.Push(m.jobs, j)
+	}
 	return nil
 }
 
@@ -417,29 +428,54 @@ func (m *jobManager) PopTask(targets []string) *Task {
 	}
 }
 
-func (m *jobManager) PushTask(t *Task) {
-	m.Lock()
-	defer m.Unlock()
+// pushTask pushes the task to it's job, so it can popped again.
+// When `retry` argument is true, it will act as retry mode.
+// It will return true when the push has succeed.
+func (m *jobManager) pushTask(t *Task, retry bool) (ok bool) {
 	j := t.job
-	j.Lock()
-	defer j.Unlock()
-
 	peek := j.Peek()
 	if peek == nil {
 		// The job has blocked or popped all tasks.
 		// The job isn't in m.jobs for both cases.
 		// But the job's priority should be recalculated first.
 		defer func() {
+			if !ok {
+				return
+			}
 			heap.Push(m.jobs, j)
 			delete(m.jobBlocked, j.id)
 		}()
 	}
-	t.Push()
+
+	if retry {
+		ok = t.Retry()
+		if !ok {
+			return ok
+		}
+	} else {
+		t.Push()
+		ok = true
+	}
 	// Peek again to reflect possible change of the job's priority.
 	peek = j.Peek() // peek should not be nil
 	p := peek.CalcPriority()
 	m.jobPriority[j.id] = p
 	j.CurrentPriority = p
+	return ok
+}
+
+// PushTask pushes the task to it's job so it can popped again.
+// It should be used when there is server/communication error.
+// Use PushTaskForRetry for failed tasks.
+func (m *jobManager) PushTask(t *Task) {
+	m.pushTask(t, false)
+}
+
+// RetryTask pushes the task to it's job so it can be retried when it's failed.
+// If the task already reaches to maxmium AutoRetry count, it will
+// refuse to push and return false.
+func (m *jobManager) PushTaskForRetry(t *Task) bool {
+	return m.pushTask(t, true)
 }
 
 func (m *jobManager) Assign(id TaskID, w *Worker) error {

@@ -1,0 +1,20 @@
+{
+	"Subtasks": [
+		{
+			"SerialSubtasks": true,
+			"Subtasks": [
+				{
+					"Commands": [
+						["echo", "next task may be failed"]
+					]
+				},
+				{
+					"Commands": [
+						["exit", "$((RANDOM%5==0))"]
+					]
+				}
+			]
+		}
+	],
+	"AutoRetry": 3
+}

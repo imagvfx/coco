@@ -137,6 +137,10 @@ type Task struct {
 	Commands []Command
 
 	popIdx int
+
+	// retry represents how many times the task retried automatically due to fail of the task.
+	// It will be reset, when user retries the job of the task.
+	retry int
 }
 
 func (t *Task) MarshalJSON() ([]byte, error) {
@@ -240,16 +244,12 @@ func (t *Task) Peek() *Task {
 	return popt
 }
 
-// Push pushes the popped task to the job again.
-// This can be used to retry of the task.
-// Set the task's status to TaskWaiting, first. Otherwise, it will panic.
+// Push pushes the task to it's job, so it can popped again.
+// Before pushing a task, change it's status to TaskWaiting,
+// or it will be just skipped when popped.
 func (t *Task) Push() {
 	if !t.IsLeaf() {
 		panic("cannot push a branch task")
-	}
-	if t.status != TaskWaiting {
-		// TODO: is the panic best?
-		panic("the task's status should be TaskWaiting when pushed")
 	}
 	t.popIdx = 0
 	parent := t.parent
@@ -262,6 +262,25 @@ func (t *Task) Push() {
 		child = parent
 		parent = parent.parent
 	}
+}
+
+// Retry pushes the task to the job again, and increment the retry count.
+// The push will set the task's status to TaskWaiting automatically.
+// When it's done successfully, it will return true.
+// when it already spent all the retries, it will do nothing and return false.
+func (t *Task) Retry() bool {
+	if !t.IsLeaf() {
+		panic("cannot retry a branch task")
+	}
+	n := t.job.AutoRetry
+	if t.retry >= n {
+		// spent all the retries
+		return false
+	}
+	t.retry++
+	t.SetStatus(TaskWaiting)
+	t.Push()
+	return true
 }
 
 func (t *Task) Status() TaskStatus {

@@ -122,9 +122,13 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
 	t := f.jobman.task[TaskID(in.TaskId)]
-	t.job.Lock()
-	defer t.job.Unlock()
-	t.SetStatus(TaskFailed)
+	j := t.job
+	j.Lock()
+	defer j.Unlock()
+	ok := f.jobman.PushTaskForRetry(t)
+	if !ok {
+		t.SetStatus(TaskFailed)
+	}
 	// TODO: need to verify the worker
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
