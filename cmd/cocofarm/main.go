@@ -32,6 +32,8 @@ func main() {
 
 	go matching(job, worker)
 	go canceling(job, worker)
+	go checking(job, "jobman")
+	go checking(worker, "workerman")
 
 	api := &apiHandler{
 		jobman: job,
@@ -128,4 +130,23 @@ func canceling(jobman *jobManager, workerman *workerManager) {
 			cancel()
 		}
 	}()
+}
+
+func checking(l Locker, label string) {
+	done := make(chan bool)
+	for {
+		time.Sleep(time.Second)
+		go func() {
+			l.Lock()
+			defer l.Unlock()
+			done <- true
+		}()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			// Couldn't obtain the lock while significant time passed.
+			log.Fatalf("deadlock: %v", label)
+		}
+	}
+
 }
