@@ -173,14 +173,10 @@ func newJobManager() *jobManager {
 }
 
 func (m *jobManager) Get(id JobID) *Job {
-	m.Lock()
-	defer m.Unlock()
 	return m.job[id]
 }
 
 func (m *jobManager) GetTask(id TaskID) *Task {
-	m.Lock()
-	defer m.Unlock()
 	return m.task[id]
 }
 
@@ -197,8 +193,6 @@ func (m *jobManager) Add(j *Job) (JobID, error) {
 	j.id = m.nextJobID
 	m.nextJobID++
 
-	m.Lock()
-	defer m.Unlock()
 	m.job[j.id] = j
 
 	// didn't hold lock of the job as the job will not get published
@@ -271,8 +265,6 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 }
 
 func (m *jobManager) Jobs(filter JobFilter) []*Job {
-	m.Lock()
-	defer m.Unlock()
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
 		if filter.Target == "" {
@@ -298,8 +290,6 @@ func (m *jobManager) Jobs(filter JobFilter) []*Job {
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
 func (m *jobManager) Cancel(id JobID) error {
-	m.Lock()
-	defer m.Unlock()
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -327,8 +317,6 @@ func (m *jobManager) Cancel(id JobID) error {
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
 func (m *jobManager) Retry(id JobID) error {
-	m.Lock()
-	defer m.Unlock()
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -352,8 +340,6 @@ func (m *jobManager) Retry(id JobID) error {
 
 // Delete deletes a job irrecoverably.
 func (m *jobManager) Delete(id JobID) error {
-	m.Lock()
-	defer m.Unlock()
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -371,8 +357,6 @@ func (m *jobManager) PopTask(targets []string) *Task {
 	if len(targets) == 0 {
 		return nil
 	}
-	m.Lock()
-	defer m.Unlock()
 	for {
 		if m.jobs.Len() == 0 {
 			return nil
@@ -479,8 +463,6 @@ func (m *jobManager) PushTaskForRetry(t *Task) bool {
 }
 
 func (m *jobManager) Assign(id TaskID, w *Worker) error {
-	m.Lock()
-	defer m.Unlock()
 	return m.assign(id, w)
 }
 
@@ -494,8 +476,6 @@ func (m *jobManager) assign(id TaskID, w *Worker) error {
 }
 
 func (m *jobManager) Unassign(id TaskID, w *Worker) error {
-	m.Lock()
-	defer m.Unlock()
 	return m.unassign(id, w)
 }
 

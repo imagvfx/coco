@@ -64,6 +64,11 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			break
 		}
 
+		jobman.Lock()
+		defer jobman.Unlock()
+		workerman.Lock()
+		defer workerman.Unlock()
+
 		t := jobman.PopTask(workerman.ServableTargets())
 		if t == nil {
 			return
@@ -83,7 +88,7 @@ func matching(jobman *jobManager, workerman *workerManager) {
 		err := workerman.sendTask(w, t)
 		if err != nil {
 			// Failed to communicate with the worker.
-			log.Print(err)
+			log.Printf("failed to send task to a worker: %v", err)
 			jobman.PushTask(t)
 			return
 		}
@@ -108,6 +113,8 @@ func canceling(jobman *jobManager, workerman *workerManager) {
 		if !ok {
 			return
 		}
+		workerman.Lock()
+		defer workerman.Unlock()
 		err := workerman.sendCancelTask(w, t)
 		if err != nil {
 			log.Print(err)

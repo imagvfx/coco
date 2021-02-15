@@ -46,6 +46,8 @@ func (f *farmServer) Listen() {
 func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyResponse, error) {
 	log.Printf("ready: %v", in.Addr)
 	// TODO: need to verify the worker
+	f.workerman.Lock()
+	defer f.workerman.Unlock()
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		w = &Worker{addr: in.Addr, status: WorkerReady}
@@ -63,6 +65,8 @@ func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyR
 func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeResponse, error) {
 	log.Printf("bye: %v", in.Addr)
 	// TODO: need to verify the worker
+	f.workerman.Lock()
+	defer f.workerman.Unlock()
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		return &pb.ByeResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
@@ -103,6 +107,8 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 		}
 	}
 	// TODO: need to verify the worker
+	f.workerman.Lock()
+	defer f.workerman.Unlock()
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		return &pb.DoneResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)
@@ -130,6 +136,8 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 		t.SetStatus(TaskFailed)
 	}
 	// TODO: need to verify the worker
+	f.workerman.Lock()
+	defer f.workerman.Unlock()
 	w := f.workerman.FindByAddr(in.Addr)
 	if w == nil {
 		return &pb.FailedResponse{}, fmt.Errorf("unknown worker: %v", in.Addr)

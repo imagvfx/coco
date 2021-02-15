@@ -84,8 +84,6 @@ func (m *workerManager) ServableTargets() []string {
 }
 
 func (m *workerManager) Add(w *Worker) error {
-	m.Lock()
-	defer m.Unlock()
 	_, ok := m.worker[w.addr]
 	if ok {
 		return fmt.Errorf("worker already exists: %v", w.addr)
@@ -107,8 +105,6 @@ func (m *workerManager) Add(w *Worker) error {
 }
 
 func (m *workerManager) Bye(workerAddr string) error {
-	m.Lock()
-	defer m.Unlock()
 	w, ok := m.worker[workerAddr]
 	if !ok {
 		return fmt.Errorf("worker not found: %v", workerAddr)
@@ -125,16 +121,12 @@ func (m *workerManager) Bye(workerAddr string) error {
 }
 
 func (m *workerManager) FindByAddr(addr string) *Worker {
-	m.Lock()
-	defer m.Unlock()
 	return m.worker[addr]
 }
 
 // Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
 func (m *workerManager) Ready(w *Worker) {
-	m.Lock()
-	defer m.Unlock()
 	w.status = WorkerReady
 	w.task = ""
 	m.workers.Push(w)
@@ -145,8 +137,6 @@ func (m *workerManager) Ready(w *Worker) {
 }
 
 func (m *workerManager) Pop(target string) *Worker {
-	m.Lock()
-	defer m.Unlock()
 	var w *Worker
 	for {
 		v := m.workers.Pop()
@@ -176,8 +166,6 @@ func (m *workerManager) Pop(target string) *Worker {
 }
 
 func (m *workerManager) Push(w *Worker) {
-	m.Lock()
-	defer m.Unlock()
 	m.workers.Push(w)
 }
 
@@ -201,10 +189,6 @@ func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 		req.Cmds = append(req.Cmds, reqCmd)
 	}
 
-	// Lock before we send run message, in case the running is done by the worker
-	// ever before the server assigning the worker, which makes the server messy.
-	m.Lock()
-	defer m.Unlock()
 	_, err = c.Run(ctx, req)
 	if err != nil {
 		return err
@@ -229,10 +213,6 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	req := &pb.CancelRequest{}
 	req.Id = string(t.id)
 
-	// Lock before we send cancel message, in case the canceling is done by the worker
-	// even before the server assigning the worker, which makes the server messy.
-	m.Lock()
-	defer m.Unlock()
 	_, err = c.Cancel(ctx, req)
 	if err != nil {
 		return err
