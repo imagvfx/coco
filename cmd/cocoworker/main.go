@@ -82,6 +82,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 			s.Unlock()
 			out, err := c.CombinedOutput()
 			if err != nil {
+				log.Print(err)
 				s.Lock()
 				s.runningTaskID = ""
 				s.aborted = false
