@@ -149,6 +149,9 @@ type Task struct {
 	// retry represents how many times the task retried automatically due to fail of the task.
 	// It will be reset, when user retries the job of the task.
 	retry int
+
+	// isLeaf indicates whether the task is a leaf task.
+	isLeaf bool
 }
 
 // Command is a command to be run in a worker.
@@ -181,7 +184,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 // Blocking returns a bool value that indicates whether the task is a blocking task.
 // A serial task that didn't finished blocks the next task, and a failed task blocks the parent.
 func (t *Task) Blocking() bool {
-	if !t.IsLeaf() {
+	if !t.isLeaf {
 		panic("shouldn't call Task.Blocking on non-leaf task")
 	}
 	// A parallel leaf task will always return done == true.
@@ -205,7 +208,7 @@ func (t *Task) Blocking() bool {
 // It will return (nil, false) if there is remaining tasks, but
 // a task cannot be popped due to one of the prior subtask is blocking the process.
 func (t *Task) Pop() (*Task, bool) {
-	if t.IsLeaf() {
+	if t.isLeaf {
 		block := t.Blocking()
 		if t.popIdx != -1 {
 			t.popIdx = -1
@@ -258,7 +261,7 @@ func (t *Task) Peek() *Task {
 		return nil
 	}
 	popt := t
-	for !popt.IsLeaf() {
+	for !popt.isLeaf {
 		// There should be no popIdx == -1, if t hasn't done yet.
 		popt = popt.Subtasks[popt.popIdx]
 	}
@@ -272,7 +275,7 @@ func (t *Task) Peek() *Task {
 // Before pushing a task, change it's status to TaskWaiting,
 // or it will be just skipped when popped.
 func (t *Task) Push() {
-	if !t.IsLeaf() {
+	if !t.isLeaf {
 		panic("cannot push a branch task")
 	}
 	t.popIdx = 0
@@ -293,7 +296,7 @@ func (t *Task) Push() {
 // When it's done successfully, it will return true.
 // when it already spent all the retries, it will do nothing and return false.
 func (t *Task) Retry() bool {
-	if !t.IsLeaf() {
+	if !t.isLeaf {
 		panic("cannot retry a branch task")
 	}
 	n := t.job.AutoRetry
@@ -310,7 +313,7 @@ func (t *Task) Retry() bool {
 // Status returns the task's status.
 // When it's a branch, it will be calculated from the childen's status.
 func (t *Task) Status() TaskStatus {
-	if t.IsLeaf() {
+	if t.isLeaf {
 		return t.status
 	}
 	return t.Stat.Status()
@@ -319,7 +322,7 @@ func (t *Task) Status() TaskStatus {
 // SetStatus sets a leaf task's status.
 // It will panic if called on branch.
 func (t *Task) SetStatus(s TaskStatus) {
-	if !t.IsLeaf() {
+	if !t.isLeaf {
 		panic("cannot set status to a branch task")
 	}
 	old := t.status
@@ -344,9 +347,4 @@ func (t *Task) CalcPriority() int {
 	}
 	// the job's Priority was 0.
 	return 0
-}
-
-// IsLeaf returns true whether the task is a leaf task.
-func (t *Task) IsLeaf() bool {
-	return len(t.Subtasks) == 0
 }

@@ -83,7 +83,7 @@ func (j *Job) WalkTaskFn(fn func(t *Task)) {
 // WalkLeafTaskFn walks the job's leaf tasks.
 func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
 	leafFn := func(t *Task) {
-		if t.IsLeaf() {
+		if t.isLeaf {
 			fn(t)
 		}
 	}
@@ -242,7 +242,8 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 	t.job = j
 	t.parent = parent
 	t.nthChild = nth
-	if t.IsLeaf() {
+	t.isLeaf = len(t.Subtasks) == 0
+	if t.isLeaf {
 		t.num = i
 		i++
 	}
