@@ -200,3 +200,24 @@ func TestTaskPop(t *testing.T) {
 		}
 	}
 }
+
+func TestBranchStat(t *testing.T) {
+	bs := newBranchStat(3)
+	bs.Change(TaskWaiting, TaskRunning)
+	got := bs.Status()
+	if got != TaskRunning {
+		t.Fatalf("want TaskRunning, got %v", got)
+	}
+	bs.Change(TaskWaiting, TaskFailed)
+	got = bs.Status()
+	if got != TaskFailed {
+		t.Fatalf("want TaskFailed, got %v", got)
+	}
+	bs.Change(TaskRunning, TaskDone)
+	bs.Change(TaskFailed, TaskDone)
+	bs.Change(TaskWaiting, TaskDone)
+	got = bs.Status()
+	if got != TaskDone {
+		t.Fatalf("want TaskDone, got %v", got)
+	}
+}

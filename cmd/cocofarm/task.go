@@ -38,25 +38,9 @@ func newBranchStat(n int) *branchStat {
 	return &branchStat{nWaiting: n}
 }
 
-// Add adds a leaf child's TaskStatus to branchStat.
-func (st *branchStat) Add(s TaskStatus) {
-	switch s {
-	case TaskFailed:
-		st.nFailed += 1
-	case TaskRunning:
-		st.nRunning += 1
-	case TaskWaiting:
-		st.nWaiting += 1
-	case TaskDone:
-		st.nDone += 1
-	default:
-		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
-	}
-}
-
-// Sub subtracts a leaf child's TaskStatus to branchStat.
-func (st *branchStat) Sub(s TaskStatus) {
-	switch s {
+// Change changes a leaf child's TaskStatus to another.
+func (st *branchStat) Change(from, to TaskStatus) {
+	switch from {
 	case TaskFailed:
 		st.nFailed -= 1
 	case TaskRunning:
@@ -66,7 +50,34 @@ func (st *branchStat) Sub(s TaskStatus) {
 	case TaskDone:
 		st.nDone -= 1
 	default:
-		panic(fmt.Sprintf("unknown TaskStatus: %v", s))
+		panic(fmt.Sprintf("unknown TaskStatus: to: %v", to))
+	}
+
+	// those are number of leaf status, make sure that isn't a nagative value.
+	if st.nFailed < 0 {
+		panic(fmt.Sprintf("nFailed shouldn't be a nagative value"))
+	}
+	if st.nRunning < 0 {
+		panic(fmt.Sprintf("nRunning shouldn't be a nagative value"))
+	}
+	if st.nWaiting < 0 {
+		panic(fmt.Sprintf("nWaiting shouldn't be a nagative value"))
+	}
+	if st.nDone < 0 {
+		panic(fmt.Sprintf("nDone shouldn't be a nagative value"))
+	}
+
+	switch to {
+	case TaskFailed:
+		st.nFailed += 1
+	case TaskRunning:
+		st.nRunning += 1
+	case TaskWaiting:
+		st.nWaiting += 1
+	case TaskDone:
+		st.nDone += 1
+	default:
+		panic(fmt.Sprintf("unknown TaskStatus: from: %v", from))
 	}
 }
 
@@ -334,8 +345,7 @@ func (t *Task) SetStatus(s TaskStatus) {
 	t.status = s
 	parent := t.parent
 	for parent != nil {
-		parent.Stat.Sub(old)
-		parent.Stat.Add(s)
+		parent.Stat.Change(old, s)
 		parent = parent.parent
 	}
 }
