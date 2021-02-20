@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// TaskStatus is a task status.
 type TaskStatus int
 
 const (
@@ -14,6 +15,7 @@ const (
 	TaskDone
 )
 
+// String represents TaskStatus as string.
 func (s TaskStatus) String() string {
 	return map[TaskStatus]string{
 		TaskWaiting: "waiting",
@@ -23,6 +25,7 @@ func (s TaskStatus) String() string {
 	}[s]
 }
 
+// branchStat calculates the branch's status with Status.
 type branchStat struct {
 	nFailed  int
 	nRunning int
@@ -30,6 +33,7 @@ type branchStat struct {
 	nDone    int
 }
 
+// Add adds a leaf child's TaskStatus to branchStat.
 func (st *branchStat) Add(s TaskStatus) {
 	switch s {
 	case TaskFailed:
@@ -45,6 +49,7 @@ func (st *branchStat) Add(s TaskStatus) {
 	}
 }
 
+// Sub subtracts a leaf child's TaskStatus to branchStat.
 func (st *branchStat) Sub(s TaskStatus) {
 	switch s {
 	case TaskFailed:
@@ -60,6 +65,7 @@ func (st *branchStat) Sub(s TaskStatus) {
 	}
 }
 
+// Status calcuates the branch's status based on the leaf children's status.
 func (st *branchStat) Status() TaskStatus {
 	if st.nFailed > 0 {
 		return TaskFailed
@@ -73,6 +79,7 @@ func (st *branchStat) Status() TaskStatus {
 	return TaskDone
 }
 
+// TaskID is a task id.
 type TaskID string
 
 // Task has a command and/or subtasks that will be run by workers.
@@ -115,6 +122,7 @@ type Task struct {
 	status TaskStatus
 
 	// Stat aggrigates it's leafs status.
+	// It is only meaningful when the task is a branch.
 	Stat *branchStat
 
 	// Priority is a priority hint for the task.
@@ -148,6 +156,7 @@ type Task struct {
 // When a Command is nil or empty, the command will be skipped.
 type Command []string
 
+// MarshalJSON implements json.Marshaller.
 func (t *Task) MarshalJSON() ([]byte, error) {
 	m := struct {
 		Title          string
@@ -169,6 +178,8 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+// Blocking returns a bool value that indicates whether the task is a blocking task.
+// A serial task that didn't finished blocks the next task, and a failed task blocks the parent.
 func (t *Task) Blocking() bool {
 	if !t.IsLeaf() {
 		panic("shouldn't call Task.Blocking on non-leaf task")
@@ -188,6 +199,11 @@ func (t *Task) Blocking() bool {
 	return block
 }
 
+// Pop pops a first child task that isn't popped yet.
+// The second return value indicates that there is no more task to be popped. (done)
+// It will return (nil, true) if no more child task is left.
+// It will return (nil, false) if there is remaining tasks, but
+// a task cannot be popped due to one of the prior subtask is blocking the process.
 func (t *Task) Pop() (*Task, bool) {
 	if t.IsLeaf() {
 		block := t.Blocking()
@@ -233,6 +249,9 @@ func (t *Task) Pop() (*Task, bool) {
 	return popt, t.popIdx == -1
 }
 
+// Peek peeks the next task that will be popped.
+// It will be nil, if all the tasks are popped or
+// a task cannot be popped due to one of the prior subtask is blocking the process.
 func (t *Task) Peek() *Task {
 	if t.popIdx == -1 {
 		// t and it's subtasks has all done
@@ -288,6 +307,8 @@ func (t *Task) Retry() bool {
 	return true
 }
 
+// Status returns the task's status.
+// When it's a branch, it will be calculated from the childen's status.
 func (t *Task) Status() TaskStatus {
 	if t.IsLeaf() {
 		return t.status
@@ -295,6 +316,8 @@ func (t *Task) Status() TaskStatus {
 	return t.Stat.Status()
 }
 
+// SetStatus sets a leaf task's status.
+// It will panic if called on branch.
 func (t *Task) SetStatus(s TaskStatus) {
 	if !t.IsLeaf() {
 		panic("cannot set status to a branch task")
@@ -309,6 +332,7 @@ func (t *Task) SetStatus(s TaskStatus) {
 	}
 }
 
+// CalcPriority calculates the tasks prority.
 func (t *Task) CalcPriority() int {
 	tt := t
 	for tt != nil {
@@ -322,6 +346,7 @@ func (t *Task) CalcPriority() int {
 	return 0
 }
 
+// IsLeaf returns true whether the task is a leaf task.
 func (t *Task) IsLeaf() bool {
 	return len(t.Subtasks) == 0
 }
