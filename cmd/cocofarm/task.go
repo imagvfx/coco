@@ -33,6 +33,11 @@ type branchStat struct {
 	nDone    int
 }
 
+// newBranchStat creates a new branchStat, that is having n leafs.
+func newBranchStat(n int) *branchStat {
+	return &branchStat{nWaiting: n}
+}
+
 // Add adds a leaf child's TaskStatus to branchStat.
 func (st *branchStat) Add(s TaskStatus) {
 	switch s {

@@ -251,7 +251,6 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 		// negative priority is invalid.
 		t.Priority = 0
 	}
-	t.Stat = &branchStat{}
 	iOld := i
 	if prev != nil {
 		prev.next = t
@@ -260,7 +259,7 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 	for nth, subt := range t.Subtasks {
 		prev, i = initJobTasks(subt, j, t, prev, nth, i)
 	}
-	t.Stat.nWaiting = i - iOld
+	t.Stat = newBranchStat(i - iOld)
 	t.popIdx = 0
 	return prev, i
 }
