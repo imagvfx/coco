@@ -1,4 +1,4 @@
-package main
+package coco
 
 import (
 	"fmt"
@@ -113,7 +113,7 @@ func ExampleWalkFromFn() {
 	// 2
 }
 
-func newJobManagerForPop() *jobManager {
+func newJobManagerForPop() *JobManager {
 	j1 := initJob(&Job{
 		Target: "2d",
 		Task: &Task{
@@ -160,7 +160,7 @@ func newJobManagerForPop() *jobManager {
 			},
 		},
 	})
-	m := newJobManager()
+	m := NewJobManager()
 	m.Add(j1)
 	m.Add(j2)
 	return m
@@ -228,7 +228,7 @@ func TestJobManagerPopTask(t *testing.T) {
 }
 
 func TestJobManagerPopTaskThenPushTask(t *testing.T) {
-	shouldEqual := func(got, want *jobManager) error {
+	shouldEqual := func(got, want *JobManager) error {
 		// Unfortunately, jobManager.job and jobManager.task is hard to compare.
 		// Fortunately, those are hardly changed after initialized. Skip them for now.
 		if !reflect.DeepEqual(got.jobBlocked, want.jobBlocked) {
@@ -248,8 +248,8 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 				return fmt.Errorf("\ngot jobs[%v]: %v\nwant jobs[%v]: %v", i, sg, i, sw)
 			}
 		}
-		if !reflect.DeepEqual(got.assignee, want.assignee) {
-			return fmt.Errorf("assignee: got %v, want %v", got.assignee, want.assignee)
+		if !reflect.DeepEqual(got.Assignee, want.Assignee) {
+			return fmt.Errorf("assignee: got %v, want %v", got.Assignee, want.Assignee)
 		}
 		return nil
 	}

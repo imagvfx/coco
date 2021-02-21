@@ -1,4 +1,4 @@
-package main
+package coco
 
 import (
 	"context"
@@ -38,6 +38,10 @@ type Worker struct {
 	group *WorkerGroup
 }
 
+func NewWorker(addr string) *Worker {
+	return &Worker{addr: addr, status: WorkerReady}
+}
+
 type WorkerGroup struct {
 	Name         string
 	Matchers     []AddressMatcher
@@ -53,7 +57,7 @@ func (g WorkerGroup) Match(addr string) bool {
 	return false
 }
 
-type workerManager struct {
+type WorkerManager struct {
 	sync.Mutex
 	worker       map[string]*Worker
 	workers      *uniqueQueue
@@ -63,8 +67,8 @@ type workerManager struct {
 	ReadyCh chan struct{}
 }
 
-func newWorkerManager(wgrps []*WorkerGroup) *workerManager {
-	m := &workerManager{}
+func NewWorkerManager(wgrps []*WorkerGroup) *WorkerManager {
+	m := &WorkerManager{}
 	m.worker = make(map[string]*Worker)
 	m.workers = newUniqueQueue()
 	m.workerGroups = wgrps
@@ -73,7 +77,7 @@ func newWorkerManager(wgrps []*WorkerGroup) *workerManager {
 	return m
 }
 
-func (m *workerManager) ServableTargets() []string {
+func (m *WorkerManager) ServableTargets() []string {
 	servable := make([]string, 0)
 	for t, n := range m.nForTag {
 		if n != 0 {
@@ -83,7 +87,7 @@ func (m *workerManager) ServableTargets() []string {
 	return servable
 }
 
-func (m *workerManager) Add(w *Worker) error {
+func (m *WorkerManager) Add(w *Worker) error {
 	_, ok := m.worker[w.addr]
 	if ok {
 		return fmt.Errorf("worker already exists: %v", w.addr)
@@ -104,7 +108,7 @@ func (m *workerManager) Add(w *Worker) error {
 	return nil
 }
 
-func (m *workerManager) Bye(workerAddr string) error {
+func (m *WorkerManager) Bye(workerAddr string) error {
 	w, ok := m.worker[workerAddr]
 	if !ok {
 		return fmt.Errorf("worker not found: %v", workerAddr)
@@ -120,13 +124,13 @@ func (m *workerManager) Bye(workerAddr string) error {
 	return nil
 }
 
-func (m *workerManager) FindByAddr(addr string) *Worker {
+func (m *WorkerManager) FindByAddr(addr string) *Worker {
 	return m.worker[addr]
 }
 
 // Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
-func (m *workerManager) Ready(w *Worker) {
+func (m *WorkerManager) Ready(w *Worker) {
 	w.status = WorkerReady
 	w.task = ""
 	m.workers.Push(w)
@@ -136,7 +140,7 @@ func (m *workerManager) Ready(w *Worker) {
 	go func() { m.ReadyCh <- struct{}{} }()
 }
 
-func (m *workerManager) Pop(target string) *Worker {
+func (m *WorkerManager) Pop(target string) *Worker {
 	var w *Worker
 	for {
 		v := m.workers.Pop()
@@ -165,11 +169,11 @@ func (m *workerManager) Pop(target string) *Worker {
 	return w
 }
 
-func (m *workerManager) Push(w *Worker) {
+func (m *WorkerManager) Push(w *Worker) {
 	m.workers.Push(w)
 }
 
-func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
+func (m *WorkerManager) SendTask(w *Worker, t *Task) (err error) {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -181,7 +185,7 @@ func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.RunRequest{}
-	req.Id = string(t.id)
+	req.Id = string(t.ID)
 	for _, c := range t.Commands {
 		reqCmd := &pb.Command{
 			Args: c,
@@ -194,12 +198,12 @@ func (m *workerManager) sendTask(w *Worker, t *Task) (err error) {
 		return err
 	}
 	w.status = WorkerRunning
-	w.task = t.id
+	w.task = t.ID
 	return nil
 }
 
-func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
-	log.Printf("cancel: %v %v", w.addr, t.id)
+func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
+	log.Printf("cancel: %v %v", w.addr, t.ID)
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -211,7 +215,7 @@ func (m *workerManager) sendCancelTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.CancelRequest{}
-	req.Id = string(t.id)
+	req.Id = string(t.ID)
 
 	_, err = c.Cancel(ctx, req)
 	if err != nil {

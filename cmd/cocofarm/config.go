@@ -4,6 +4,7 @@ import (
 	"log"
 	"sort"
 
+	"github.com/imagvfx/coco"
 	"github.com/pelletier/go-toml"
 )
 
@@ -45,7 +46,7 @@ func orderedKeys(t *toml.Tree) []string {
 	return ordkeys
 }
 
-func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
+func loadWorkerGroupsFromConfig() ([]*coco.WorkerGroup, error) {
 	config, err := toml.LoadFile("config/worker.toml")
 	if err != nil {
 		return nil, err
@@ -62,20 +63,20 @@ func loadWorkerGroupsFromConfig() ([]*WorkerGroup, error) {
 		return nil, err
 	}
 
-	wgrps := make([]*WorkerGroup, 0)
+	wgrps := make([]*coco.WorkerGroup, 0)
 	for _, grp := range orderedKeys(config) {
-		g := &WorkerGroup{}
+		g := &coco.WorkerGroup{}
 		g.Name = grp
 		cfg := wgrpCfgs[grp]
 		for _, w := range cfg.IPs {
-			m, err := ipMatcherFromString(w)
+			m, err := coco.IPMatcherFromString(w)
 			if err != nil {
 				log.Fatalf("%v", err)
 			}
 			g.Matchers = append(g.Matchers, m)
 		}
 		for _, w := range cfg.Domains {
-			m, err := domainMatcherFromString(w)
+			m, err := coco.DomainMatcherFromString(w)
 			if err != nil {
 				log.Fatalf("%v", err)
 			}

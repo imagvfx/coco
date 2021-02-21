@@ -1,4 +1,4 @@
-package main
+package coco
 
 import (
 	"fmt"
@@ -72,7 +72,7 @@ func (m IPPartRangeMatcher) Match(n int) bool {
 
 // I don't know how to handle IPv6 yet.
 // So, for now I will focus on IPv4.
-func ipMatcherFromString(s string) (IPMatcher, error) {
+func IPMatcherFromString(s string) (IPMatcher, error) {
 	ipRange := func(p string) (int, int) {
 		if !strings.HasPrefix(p, "[") || !strings.HasSuffix(p, "]") {
 			return -1, -1
@@ -128,7 +128,7 @@ func ipMatcherFromString(s string) (IPMatcher, error) {
 // DomainMatcher matches to a range of domains.
 type DomainMatcher []DomainPartMatcher
 
-func domainMatcherFromString(s string) (DomainMatcher, error) {
+func DomainMatcherFromString(s string) (DomainMatcher, error) {
 	if s == "" {
 		return nil, fmt.Errorf("cannot create a domain matcher from empty string")
 	}

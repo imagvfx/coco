@@ -1,4 +1,4 @@
-package main
+package coco
 
 // uniqueQueue is a queue that has unique items.
 // uniqueQueue is a queue, so the value pushed first will popped first.

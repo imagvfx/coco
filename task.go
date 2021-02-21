@@ -1,4 +1,4 @@
-package main
+package coco
 
 import (
 	"encoding/json"
@@ -108,11 +108,11 @@ type Task struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
 	// Otherwise, this program will get racy.
 
-	// id is a Task identifier make it distinct from all other tasks.
-	id TaskID
+	// ID is a Task identifier make it distinct from all other tasks.
+	ID TaskID
 
-	// job is a job the task is belong to.
-	job *Job
+	// Job is a job the task is belong to.
+	Job *Job
 
 	// parent is a parent task of the task.
 	// It will be nil, if the task is a root task.
@@ -187,7 +187,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Commands       []Command
 	}{
 		Title:          t.Title,
-		ID:             t.id,
+		ID:             t.ID,
 		Status:         t.Status().String(),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
@@ -315,7 +315,7 @@ func (t *Task) Retry() bool {
 	if !t.isLeaf {
 		panic("cannot retry a branch task")
 	}
-	n := t.job.AutoRetry
+	n := t.Job.AutoRetry
 	if t.retry >= n {
 		// spent all the retries
 		return false

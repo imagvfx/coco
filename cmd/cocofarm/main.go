@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/imagvfx/coco"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
@@ -19,15 +21,15 @@ func main() {
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
 	flag.Parse()
 
-	job := newJobManager()
+	job := coco.NewJobManager()
 
 	wgrps, err := loadWorkerGroupsFromConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-	worker := newWorkerManager(wgrps)
+	worker := coco.NewWorkerManager(wgrps)
 
-	farm := newFarmServer("localhost:8284", job, worker)
+	farm := newFarmServer("localhost:8284", coco.NewFarm(job, worker))
 	go farm.Listen()
 
 	go matching(job, worker)
@@ -50,7 +52,7 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
-func matching(jobman *jobManager, workerman *workerManager) {
+func matching(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 	match := func() {
 		// ReadyCh gives faster matching loop when we are fortune.
 		// There might have a chance that there was no job
@@ -76,27 +78,27 @@ func matching(jobman *jobManager, workerman *workerManager) {
 			return
 		}
 		// TODO: what if the job is deleted already?
-		j := t.job
+		j := t.Job
 		j.Lock()
 		defer j.Unlock()
-		cancel := len(t.Commands) == 0 || t.Status() == TaskFailed // eg. user canceled this task
+		cancel := len(t.Commands) == 0 || t.Status() == coco.TaskFailed // eg. user canceled this task
 		if cancel {
 			return
 		}
-		w := workerman.Pop(t.job.Target)
+		w := workerman.Pop(t.Job.Target)
 		if w == nil {
 			panic("at least one worker should be able to serve this tag")
 		}
-		err := workerman.sendTask(w, t)
+		err := workerman.SendTask(w, t)
 		if err != nil {
 			// Failed to communicate with the worker.
 			log.Printf("failed to send task to a worker: %v", err)
 			jobman.PushTask(t)
 			return
 		}
-		jobman.Assign(t.id, w)
+		jobman.Assign(t.ID, w)
 		// worker got the task.
-		t.SetStatus(TaskRunning)
+		t.SetStatus(coco.TaskRunning)
 	}
 
 	go func() {
@@ -106,23 +108,23 @@ func matching(jobman *jobManager, workerman *workerManager) {
 	}()
 }
 
-func canceling(jobman *jobManager, workerman *workerManager) {
+func canceling(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 	cancel := func() {
 		t := <-jobman.CancelTaskCh
 		jobman.Lock()
 		defer jobman.Unlock()
-		w, ok := jobman.assignee[t.id]
+		w, ok := jobman.Assignee[t.ID]
 		if !ok {
 			return
 		}
 		workerman.Lock()
 		defer workerman.Unlock()
-		err := workerman.sendCancelTask(w, t)
+		err := workerman.SendCancelTask(w, t)
 		if err != nil {
 			log.Print(err)
 			return
 		}
-		jobman.unassign(t.id, w)
+		jobman.Unassign(t.ID, w)
 	}
 
 	go func() {

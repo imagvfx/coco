@@ -1,4 +1,4 @@
-package main
+package coco
 
 import "testing"
 
@@ -36,7 +36,7 @@ func TestIPMatcherMatch(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		f, err := ipMatcherFromString(c.matcher)
+		f, err := IPMatcherFromString(c.matcher)
 		if err != nil {
 			t.Fatalf("matcher %v: ipFilterFromString: %v", c.matcher, err)
 		}
@@ -85,7 +85,7 @@ func TestDomainMatcherMatch(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		f, err := domainMatcherFromString(c.matcher)
+		f, err := DomainMatcherFromString(c.matcher)
 		if err != nil {
 			t.Fatalf("matcher %v: domainMatcherFromString: %v", c.matcher, err)
 		}

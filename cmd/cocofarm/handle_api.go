@@ -7,15 +7,17 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/imagvfx/coco"
 )
 
 type apiHandler struct {
-	jobman *jobManager
+	jobman *coco.JobManager
 }
 
 func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
-	j := &Job{}
+	j := &coco.Job{}
 	err := dec.Decode(j)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("invalid json: %v", err), http.StatusBadRequest)
@@ -37,7 +39,7 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
 		return
 	}
-	err = h.jobman.Cancel(JobID(id))
+	err = h.jobman.Cancel(coco.JobID(id))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -51,7 +53,7 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
 		return
 	}
-	err = h.jobman.Retry(JobID(id))
+	err = h.jobman.Retry(coco.JobID(id))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -65,7 +67,7 @@ func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
 		return
 	}
-	err = h.jobman.Delete(JobID(id))
+	err = h.jobman.Delete(coco.JobID(id))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -79,7 +81,7 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
 		return
 	}
-	j := h.jobman.Get(JobID(id))
+	j := h.jobman.Get(coco.JobID(id))
 	if j == nil {
 		http.Error(w, fmt.Sprintf("job not found by id: %v", id), http.StatusBadRequest)
 		return
@@ -98,7 +100,7 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	target := r.Form.Get("target")
-	filter := JobFilter{
+	filter := coco.JobFilter{
 		Target: target,
 	}
 	jobs := h.jobman.Jobs(filter)

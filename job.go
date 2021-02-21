@@ -1,4 +1,4 @@
-package main
+package coco
 
 import (
 	"container/heap"
@@ -142,7 +142,7 @@ func (h *jobHeap) Pop() interface{} {
 	return el
 }
 
-type jobManager struct {
+type JobManager struct {
 	sync.Mutex
 	nextJobID JobID
 
@@ -156,31 +156,31 @@ type jobManager struct {
 	task        map[TaskID]*Task
 	jobs        *jobHeap
 
-	assignee     map[TaskID]*Worker
+	Assignee     map[TaskID]*Worker
 	CancelTaskCh chan *Task
 }
 
-func newJobManager() *jobManager {
-	m := &jobManager{}
+func NewJobManager() *JobManager {
+	m := &JobManager{}
 	m.job = make(map[JobID]*Job)
 	m.jobBlocked = make(map[JobID]bool)
 	m.jobPriority = make(map[JobID]int)
 	m.jobs = newJobHeap(m.jobPriority)
 	m.task = make(map[TaskID]*Task)
-	m.assignee = make(map[TaskID]*Worker)
+	m.Assignee = make(map[TaskID]*Worker)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
 
-func (m *jobManager) Get(id JobID) *Job {
+func (m *JobManager) Get(id JobID) *Job {
 	return m.job[id]
 }
 
-func (m *jobManager) GetTask(id TaskID) *Task {
+func (m *JobManager) GetTask(id TaskID) *Task {
 	return m.task[id]
 }
 
-func (m *jobManager) Add(j *Job) (JobID, error) {
+func (m *JobManager) Add(j *Job) (JobID, error) {
 	if j == nil {
 		return -1, fmt.Errorf("nil job cannot be added")
 	}
@@ -201,7 +201,7 @@ func (m *jobManager) Add(j *Job) (JobID, error) {
 	heap.Push(m.jobs, j)
 
 	j.WalkTaskFn(func(t *Task) {
-		m.task[t.id] = t
+		m.task[t.ID] = t
 	})
 
 	// set priority for the very first leaf task.
@@ -235,11 +235,11 @@ func initJob(j *Job) *Job {
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) {
-	t.id = TaskID(xid.New().String())
+	t.ID = TaskID(xid.New().String())
 	if t.Title == "" {
 		t.Title = "untitled"
 	}
-	t.job = j
+	t.Job = j
 	t.parent = parent
 	t.nthChild = nth
 	t.isLeaf = len(t.Subtasks) == 0
@@ -264,7 +264,7 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 	return prev, i
 }
 
-func (m *jobManager) Jobs(filter JobFilter) []*Job {
+func (m *JobManager) Jobs(filter JobFilter) []*Job {
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
 		if filter.Target == "" {
@@ -289,7 +289,7 @@ func (m *jobManager) Jobs(filter JobFilter) []*Job {
 // Cancel cancels a job.
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
-func (m *jobManager) Cancel(id JobID) error {
+func (m *JobManager) Cancel(id JobID) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -316,7 +316,7 @@ func (m *jobManager) Cancel(id JobID) error {
 
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
-func (m *jobManager) Retry(id JobID) error {
+func (m *JobManager) Retry(id JobID) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -339,7 +339,7 @@ func (m *jobManager) Retry(id JobID) error {
 }
 
 // Delete deletes a job irrecoverably.
-func (m *jobManager) Delete(id JobID) error {
+func (m *JobManager) Delete(id JobID) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -348,12 +348,12 @@ func (m *jobManager) Delete(id JobID) error {
 	delete(m.jobPriority, id)
 	delete(m.jobBlocked, id)
 	j.WalkTaskFn(func(t *Task) {
-		delete(m.task, t.id)
+		delete(m.task, t.ID)
 	})
 	return nil
 }
 
-func (m *jobManager) PopTask(targets []string) *Task {
+func (m *JobManager) PopTask(targets []string) *Task {
 	if len(targets) == 0 {
 		return nil
 	}
@@ -415,8 +415,8 @@ func (m *jobManager) PopTask(targets []string) *Task {
 // pushTask pushes the task to it's job, so it can popped again.
 // When `retry` argument is true, it will act as retry mode.
 // It will return true when the push has succeed.
-func (m *jobManager) pushTask(t *Task, retry bool) (ok bool) {
-	j := t.job
+func (m *JobManager) pushTask(t *Task, retry bool) (ok bool) {
+	j := t.Job
 	peek := j.Peek()
 	if peek == nil {
 		// The job has blocked or popped all tasks.
@@ -451,42 +451,34 @@ func (m *jobManager) pushTask(t *Task, retry bool) (ok bool) {
 // PushTask pushes the task to it's job so it can popped again.
 // It should be used when there is server/communication error.
 // Use PushTaskForRetry for failed tasks.
-func (m *jobManager) PushTask(t *Task) {
+func (m *JobManager) PushTask(t *Task) {
 	m.pushTask(t, false)
 }
 
 // RetryTask pushes the task to it's job so it can be retried when it's failed.
 // If the task already reaches to maxmium AutoRetry count, it will
 // refuse to push and return false.
-func (m *jobManager) PushTaskForRetry(t *Task) bool {
+func (m *JobManager) PushTaskForRetry(t *Task) bool {
 	return m.pushTask(t, true)
 }
 
-func (m *jobManager) Assign(id TaskID, w *Worker) error {
-	return m.assign(id, w)
-}
-
-func (m *jobManager) assign(id TaskID, w *Worker) error {
-	a, ok := m.assignee[id]
+func (m *JobManager) Assign(id TaskID, w *Worker) error {
+	a, ok := m.Assignee[id]
 	if ok {
 		return fmt.Errorf("task is assigned to a different worker: %v - %v", id, a.addr)
 	}
-	m.assignee[id] = w
+	m.Assignee[id] = w
 	return nil
 }
 
-func (m *jobManager) Unassign(id TaskID, w *Worker) error {
-	return m.unassign(id, w)
-}
-
-func (m *jobManager) unassign(id TaskID, w *Worker) error {
-	a, ok := m.assignee[id]
+func (m *JobManager) Unassign(id TaskID, w *Worker) error {
+	a, ok := m.Assignee[id]
 	if !ok {
 		return fmt.Errorf("task isn't assigned to any worker: %v", id)
 	}
 	if w != a {
 		return fmt.Errorf("task is assigned to a different worker: %v", id)
 	}
-	delete(m.assignee, id)
+	delete(m.Assignee, id)
 	return nil
 }
