@@ -237,13 +237,10 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 		if !reflect.DeepEqual(got.jobPriority, want.jobPriority) {
 			return fmt.Errorf("jobPriority: got %v, want %v", got.jobPriority, want.jobPriority)
 		}
-		sprint := func(d int, t *Task) string {
-			return fmt.Sprintf("%v%v: popIdx=%v, priority=%v\n", strings.Repeat("\t", d), t.Title, t.popIdx, t.CalcPriority())
-		}
 		for i, g := range got.jobs.heap {
 			w := want.jobs.heap[i]
-			sg := sprintJob(g, sprint)
-			sw := sprintJob(w, sprint)
+			sg := sprintJob(g)
+			sw := sprintJob(w)
 			if sg != sw {
 				return fmt.Errorf("\ngot jobs[%v]: %v\nwant jobs[%v]: %v", i, sg, i, sw)
 			}
@@ -274,14 +271,17 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 	}
 }
 
-func sprintJob(j *Job, sprintTaskFn func(d int, t *Task) string) string {
-	return sprintTask(j.Task, 0, sprintTaskFn)
+// sprintJob only print partial fields of the Job that is meaningful for comparing two jobs.
+func sprintJob(j *Job) string {
+	jstr := fmt.Sprintf("Job id=%v, CurrentPriority=%v\n", j.id, j.CurrentPriority)
+	tstr := sprintTask(j.Task, 1)
+	return jstr + tstr
 }
 
-func sprintTask(t *Task, depth int, sprintTaskFn func(d int, t *Task) string) string {
-	s := sprintTaskFn(depth, t)
+func sprintTask(t *Task, depth int) string {
+	s := fmt.Sprintf("%v%v: popIdx=%v, priority=%v\n", strings.Repeat("\t", depth), t.Title, t.popIdx, t.CalcPriority())
 	for _, t := range t.Subtasks {
-		s += sprintTask(t, depth+1, sprintTaskFn)
+		s += sprintTask(t, depth+1)
 	}
 	return s
 }
