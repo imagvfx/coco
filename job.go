@@ -51,6 +51,9 @@ type Job struct {
 	// AutoRetry is number of maximum auto retry for tasks when they are failed.
 	// When user retries the job, retry count for tasks will be reset to 0.
 	AutoRetry int
+
+	// blocked indicates whether the job has blocked due to a failed/unfinished task.
+	blocked bool
 }
 
 // MarshalJSON implements json.Marshaler interface.
@@ -104,10 +107,9 @@ type jobHeap struct {
 	priority map[JobID]int
 }
 
-func newJobHeap(priority map[JobID]int) *jobHeap {
+func newJobHeap() *jobHeap {
 	return &jobHeap{
-		heap:     make([]*Job, 0),
-		priority: priority,
+		heap: make([]*Job, 0),
 	}
 }
 
@@ -116,10 +118,10 @@ func (h jobHeap) Len() int {
 }
 
 func (h jobHeap) Less(i, j int) bool {
-	if h.priority[h.heap[i].id] > h.priority[h.heap[j].id] {
+	if h.heap[i].CurrentPriority > h.heap[j].CurrentPriority {
 		return true
 	}
-	if h.priority[h.heap[i].id] < h.priority[h.heap[j].id] {
+	if h.heap[i].CurrentPriority < h.heap[j].CurrentPriority {
 		return false
 	}
 	return h.heap[i].id < h.heap[j].id
@@ -150,11 +152,9 @@ type JobManager struct {
 	// When a job is deleted, those related info should be deleted all toghther,
 	// except `jobs` heap. It is expensive to search an item from heap.
 	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
-	job         map[JobID]*Job
-	jobPriority map[JobID]int
-	jobBlocked  map[JobID]bool
-	task        map[TaskID]*Task
-	jobs        *jobHeap
+	job  map[JobID]*Job
+	task map[TaskID]*Task
+	jobs *jobHeap
 
 	Assignee     map[TaskID]*Worker
 	CancelTaskCh chan *Task
@@ -163,9 +163,7 @@ type JobManager struct {
 func NewJobManager() *JobManager {
 	m := &JobManager{}
 	m.job = make(map[JobID]*Job)
-	m.jobBlocked = make(map[JobID]bool)
-	m.jobPriority = make(map[JobID]int)
-	m.jobs = newJobHeap(m.jobPriority)
+	m.jobs = newJobHeap()
 	m.task = make(map[TaskID]*Task)
 	m.Assignee = make(map[TaskID]*Worker)
 	m.CancelTaskCh = make(chan *Task)
@@ -208,7 +206,6 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 	peek := j.Peek()
 	// peek can be nil, when the job doesn't have any leaf task.
 	if peek != nil {
-		m.jobPriority[j.id] = peek.CalcPriority()
 		j.CurrentPriority = peek.CalcPriority()
 	}
 	return j.id, nil
@@ -346,8 +343,6 @@ func (m *JobManager) Delete(id JobID) error {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	delete(m.job, id)
-	delete(m.jobPriority, id)
-	delete(m.jobBlocked, id)
 	j.WalkTaskFn(func(t *Task) {
 		delete(m.task, t.ID)
 	})
@@ -400,12 +395,10 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			if peek != nil {
 				// the peeked task is also cared by this lock.
 				p := peek.CalcPriority()
-				m.jobPriority[j.id] = p
-				// also keep the info in the Job.
 				j.CurrentPriority = p
 				heap.Push(m.jobs, j)
 			} else {
-				m.jobBlocked[j.id] = true
+				j.blocked = true
 			}
 		}
 
@@ -428,7 +421,7 @@ func (m *JobManager) pushTask(t *Task, retry bool) (ok bool) {
 				return
 			}
 			heap.Push(m.jobs, j)
-			delete(m.jobBlocked, j.id)
+			j.blocked = false
 		}()
 	}
 
@@ -444,7 +437,6 @@ func (m *JobManager) pushTask(t *Task, retry bool) (ok bool) {
 	// Peek again to reflect possible change of the job's priority.
 	peek = j.Peek() // peek should not be nil
 	p := peek.CalcPriority()
-	m.jobPriority[j.id] = p
 	j.CurrentPriority = p
 	return ok
 }

@@ -231,12 +231,6 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 	shouldEqual := func(got, want *JobManager) error {
 		// Unfortunately, jobManager.job and jobManager.task is hard to compare.
 		// Fortunately, those are hardly changed after initialized. Skip them for now.
-		if !reflect.DeepEqual(got.jobBlocked, want.jobBlocked) {
-			return fmt.Errorf("jobBlocked: got %v, want %v", got.jobBlocked, want.jobBlocked)
-		}
-		if !reflect.DeepEqual(got.jobPriority, want.jobPriority) {
-			return fmt.Errorf("jobPriority: got %v, want %v", got.jobPriority, want.jobPriority)
-		}
 		for i, g := range got.jobs.heap {
 			w := want.jobs.heap[i]
 			sg := sprintJob(g)

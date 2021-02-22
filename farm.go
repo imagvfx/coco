@@ -71,10 +71,10 @@ func (f *Farm) Done(addr, task string) error {
 	t.Job.Lock()
 	defer t.Job.Unlock()
 	t.SetStatus(TaskDone)
-	if f.jobman.jobBlocked[t.Job.id] {
+	if t.Job.blocked {
 		peek := f.jobman.job[t.Job.id].Peek()
 		if peek != nil {
-			delete(f.jobman.jobBlocked, t.Job.id)
+			t.Job.blocked = false
 			heap.Push(f.jobman.jobs, t.Job)
 		}
 	}
