@@ -1,2 +1,3 @@
 use db to remember jobs
 run as the job owner
+JobManager should be reproducable from db jobs when cocofarm restarted
