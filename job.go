@@ -209,6 +209,7 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 	// peek can be nil, when the job doesn't have any leaf task.
 	if peek != nil {
 		m.jobPriority[j.id] = peek.CalcPriority()
+		j.CurrentPriority = peek.CalcPriority()
 	}
 	return j.id, nil
 }
