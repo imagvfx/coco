@@ -64,11 +64,10 @@ var job = initJob(&Job{
 	},
 })
 
-func ExampleWalkTaskFn() {
-	fn := func(t *Task) {
+func ExampleWalkTask() {
+	for _, t := range job.tasks {
 		fmt.Println(t.Title)
 	}
-	job.WalkTaskFn(fn)
 	// Output:
 	// root
 	// sim
@@ -83,11 +82,12 @@ func ExampleWalkTaskFn() {
 	// 2
 }
 
-func ExampleWalkLeafTaskFn() {
-	fn := func(t *Task) {
-		fmt.Println(t.Title)
+func ExampleWalkLeafTask() {
+	for _, t := range job.tasks {
+		if t.isLeaf {
+			fmt.Println(t.Title)
+		}
 	}
-	job.WalkLeafTaskFn(fn)
 	// Output:
 	// ocean
 	// foam
@@ -97,11 +97,11 @@ func ExampleWalkLeafTaskFn() {
 	// 2
 }
 
-func ExampleWalkFromFn() {
-	fn := func(t *Task) {
+func ExampleWalkFrom() {
+	n := job.Subtasks[0].Subtasks[1].num
+	for _, t := range job.tasks[n:] {
 		fmt.Println(t.Title)
 	}
-	walkFromFn(job.Subtasks[0].Subtasks[1], fn)
 	// Output:
 	// foam
 	// render

@@ -54,6 +54,10 @@ type Job struct {
 
 	// blocked indicates whether the job has blocked due to a failed/unfinished task.
 	blocked bool
+
+	// tasks are all tasks of the job, which is different from Subtasks.
+	// The order is walk order. So one can walk tasks by just iterate through it.
+	tasks []*Task
 }
 
 // MarshalJSON implements json.Marshaler interface.
@@ -76,30 +80,6 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		SerialSubtasks:  j.SerialSubtasks,
 	}
 	return json.Marshal(m)
-}
-
-// WalkTaskFn walks the job's tasks regardless they are branches or leaves.
-func (j *Job) WalkTaskFn(fn func(t *Task)) {
-	walkFromFn(j.Task, fn)
-}
-
-// WalkLeafTaskFn walks the job's leaf tasks.
-func (j *Job) WalkLeafTaskFn(fn func(t *Task)) {
-	leafFn := func(t *Task) {
-		if t.isLeaf {
-			fn(t)
-		}
-	}
-	walkFromFn(j.Task, leafFn)
-}
-
-// walkFromFn walks a job's task tree from given task,
-// and run a function for each task until it reaches to end.
-func walkFromFn(t *Task, fn func(t *Task)) {
-	for t != nil {
-		fn(t)
-		t = t.next
-	}
 }
 
 type jobHeap struct {
@@ -198,9 +178,9 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 
 	heap.Push(m.jobs, j)
 
-	j.WalkTaskFn(func(t *Task) {
+	for _, t := range j.tasks {
 		m.task[t.ID] = t
-	})
+	}
 
 	// set priority for the very first leaf task.
 	peek := j.Peek()
@@ -226,14 +206,16 @@ func (j *Job) Validate() error {
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
 func initJob(j *Job) *Job {
-	initJobTasks(j.Task, j, nil, nil, 0, 0)
+	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
 	return j
 }
 
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
-func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) {
+func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
 	t.ID = TaskID(xid.New().String())
+	t.num = len(tasks)
+	tasks = append(tasks, t)
 	if t.Title == "" {
 		t.Title = "untitled"
 	}
@@ -242,7 +224,6 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 	t.nthChild = nth
 	t.isLeaf = len(t.Subtasks) == 0
 	if t.isLeaf {
-		t.num = i
 		i++
 	}
 	if t.Priority < 0 {
@@ -250,16 +231,12 @@ func initJobTasks(t *Task, j *Job, parent, prev *Task, nth, i int) (*Task, int) 
 		t.Priority = 0
 	}
 	iOld := i
-	if prev != nil {
-		prev.next = t
-	}
-	prev = t
 	for nth, subt := range t.Subtasks {
-		prev, i = initJobTasks(subt, j, t, prev, nth, i)
+		i, tasks = initJobTasks(subt, j, t, nth, i, tasks)
 	}
 	t.Stat = newBranchStat(i - iOld)
 	t.popIdx = 0
-	return prev, i
+	return i, tasks
 }
 
 func (m *JobManager) Jobs(filter JobFilter) []*Job {
@@ -298,7 +275,10 @@ func (m *JobManager) Cancel(id JobID) error {
 		// TODO: the job's status doesn't get changed to done yet.
 		return fmt.Errorf("job has already Done: %v", id)
 	}
-	j.WalkLeafTaskFn(func(t *Task) {
+	for _, t := range j.tasks {
+		if !t.isLeaf {
+			continue
+		}
 		if t.status == TaskRunning {
 			go func() {
 				// Let worker knows that the task is canceled.
@@ -308,7 +288,7 @@ func (m *JobManager) Cancel(id JobID) error {
 		if t.status != TaskDone {
 			t.SetStatus(TaskFailed)
 		}
-	})
+	}
 	return nil
 }
 
@@ -321,13 +301,16 @@ func (m *JobManager) Retry(id JobID) error {
 	}
 	j.Lock()
 	defer j.Unlock()
-	j.WalkLeafTaskFn(func(t *Task) {
+	for _, t := range j.tasks {
+		if !t.isLeaf {
+			continue
+		}
 		t.retry = 0
 		if t.Status() == TaskFailed {
 			t.SetStatus(TaskWaiting)
 			t.Push()
 		}
-	})
+	}
 	if j.Peek() == nil {
 		// The job has blocked or popped all tasks.
 		// The job isn't in m.jobs for both cases.
@@ -343,9 +326,9 @@ func (m *JobManager) Delete(id JobID) error {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	delete(m.job, id)
-	j.WalkTaskFn(func(t *Task) {
+	for _, t := range j.tasks {
 		delete(m.task, t.ID)
-	})
+	}
 	return nil
 }
 
