@@ -27,6 +27,10 @@ func (s TaskStatus) String() string {
 
 // branchStat calculates the branch's status with Status.
 type branchStat struct {
+	// n indicates total number of leaves in this branch.
+	// It should not be changed.
+	n int
+
 	nFailed  int
 	nRunning int
 	nWaiting int
@@ -35,7 +39,11 @@ type branchStat struct {
 
 // newBranchStat creates a new branchStat, that is having n leafs.
 func newBranchStat(n int) *branchStat {
-	return &branchStat{nWaiting: n}
+	return &branchStat{n: n, nWaiting: n}
+}
+
+func (st *branchStat) N() int {
+	return st.n
 }
 
 // Change changes a leaf child's TaskStatus to another.

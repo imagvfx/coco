@@ -64,6 +64,13 @@ var job = initJob(&Job{
 	},
 })
 
+func TestInitJob(t *testing.T) {
+	n := job.tasks[4].Stat.N()
+	if n != 4 {
+		t.Fatalf("unexpected t.Stat.N: %v", n)
+	}
+}
+
 func ExampleWalkTask() {
 	for _, t := range job.tasks {
 		fmt.Println(t.Title)
