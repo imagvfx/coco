@@ -60,6 +60,54 @@ type Job struct {
 	tasks []*Task
 }
 
+// Validate validates a raw Job that is sended from user.
+func (j *Job) Validate() error {
+	if len(j.Subtasks) == 0 {
+		return fmt.Errorf("a job should have at least one subtask")
+	}
+	if j.Title == "" {
+		j.Title = "untitled"
+	}
+	return nil
+}
+
+// initJob inits a job's tasks.
+// initJob returns unmodified pointer of the job, for in case
+// when user wants to directly assign to a variable. (see test code)
+func initJob(j *Job) *Job {
+	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
+	return j
+}
+
+// initJobTasks inits a job's tasks recursively before it is added to jobManager.
+// No need to hold the lock.
+func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
+	t.ID = TaskID(xid.New().String())
+	t.num = len(tasks)
+	tasks = append(tasks, t)
+	if t.Title == "" {
+		t.Title = "untitled"
+	}
+	t.Job = j
+	t.parent = parent
+	t.nthChild = nth
+	t.isLeaf = len(t.Subtasks) == 0
+	if t.isLeaf {
+		i++
+	}
+	if t.Priority < 0 {
+		// negative priority is invalid.
+		t.Priority = 0
+	}
+	iOld := i
+	for nth, subt := range t.Subtasks {
+		i, tasks = initJobTasks(subt, j, t, nth, i, tasks)
+	}
+	t.Stat = newBranchStat(i - iOld)
+	t.popIdx = 0
+	return i, tasks
+}
+
 // MarshalJSON implements json.Marshaler interface.
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
@@ -187,54 +235,6 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 		j.CurrentPriority = peek.CalcPriority()
 	}
 	return j.id, nil
-}
-
-// Validate validates a raw Job that is sended from user.
-func (j *Job) Validate() error {
-	if len(j.Subtasks) == 0 {
-		return fmt.Errorf("a job should have at least one subtask")
-	}
-	if j.Title == "" {
-		j.Title = "untitled"
-	}
-	return nil
-}
-
-// initJob inits a job's tasks.
-// initJob returns unmodified pointer of the job, for in case
-// when user wants to directly assign to a variable. (see test code)
-func initJob(j *Job) *Job {
-	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
-	return j
-}
-
-// initJobTasks inits a job's tasks recursively before it is added to jobManager.
-// No need to hold the lock.
-func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
-	t.ID = TaskID(xid.New().String())
-	t.num = len(tasks)
-	tasks = append(tasks, t)
-	if t.Title == "" {
-		t.Title = "untitled"
-	}
-	t.Job = j
-	t.parent = parent
-	t.nthChild = nth
-	t.isLeaf = len(t.Subtasks) == 0
-	if t.isLeaf {
-		i++
-	}
-	if t.Priority < 0 {
-		// negative priority is invalid.
-		t.Priority = 0
-	}
-	iOld := i
-	for nth, subt := range t.Subtasks {
-		i, tasks = initJobTasks(subt, j, t, nth, i, tasks)
-	}
-	t.Stat = newBranchStat(i - iOld)
-	t.popIdx = 0
-	return i, tasks
 }
 
 func (m *JobManager) Jobs(filter JobFilter) []*Job {
