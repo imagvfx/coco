@@ -96,7 +96,7 @@ func matching(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 			jobman.PushTask(t)
 			return
 		}
-		jobman.Assign(t.ID, w)
+		jobman.AssignTask(t.ID, w)
 		// worker got the task.
 		t.SetStatus(coco.TaskRunning)
 	}
@@ -124,7 +124,7 @@ func canceling(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 			log.Print(err)
 			return
 		}
-		jobman.Unassign(t.ID, w)
+		jobman.UnassignTask(t.ID, w)
 	}
 
 	go func() {

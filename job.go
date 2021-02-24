@@ -436,7 +436,7 @@ func (m *JobManager) PushTaskForRetry(t *Task) bool {
 	return m.pushTask(t, true)
 }
 
-func (m *JobManager) Assign(id TaskID, w *Worker) error {
+func (m *JobManager) AssignTask(id TaskID, w *Worker) error {
 	t := m.GetTask(id)
 	a := t.Assignee
 	if a != nil {
@@ -446,7 +446,7 @@ func (m *JobManager) Assign(id TaskID, w *Worker) error {
 	return nil
 }
 
-func (m *JobManager) Unassign(id TaskID, w *Worker) error {
+func (m *JobManager) UnassignTask(id TaskID, w *Worker) error {
 	t := m.GetTask(id)
 	a := t.Assignee
 	if a == nil {

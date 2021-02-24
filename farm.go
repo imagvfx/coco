@@ -49,7 +49,7 @@ func (f *Farm) Bye(addr string) error {
 	if w.task != "" {
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
-		err := f.jobman.Unassign(w.task, w)
+		err := f.jobman.UnassignTask(w.task, w)
 		if err != nil {
 			return err
 		} else {
@@ -85,7 +85,7 @@ func (f *Farm) Done(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	err := f.jobman.Unassign(TaskID(task), w)
+	err := f.jobman.UnassignTask(TaskID(task), w)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (f *Farm) Failed(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	err := f.jobman.Unassign(TaskID(task), w)
+	err := f.jobman.UnassignTask(TaskID(task), w)
 	if err != nil {
 		return err
 	}
