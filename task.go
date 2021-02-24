@@ -373,3 +373,28 @@ func (t *Task) CalcPriority() int {
 	// the job's Priority was 0.
 	return 0
 }
+
+// Assign assigns a worker to the task.
+// It will return error if the task has already assigned.
+func (t *Task) Assign(w *Worker) error {
+	a := t.Assignee
+	if a != nil {
+		return fmt.Errorf("task is assigned to a different worker: %v - %v", t.ID, a.addr)
+	}
+	t.Assignee = w
+	return nil
+}
+
+// Unassign unassigns current assignee from the task.
+// It will return error if given worker isn't assignee of the task.
+func (t *Task) Unassign(w *Worker) error {
+	a := t.Assignee
+	if a == nil {
+		return fmt.Errorf("task isn't assigned to any worker: %v", t.ID)
+	}
+	if w != a {
+		return fmt.Errorf("task is assigned to a different worker: %v", t.ID)
+	}
+	t.Assignee = nil
+	return nil
+}

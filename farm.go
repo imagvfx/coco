@@ -49,15 +49,15 @@ func (f *Farm) Bye(addr string) error {
 	if w.task != "" {
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
-		err := f.jobman.UnassignTask(w.task, w)
+		t := f.jobman.GetTask(TaskID(w.task))
+		j := t.Job
+		j.Lock()
+		defer j.Unlock()
+		err := t.Unassign(w)
 		if err != nil {
 			return err
-		} else {
-			t := f.jobman.task[w.task]
-			t.Job.Lock()
-			defer t.Job.Unlock()
-			t.SetStatus(TaskFailed)
 		}
+		t.SetStatus(TaskFailed)
 	}
 	f.workerman.Bye(w.addr)
 	return nil
@@ -67,15 +67,16 @@ func (f *Farm) Bye(addr string) error {
 func (f *Farm) Done(addr, task string) error {
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.task[TaskID(task)]
-	t.Job.Lock()
-	defer t.Job.Unlock()
+	t := f.jobman.GetTask(TaskID(task))
+	j := t.Job
+	j.Lock()
+	defer j.Unlock()
 	t.SetStatus(TaskDone)
-	if t.Job.blocked {
-		peek := f.jobman.job[t.Job.id].Peek()
+	if j.blocked {
+		peek := j.Peek()
 		if peek != nil {
 			t.Job.blocked = false
-			heap.Push(f.jobman.jobs, t.Job)
+			heap.Push(f.jobman.jobs, j)
 		}
 	}
 	// TODO: need to verify the worker
@@ -85,7 +86,7 @@ func (f *Farm) Done(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	err := f.jobman.UnassignTask(TaskID(task), w)
+	err := t.Unassign(w)
 	if err != nil {
 		return err
 	}
@@ -98,7 +99,7 @@ func (f *Farm) Failed(addr, task string) error {
 	log.Printf("failed: %v %v", addr, task)
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.task[TaskID(task)]
+	t := f.jobman.GetTask(TaskID(task))
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
@@ -113,7 +114,7 @@ func (f *Farm) Failed(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	err := f.jobman.UnassignTask(TaskID(task), w)
+	err := t.Unassign(w)
 	if err != nil {
 		return err
 	}

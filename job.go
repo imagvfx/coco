@@ -434,26 +434,3 @@ func (m *JobManager) PushTask(t *Task) {
 func (m *JobManager) PushTaskForRetry(t *Task) bool {
 	return m.pushTask(t, true)
 }
-
-func (m *JobManager) AssignTask(id TaskID, w *Worker) error {
-	t := m.GetTask(id)
-	a := t.Assignee
-	if a != nil {
-		return fmt.Errorf("task is assigned to a different worker: %v - %v", id, a.addr)
-	}
-	t.Assignee = w
-	return nil
-}
-
-func (m *JobManager) UnassignTask(id TaskID, w *Worker) error {
-	t := m.GetTask(id)
-	a := t.Assignee
-	if a == nil {
-		return fmt.Errorf("task isn't assigned to any worker: %v", id)
-	}
-	if w != a {
-		return fmt.Errorf("task is assigned to a different worker: %v", id)
-	}
-	t.Assignee = nil
-	return nil
-}
