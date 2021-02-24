@@ -131,8 +131,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 }
 
 type jobHeap struct {
-	heap     []*Job
-	priority map[JobID]int
+	heap []*Job
 }
 
 func newJobHeap() *jobHeap {
