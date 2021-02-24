@@ -71,53 +71,68 @@ func TestInitJob(t *testing.T) {
 	}
 }
 
-func ExampleWalkTask() {
+func TestWalkTask(t *testing.T) {
+	got := []string{}
 	for _, t := range job.tasks {
-		fmt.Println(t.Title)
+		got = append(got, t.Title)
 	}
-	// Output:
-	// root
-	// sim
-	// ocean
-	// foam
-	// render
-	// diffuse
-	// 1
-	// 2
-	// reflection
-	// 1
-	// 2
+	want := []string{
+		"root",
+		"sim",
+		"ocean",
+		"foam",
+		"render",
+		"diffuse",
+		"1",
+		"2",
+		"reflection",
+		"1",
+		"2",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got\n%v, want\n%v", got, want)
+	}
 }
 
-func ExampleWalkLeafTask() {
+func TestWalkLeafTask(t *testing.T) {
+	got := []string{}
 	for _, t := range job.tasks {
 		if t.isLeaf {
-			fmt.Println(t.Title)
+			got = append(got, t.Title)
 		}
 	}
-	// Output:
-	// ocean
-	// foam
-	// 1
-	// 2
-	// 1
-	// 2
+	want := []string{
+		"ocean",
+		"foam",
+		"1",
+		"2",
+		"1",
+		"2",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got\n%v, want\n%v", got, want)
+	}
 }
 
-func ExampleWalkFrom() {
+func TestWalkFrom(t *testing.T) {
+	got := []string{}
 	n := job.Subtasks[0].Subtasks[1].num
 	for _, t := range job.tasks[n:] {
-		fmt.Println(t.Title)
+		got = append(got, t.Title)
 	}
-	// Output:
-	// foam
-	// render
-	// diffuse
-	// 1
-	// 2
-	// reflection
-	// 1
-	// 2
+	want := []string{
+		"foam",
+		"render",
+		"diffuse",
+		"1",
+		"2",
+		"reflection",
+		"1",
+		"2",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got\n%v, want\n%v", got, want)
+	}
 }
 
 func newJobManagerForPop() *JobManager {
