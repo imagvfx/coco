@@ -176,6 +176,8 @@ type Task struct {
 
 	// isLeaf indicates whether the task is a leaf task.
 	isLeaf bool
+
+	Assignee *Worker
 }
 
 // Command is a command to be run in a worker.

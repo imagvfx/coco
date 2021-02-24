@@ -261,9 +261,6 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 				return fmt.Errorf("\ngot jobs[%v]: %v\nwant jobs[%v]: %v", i, sg, i, sw)
 			}
 		}
-		if !reflect.DeepEqual(got.Assignee, want.Assignee) {
-			return fmt.Errorf("assignee: got %v, want %v", got.Assignee, want.Assignee)
-		}
 		return nil
 	}
 
@@ -295,7 +292,7 @@ func sprintJob(j *Job) string {
 }
 
 func sprintTask(t *Task, depth int) string {
-	s := fmt.Sprintf("%v%v: popIdx=%v, priority=%v\n", strings.Repeat("\t", depth), t.Title, t.popIdx, t.CalcPriority())
+	s := fmt.Sprintf("%v%v: popIdx=%v, priority=%v, Assignee=%v\n", strings.Repeat("\t", depth), t.Title, t.popIdx, t.Assignee, t.CalcPriority())
 	for _, t := range t.Subtasks {
 		s += sprintTask(t, depth+1)
 	}

@@ -136,7 +136,6 @@ type JobManager struct {
 	task map[TaskID]*Task
 	jobs *jobHeap
 
-	Assignee     map[TaskID]*Worker
 	CancelTaskCh chan *Task
 }
 
@@ -145,7 +144,6 @@ func NewJobManager() *JobManager {
 	m.job = make(map[JobID]*Job)
 	m.jobs = newJobHeap()
 	m.task = make(map[TaskID]*Task)
-	m.Assignee = make(map[TaskID]*Worker)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -439,22 +437,24 @@ func (m *JobManager) PushTaskForRetry(t *Task) bool {
 }
 
 func (m *JobManager) Assign(id TaskID, w *Worker) error {
-	a, ok := m.Assignee[id]
-	if ok {
+	t := m.GetTask(id)
+	a := t.Assignee
+	if a != nil {
 		return fmt.Errorf("task is assigned to a different worker: %v - %v", id, a.addr)
 	}
-	m.Assignee[id] = w
+	t.Assignee = w
 	return nil
 }
 
 func (m *JobManager) Unassign(id TaskID, w *Worker) error {
-	a, ok := m.Assignee[id]
-	if !ok {
+	t := m.GetTask(id)
+	a := t.Assignee
+	if a == nil {
 		return fmt.Errorf("task isn't assigned to any worker: %v", id)
 	}
 	if w != a {
 		return fmt.Errorf("task is assigned to a different worker: %v", id)
 	}
-	delete(m.Assignee, id)
+	t.Assignee = nil
 	return nil
 }
