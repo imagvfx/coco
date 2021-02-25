@@ -16,17 +16,7 @@ type JobFilter struct {
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
-	// Job is a Task.
-	// Some of the Task's field should be explained in Job's context.
-	//
-	// Task.Title is human readable title for job.
-	//
-	// Task.Priority sets the job's default priority.
-	// Jobs are compete each other with priority.
-	// Job's priority could be temporarily updated by a task that waits at the time.
-	// Higher values take precedence to lower values.
-	// Negative values will corrected to 0, the lowest priority value.
-	// If multiple jobs are having same priority, server will take a job with rotation rule.
+	// Job is a Task. Please also check Task.
 	*Task
 
 	// order is the order number of the job.
@@ -59,6 +49,10 @@ type Job struct {
 	//
 
 	// CurrentPriority is the job's task priority waiting at the time.
+	// Jobs are compete each other with their current priority.
+	// Higher values take precedence to lower values.
+	// Negative values will corrected to 0, the lowest priority value.
+	// If multiple jobs are having same priority, server will take a job with rotation rule.
 	CurrentPriority int
 
 	// blocked indicates whether the job has blocked due to a failed/unfinished task.
