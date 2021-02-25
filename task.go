@@ -171,12 +171,18 @@ type Task struct {
 	// It is only meaningful when the task is a branch.
 	Stat *branchStat
 
+	// popIdx shows which child of the task should be popped.
+	// It is -1, if the task is a leaf that has already run, or a branch popped all tasks.
 	popIdx int
 
 	// retry represents how many times the task retried automatically due to fail of the task.
 	// It will be reset, when user retries the job of the task.
+	// It is only meaningful to a leaf task.
 	retry int
 
+	// Assignee is a worker who is running the task's commands currently.
+	// It is nil except, the task is running.
+	// It is only meaningful to a leaf task.
 	Assignee *Worker
 }
 
