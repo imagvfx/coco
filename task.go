@@ -135,9 +135,10 @@ type Task struct {
 	Title string
 
 	// Priority is a priority hint for the task.
-	// Priority set to zero makes it inherit nearest parent that has non-zero priority.
-	// If there isn't non-zero priority parent, it will use the job's priority.
-	// Negative values will be considered as false value, and treated as zero.
+	// Higher values are take precedence to lower values.
+	// Priority set to 0 makes it inherit nearest parent that has non-zero priority.
+	// If there isn't non-zero priority parent, the task has priority 0.
+	// Negative values will be considered as a false value, and will be change to 0.
 	//
 	// NOTE: Use CalcPriority to get the real priority of the task.
 	Priority int

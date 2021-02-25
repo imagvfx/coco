@@ -50,8 +50,7 @@ type Job struct {
 
 	// CurrentPriority is the job's task priority waiting at the time.
 	// Jobs are compete each other with their current priority.
-	// Higher values take precedence to lower values.
-	// Negative values will corrected to 0, the lowest priority value.
+	// Jobs with higher values take precedence to jobs with lower values.
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
 	CurrentPriority int
 
