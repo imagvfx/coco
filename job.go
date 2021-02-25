@@ -188,11 +188,13 @@ type JobManager struct {
 	sync.Mutex
 	nextOrder int
 
-	// Job related informations.
-	// When a job is deleted, those related info should be deleted all toghther,
-	// except `jobs` heap. It is expensive to search an item from heap.
-	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
-	job  map[int]*Job
+	// job is a map of an order to the job.
+	job map[int]*Job
+
+	// jobs is a job heap for PopTask.
+	// Delete a job doesn't delete the job in this heap,
+	// Because it is expensive to search an item from heap.
+	// It will be deleted when it is popped from PopTask.
 	jobs *jobHeap
 
 	CancelTaskCh chan *Task
