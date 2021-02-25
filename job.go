@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// JobFilter is a job filter for searching jobs.
 type JobFilter struct {
 	Target string
 }
@@ -143,8 +144,12 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+// JobManager manages jobs and pops tasks to run the commands by workers.
 type JobManager struct {
 	sync.Mutex
+
+	// nextOrder indicates next job's order.
+	// It will be incremented when a job has added.
 	nextOrder int
 
 	// job is a map of an order to the job.
@@ -156,9 +161,12 @@ type JobManager struct {
 	// It will be deleted when it is popped from PopTask.
 	jobs *jobHeap
 
+	// CancelTaskCh pass tasks to make them canceled and
+	// stop the processes running by workers.
 	CancelTaskCh chan *Task
 }
 
+// NewJobManager creates a new JobManager.
 func NewJobManager() *JobManager {
 	m := &JobManager{}
 	m.job = make(map[int]*Job)
@@ -167,6 +175,7 @@ func NewJobManager() *JobManager {
 	return m
 }
 
+// Get gets a job with a job id.
 func (m *JobManager) Get(id string) (*Job, error) {
 	ord, err := infoFromJobID(id)
 	if err != nil {
@@ -175,6 +184,7 @@ func (m *JobManager) Get(id string) (*Job, error) {
 	return m.job[ord], nil
 }
 
+// GetTask gets a task with a task id.
 func (m *JobManager) GetTask(id string) (*Task, error) {
 	ord, n, err := infoFromTaskID(id)
 	if err != nil {
@@ -183,6 +193,7 @@ func (m *JobManager) GetTask(id string) (*Task, error) {
 	return m.job[ord].tasks[n], nil
 }
 
+// Add adds a job to the manager.
 func (m *JobManager) Add(j *Job) (int, error) {
 	if j == nil {
 		return -1, fmt.Errorf("nil job cannot be added")
@@ -212,6 +223,7 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	return j.order, nil
 }
 
+// Jobs searches jobs with a job filter.
 func (m *JobManager) Jobs(filter JobFilter) []*Job {
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
@@ -310,6 +322,8 @@ func (m *JobManager) Delete(id string) error {
 	return nil
 }
 
+// PopTask returns a task that has highest priority for given targets.
+// When every job has done or blocked, it will return nil.
 func (m *JobManager) PopTask(targets []string) *Task {
 	if len(targets) == 0 {
 		return nil
