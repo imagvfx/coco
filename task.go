@@ -181,9 +181,9 @@ func (t *Task) ID() string {
 	return strconv.Itoa(t.Job.id) + "-" + strconv.Itoa(t.num)
 }
 
-// splitTaskID splits a task id string into job ID and task number.
+// infoFromTaskID splits a task id string into job ID and task number.
 // If the given string isn't valid, it will return an error as a third argument.
-func splitTaskID(id string) (int, int, error) {
+func infoFromTaskID(id string) (int, int, error) {
 	toks := strings.Split(id, "-")
 	if len(toks) != 2 {
 		return -1, -1, fmt.Errorf("invalid task id: %v", toks)

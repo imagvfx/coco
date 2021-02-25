@@ -48,12 +48,8 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id, err := strconv.Atoi(r.Form.Get("id"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
-		return
-	}
-	err = h.jobman.Retry(id)
+	id := r.Form.Get("id")
+	err := h.jobman.Retry(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -62,12 +58,8 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id, err := strconv.Atoi(r.Form.Get("id"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
-		return
-	}
-	err = h.jobman.Delete(id)
+	id := r.Form.Get("id")
+	err := h.jobman.Delete(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -76,14 +68,10 @@ func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id, err := strconv.Atoi(r.Form.Get("id"))
+	id := r.Form.Get("id")
+	j, err := h.jobman.Get(id)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
-		return
-	}
-	j := h.jobman.Get(id)
-	if j == nil {
-		http.Error(w, fmt.Sprintf("job not found by id: %v", id), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	j.Lock()

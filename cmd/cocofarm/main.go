@@ -113,13 +113,18 @@ func canceling(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 		t := <-jobman.CancelTaskCh
 		jobman.Lock()
 		defer jobman.Unlock()
-		w := jobman.GetTask(t.ID()).Assignee
-		if w == nil {
+		t, err := jobman.GetTask(t.ID())
+		if err != nil {
+			log.Printf("failed to cancel task: %v", err)
 			return
 		}
 		workerman.Lock()
 		defer workerman.Unlock()
-		err := workerman.SendCancelTask(w, t)
+		w := t.Assignee
+		if w == nil {
+			return
+		}
+		err = workerman.SendCancelTask(w, t)
 		if err != nil {
 			log.Print(err)
 			return

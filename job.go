@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 )
 
@@ -54,6 +55,21 @@ type Job struct {
 	// tasks are all tasks of the job, which is different from Subtasks.
 	// The order is walk order. So one can walk tasks by just iterate through it.
 	tasks []*Task
+}
+
+// ID returns the job's order number as a string.
+func (j *Job) ID() string {
+	return strconv.Itoa(j.id)
+}
+
+// infoFromJobID returns the job's order number which is basically an id but of type int.
+// It will return an error as a second argument if the id string cannot be converted to int.
+func infoFromJobID(id string) (int, error) {
+	ord, err := strconv.Atoi(id)
+	if err != nil {
+		return -1, fmt.Errorf("invalid job id: %v", id)
+	}
+	return ord, nil
 }
 
 // Validate validates a raw Job that is sended from user.
@@ -188,16 +204,20 @@ func NewJobManager() *JobManager {
 	return m
 }
 
-func (m *JobManager) Get(id int) *Job {
-	return m.job[id]
+func (m *JobManager) Get(id string) (*Job, error) {
+	ord, err := infoFromJobID(id)
+	if err != nil {
+		return nil, err
+	}
+	return m.job[ord], nil
 }
 
-func (m *JobManager) GetTask(id string) *Task {
-	jid, tnum, err := splitTaskID(id)
+func (m *JobManager) GetTask(id string) (*Task, error) {
+	ord, n, err := infoFromTaskID(id)
 	if err != nil {
-		return nil // TODO: should also return error
+		return nil, err
 	}
-	return m.job[jid].tasks[tnum]
+	return m.job[ord].tasks[n], nil
 }
 
 func (m *JobManager) Add(j *Job) (int, error) {
@@ -284,8 +304,12 @@ func (m *JobManager) Cancel(id int) error {
 
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
-func (m *JobManager) Retry(id int) error {
-	j, ok := m.job[id]
+func (m *JobManager) Retry(id string) error {
+	ord, err := infoFromJobID(id)
+	if err != nil {
+		return err
+	}
+	j, ok := m.job[ord]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
@@ -310,12 +334,16 @@ func (m *JobManager) Retry(id int) error {
 }
 
 // Delete deletes a job irrecoverably.
-func (m *JobManager) Delete(id int) error {
-	_, ok := m.job[id]
+func (m *JobManager) Delete(id string) error {
+	ord, err := infoFromJobID(id)
+	if err != nil {
+		return err
+	}
+	_, ok := m.job[ord]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
-	delete(m.job, id)
+	delete(m.job, ord)
 	return nil
 }
 
