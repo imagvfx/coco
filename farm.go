@@ -3,7 +3,6 @@ package coco
 import (
 	"container/heap"
 	"fmt"
-	"log"
 )
 
 // Farm manages jobs and workers.
@@ -96,7 +95,6 @@ func (f *Farm) Done(addr, task string) error {
 
 // Failed indicates the worker failed to finish the requested task.
 func (f *Farm) Failed(addr, task string) error {
-	log.Printf("failed: %v %v", addr, task)
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
 	t := f.jobman.GetTask(TaskID(task))
