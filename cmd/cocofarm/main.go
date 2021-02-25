@@ -113,7 +113,7 @@ func canceling(jobman *coco.JobManager, workerman *coco.WorkerManager) {
 		t := <-jobman.CancelTaskCh
 		jobman.Lock()
 		defer jobman.Unlock()
-		w := jobman.GetTask(t.ID).Assignee
+		w := jobman.GetTask(t.ID()).Assignee
 		if w == nil {
 			return
 		}

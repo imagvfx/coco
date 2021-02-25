@@ -3,6 +3,8 @@ package coco
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // TaskStatus is a task status.
@@ -113,9 +115,6 @@ type Task struct {
 	// NOTE: Private fields of this struct should be read-only after the initialization.
 	// Otherwise, this program will get racy.
 
-	// ID is a Task identifier make it distinct from all other tasks.
-	ID string
-
 	// Job is a job the task is belong to.
 	Job *Job
 
@@ -177,6 +176,29 @@ type Task struct {
 	Assignee *Worker
 }
 
+// ID is a Task identifier make it distinct from all other tasks.
+func (t *Task) ID() string {
+	return strconv.Itoa(t.Job.id) + "-" + strconv.Itoa(t.num)
+}
+
+// splitTaskID splits a task id string into job ID and task number.
+// If the given string isn't valid, it will return an error as a third argument.
+func splitTaskID(id string) (int, int, error) {
+	toks := strings.Split(id, "-")
+	if len(toks) != 2 {
+		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+	}
+	jid, err := strconv.Atoi(toks[0])
+	if err != nil {
+		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+	}
+	tnum, err := strconv.Atoi(toks[1])
+	if err != nil {
+		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+	}
+	return jid, tnum, nil
+}
+
 // Command is a command to be run in a worker.
 // First string is the executable and others are arguments.
 // When a Command is nil or empty, the command will be skipped.
@@ -194,7 +216,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Commands       []Command
 	}{
 		Title:          t.Title,
-		ID:             t.ID,
+		ID:             t.ID(),
 		Status:         t.Status().String(),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
@@ -376,7 +398,7 @@ func (t *Task) CalcPriority() int {
 func (t *Task) Assign(w *Worker) error {
 	a := t.Assignee
 	if a != nil {
-		return fmt.Errorf("task is assigned to a different worker: %v - %v", t.ID, a.addr)
+		return fmt.Errorf("task is assigned to a different worker: %v - %v", t.ID(), a.addr)
 	}
 	t.Assignee = w
 	return nil
@@ -387,10 +409,10 @@ func (t *Task) Assign(w *Worker) error {
 func (t *Task) Unassign(w *Worker) error {
 	a := t.Assignee
 	if a == nil {
-		return fmt.Errorf("task isn't assigned to any worker: %v", t.ID)
+		return fmt.Errorf("task isn't assigned to any worker: %v", t.ID())
 	}
 	if w != a {
-		return fmt.Errorf("task is assigned to a different worker: %v", t.ID)
+		return fmt.Errorf("task is assigned to a different worker: %v", t.ID())
 	}
 	t.Assignee = nil
 	return nil

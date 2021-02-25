@@ -185,7 +185,7 @@ func (m *WorkerManager) SendTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.RunRequest{}
-	req.Id = string(t.ID)
+	req.Id = t.ID()
 	for _, c := range t.Commands {
 		reqCmd := &pb.Command{
 			Args: c,
@@ -198,12 +198,12 @@ func (m *WorkerManager) SendTask(w *Worker, t *Task) (err error) {
 		return err
 	}
 	w.status = WorkerRunning
-	w.task = t.ID
+	w.task = t.ID()
 	return nil
 }
 
 func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
-	log.Printf("cancel: %v %v", w.addr, t.ID)
+	log.Printf("cancel: %v %v", w.addr, t.ID())
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -215,7 +215,7 @@ func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.CancelRequest{}
-	req.Id = string(t.ID)
+	req.Id = t.ID()
 
 	_, err = c.Cancel(ctx, req)
 	if err != nil {

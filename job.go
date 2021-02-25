@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-
-	"github.com/rs/xid"
 )
 
 type JobFilter struct {
@@ -80,7 +78,6 @@ func initJob(j *Job) *Job {
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
-	t.ID = xid.New().String()
 	t.num = len(tasks)
 	tasks = append(tasks, t)
 	if t.Title == "" {
@@ -178,7 +175,6 @@ type JobManager struct {
 	// except `jobs` heap. It is expensive to search an item from heap.
 	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
 	job  map[int]*Job
-	task map[string]*Task
 	jobs *jobHeap
 
 	CancelTaskCh chan *Task
@@ -188,7 +184,6 @@ func NewJobManager() *JobManager {
 	m := &JobManager{}
 	m.job = make(map[int]*Job)
 	m.jobs = newJobHeap()
-	m.task = make(map[string]*Task)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
@@ -198,7 +193,11 @@ func (m *JobManager) Get(id int) *Job {
 }
 
 func (m *JobManager) GetTask(id string) *Task {
-	return m.task[id]
+	jid, tnum, err := splitTaskID(id)
+	if err != nil {
+		return nil // TODO: should also return error
+	}
+	return m.job[jid].tasks[tnum]
 }
 
 func (m *JobManager) Add(j *Job) (int, error) {
@@ -220,10 +219,6 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	// until Add method returns.
 
 	heap.Push(m.jobs, j)
-
-	for _, t := range j.tasks {
-		m.task[t.ID] = t
-	}
 
 	// set priority for the very first leaf task.
 	peek := j.Peek()
@@ -316,14 +311,11 @@ func (m *JobManager) Retry(id int) error {
 
 // Delete deletes a job irrecoverably.
 func (m *JobManager) Delete(id int) error {
-	j, ok := m.job[id]
+	_, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	delete(m.job, id)
-	for _, t := range j.tasks {
-		delete(m.task, t.ID)
-	}
 	return nil
 }
 
