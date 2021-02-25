@@ -33,7 +33,7 @@ type Worker struct {
 
 	// task directs a task the worker is currently working.
 	// The worker is in idle when it is empty string.
-	task TaskID
+	task string
 
 	group *WorkerGroup
 }

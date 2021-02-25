@@ -103,9 +103,6 @@ func (st *branchStat) Status() TaskStatus {
 	return TaskDone
 }
 
-// TaskID is a task id.
-type TaskID string
-
 // Task has a command and/or subtasks that will be run by workers.
 //
 // Task having subtasks are called Branch.
@@ -117,7 +114,7 @@ type Task struct {
 	// Otherwise, this program will get racy.
 
 	// ID is a Task identifier make it distinct from all other tasks.
-	ID TaskID
+	ID string
 
 	// Job is a job the task is belong to.
 	Job *Job
@@ -189,7 +186,7 @@ type Command []string
 func (t *Task) MarshalJSON() ([]byte, error) {
 	m := struct {
 		Title          string
-		ID             TaskID
+		ID             string
 		Status         string
 		Priority       int
 		Subtasks       []*Task

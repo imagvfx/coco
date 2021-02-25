@@ -10,8 +10,6 @@ import (
 	"github.com/rs/xid"
 )
 
-type JobID int
-
 type JobFilter struct {
 	Target string
 }
@@ -24,7 +22,7 @@ type Job struct {
 	sync.Mutex
 
 	// id is the order number of the job.
-	id JobID
+	id int
 
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
@@ -82,7 +80,7 @@ func initJob(j *Job) *Job {
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
-	t.ID = TaskID(xid.New().String())
+	t.ID = xid.New().String()
 	t.num = len(tasks)
 	tasks = append(tasks, t)
 	if t.Title == "" {
@@ -111,7 +109,7 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int
 // MarshalJSON implements json.Marshaler interface.
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
-		ID              JobID
+		ID              int
 		Status          string
 		Title           string
 		Priority        int
@@ -173,14 +171,14 @@ func (h *jobHeap) Pop() interface{} {
 
 type JobManager struct {
 	sync.Mutex
-	nextJobID JobID
+	nextJobID int
 
 	// Job related informations.
 	// When a job is deleted, those related info should be deleted all toghther,
 	// except `jobs` heap. It is expensive to search an item from heap.
 	// So, deleted job in `jobs` will be deleted when it is popped from PopTask.
-	job  map[JobID]*Job
-	task map[TaskID]*Task
+	job  map[int]*Job
+	task map[string]*Task
 	jobs *jobHeap
 
 	CancelTaskCh chan *Task
@@ -188,22 +186,22 @@ type JobManager struct {
 
 func NewJobManager() *JobManager {
 	m := &JobManager{}
-	m.job = make(map[JobID]*Job)
+	m.job = make(map[int]*Job)
 	m.jobs = newJobHeap()
-	m.task = make(map[TaskID]*Task)
+	m.task = make(map[string]*Task)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
 
-func (m *JobManager) Get(id JobID) *Job {
+func (m *JobManager) Get(id int) *Job {
 	return m.job[id]
 }
 
-func (m *JobManager) GetTask(id TaskID) *Task {
+func (m *JobManager) GetTask(id string) *Task {
 	return m.task[id]
 }
 
-func (m *JobManager) Add(j *Job) (JobID, error) {
+func (m *JobManager) Add(j *Job) (int, error) {
 	if j == nil {
 		return -1, fmt.Errorf("nil job cannot be added")
 	}
@@ -261,7 +259,7 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 // Cancel cancels a job.
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
-func (m *JobManager) Cancel(id JobID) error {
+func (m *JobManager) Cancel(id int) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -291,7 +289,7 @@ func (m *JobManager) Cancel(id JobID) error {
 
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
-func (m *JobManager) Retry(id JobID) error {
+func (m *JobManager) Retry(id int) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
@@ -317,7 +315,7 @@ func (m *JobManager) Retry(id JobID) error {
 }
 
 // Delete deletes a job irrecoverably.
-func (m *JobManager) Delete(id JobID) error {
+func (m *JobManager) Delete(id int) error {
 	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)

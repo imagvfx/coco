@@ -48,7 +48,7 @@ func (f *Farm) Bye(addr string) error {
 	if w.task != "" {
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
-		t := f.jobman.GetTask(TaskID(w.task))
+		t := f.jobman.GetTask(w.task)
 		j := t.Job
 		j.Lock()
 		defer j.Unlock()
@@ -66,7 +66,7 @@ func (f *Farm) Bye(addr string) error {
 func (f *Farm) Done(addr, task string) error {
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.GetTask(TaskID(task))
+	t := f.jobman.GetTask(task)
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
@@ -97,7 +97,7 @@ func (f *Farm) Done(addr, task string) error {
 func (f *Farm) Failed(addr, task string) error {
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
-	t := f.jobman.GetTask(TaskID(task))
+	t := f.jobman.GetTask(task)
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
