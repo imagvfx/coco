@@ -286,7 +286,7 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 
 // sprintJob only print partial fields of the Job that is meaningful for comparing two jobs.
 func sprintJob(j *Job) string {
-	jstr := fmt.Sprintf("Job id=%v, CurrentPriority=%v\n", j.id, j.CurrentPriority)
+	jstr := fmt.Sprintf("Job order=%v, CurrentPriority=%v\n", j.order, j.CurrentPriority)
 	tstr := sprintTask(j.Task, 1)
 	return jstr + tstr
 }

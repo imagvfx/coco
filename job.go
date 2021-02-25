@@ -20,8 +20,10 @@ type Job struct {
 
 	sync.Mutex
 
-	// id is the order number of the job.
-	id int
+	// order is the order number of the job.
+	// It has a same value with ID but of int type.
+	// Think ID is external type, order is internal type of Job.
+	order int
 
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
@@ -59,7 +61,7 @@ type Job struct {
 
 // ID returns the job's order number as a string.
 func (j *Job) ID() string {
-	return strconv.Itoa(j.id)
+	return strconv.Itoa(j.order)
 }
 
 // infoFromJobID returns the job's order number which is basically an id but of type int.
@@ -122,7 +124,7 @@ func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int
 // MarshalJSON implements json.Marshaler interface.
 func (j *Job) MarshalJSON() ([]byte, error) {
 	m := struct {
-		ID              int
+		ID              string
 		Status          string
 		Title           string
 		Priority        int
@@ -130,7 +132,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		Subtasks        []*Task
 		SerialSubtasks  bool
 	}{
-		ID:              j.id,
+		ID:              j.ID(),
 		Status:          j.Status().String(),
 		Title:           j.Title,
 		Priority:        j.Priority,
@@ -162,7 +164,7 @@ func (h jobHeap) Less(i, j int) bool {
 	if h.heap[i].CurrentPriority < h.heap[j].CurrentPriority {
 		return false
 	}
-	return h.heap[i].id < h.heap[j].id
+	return h.heap[i].order < h.heap[j].order
 }
 
 func (h jobHeap) Swap(i, j int) {
@@ -184,7 +186,7 @@ func (h *jobHeap) Pop() interface{} {
 
 type JobManager struct {
 	sync.Mutex
-	nextJobID int
+	nextOrder int
 
 	// Job related informations.
 	// When a job is deleted, those related info should be deleted all toghther,
@@ -230,10 +232,10 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	}
 	initJob(j)
 
-	j.id = m.nextJobID
-	m.nextJobID++
+	j.order = m.nextOrder
+	m.nextOrder++
 
-	m.job[j.id] = j
+	m.job[j.order] = j
 
 	// didn't hold lock of the job as the job will not get published
 	// until Add method returns.
@@ -246,7 +248,7 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	if peek != nil {
 		j.CurrentPriority = peek.CalcPriority()
 	}
-	return j.id, nil
+	return j.order, nil
 }
 
 func (m *JobManager) Jobs(filter JobFilter) []*Job {
@@ -266,7 +268,7 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 		}
 	}
 	sort.Slice(jobs, func(i, j int) bool {
-		return jobs[i].id < jobs[j].id
+		return jobs[i].order < jobs[j].order
 	})
 	return jobs
 }
@@ -356,7 +358,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		_, ok := m.job[j.id]
+		_, ok := m.job[j.order]
 		if !ok {
 			// the job deleted
 			continue

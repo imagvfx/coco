@@ -178,7 +178,7 @@ type Task struct {
 
 // ID is a Task identifier make it distinct from all other tasks.
 func (t *Task) ID() string {
-	return strconv.Itoa(t.Job.id) + "-" + strconv.Itoa(t.num)
+	return strconv.Itoa(t.Job.order) + "-" + strconv.Itoa(t.num)
 }
 
 // infoFromTaskID splits a task id string into job ID and task number.
