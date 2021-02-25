@@ -16,16 +16,6 @@ type JobFilter struct {
 
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
-	// NOTE: Private fields of this struct should be read-only after the initialization.
-	// Otherwise, this program will get racy.
-
-	sync.Mutex
-
-	// order is the order number of the job.
-	// It has a same value with ID but of int type.
-	// Think ID is external type, order is internal type of Job.
-	order int
-
 	// Job is a Task.
 	// Some of the Task's field should be explained in Job's context.
 	//
@@ -39,8 +29,10 @@ type Job struct {
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
 	*Task
 
-	// CurrentPriority is the job's task priority waiting at the time.
-	CurrentPriority int
+	// order is the order number of the job.
+	// It has a same value with ID but of int type.
+	// Think ID is external type, order is internal type of Job.
+	order int
 
 	// Target defines which worker groups should work for the job.
 	// A target can be served by multiple worker groups.
@@ -52,12 +44,25 @@ type Job struct {
 	// When user retries the job, retry count for tasks will be reset to 0.
 	AutoRetry int
 
-	// blocked indicates whether the job has blocked due to a failed/unfinished task.
-	blocked bool
-
 	// tasks are all tasks of the job, which is different from Subtasks.
 	// The order is walk order. So one can walk tasks by just iterate through it.
 	tasks []*Task
+
+	// Job is a mutex.
+	sync.Mutex
+
+	//
+	// NOTE:
+	//
+	// 	Fields below should be used/changed after hold the Job's lock.
+	//
+	//
+
+	// CurrentPriority is the job's task priority waiting at the time.
+	CurrentPriority int
+
+	// blocked indicates whether the job has blocked due to a failed/unfinished task.
+	blocked bool
 }
 
 // ID returns the job's order number as a string.

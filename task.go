@@ -112,9 +112,6 @@ func (st *branchStat) Status() TaskStatus {
 // Leaf not having commands are valid, but barely useful.
 // A Task is either a Branch or a Leaf. It cannot be both at same time.
 type Task struct {
-	// NOTE: Private fields of this struct should be read-only after the initialization.
-	// Otherwise, this program will get racy.
-
 	// Job is a job the task is belong to.
 	Job *Job
 
@@ -137,14 +134,6 @@ type Task struct {
 	// Empty Title is allowed.
 	Title string
 
-	// status indicates task status using in the farm.
-	// It should not be set from user.
-	status TaskStatus
-
-	// Stat aggrigates it's leafs status.
-	// It is only meaningful when the task is a branch.
-	Stat *branchStat
-
 	// Priority is a priority hint for the task.
 	// Priority set to zero makes it inherit nearest parent that has non-zero priority.
 	// If there isn't non-zero priority parent, it will use the job's priority.
@@ -161,17 +150,32 @@ type Task struct {
 	// When false, a subtask will be launched right after the prior task started.
 	SerialSubtasks bool
 
+	// isLeaf indicates whether the task is a leaf task.
+	isLeaf bool
+
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands []Command
+
+	//
+	// NOTE:
+	//
+	// 	Fields below should be used/changed after hold the Job's lock.
+	//
+	//
+
+	// status indicates task status using in the farm.
+	// It should not be set from user.
+	status TaskStatus
+
+	// Stat aggrigates it's leafs status.
+	// It is only meaningful when the task is a branch.
+	Stat *branchStat
 
 	popIdx int
 
 	// retry represents how many times the task retried automatically due to fail of the task.
 	// It will be reset, when user retries the job of the task.
 	retry int
-
-	// isLeaf indicates whether the task is a leaf task.
-	isLeaf bool
 
 	Assignee *Worker
 }
