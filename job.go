@@ -205,19 +205,12 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	j.order = m.nextOrder
 	m.nextOrder++
 
+	// set priority for the very first leaf task.
+	j.CurrentPriority = j.Peek().CalcPriority()
+
 	m.job[j.order] = j
-
-	// didn't hold lock of the job as the job will not get published
-	// until Add method returns.
-
 	heap.Push(m.jobs, j)
 
-	// set priority for the very first leaf task.
-	peek := j.Peek()
-	// peek can be nil, when the job doesn't have any leaf task.
-	if peek != nil {
-		j.CurrentPriority = peek.CalcPriority()
-	}
 	return j.order, nil
 }
 
