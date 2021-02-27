@@ -84,11 +84,13 @@ func (j *Job) Validate() error {
 	return nil
 }
 
-// initJob inits a job's tasks.
+// initJob inits a job and it's tasks.
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
-func initJob(j *Job) *Job {
+func (j *Job) Init(order int) *Job {
+	j.order = order
 	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
+	j.CurrentPriority = j.Peek().CalcPriority()
 	return j
 }
 
@@ -200,13 +202,8 @@ func (m *JobManager) Add(j *Job) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	initJob(j)
-
-	j.order = m.nextOrder
+	j.Init(m.nextOrder)
 	m.nextOrder++
-
-	// set priority for the very first leaf task.
-	j.CurrentPriority = j.Peek().CalcPriority()
 
 	m.job[j.order] = j
 	heap.Push(m.jobs, j)

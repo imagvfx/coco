@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-var job = initJob(&Job{
+var job = (&Job{
 	Task: &Task{
 		Title:          "root",
 		SerialSubtasks: true,
@@ -62,7 +62,7 @@ var job = initJob(&Job{
 			},
 		},
 	},
-})
+}).Init(0)
 
 func TestInitJob(t *testing.T) {
 	n := job.tasks[4].Stat.N()
@@ -136,7 +136,7 @@ func TestWalkFrom(t *testing.T) {
 }
 
 func newJobManagerForPop() *JobManager {
-	j1 := initJob(&Job{
+	j1 := &Job{
 		Target: "2d",
 		Task: &Task{
 			Title:    "0",
@@ -158,8 +158,8 @@ func newJobManagerForPop() *JobManager {
 				},
 			},
 		},
-	})
-	j2 := initJob(&Job{
+	}
+	j2 := &Job{
 		Target: "3d",
 		Task: &Task{
 			Title:    "1",
@@ -181,7 +181,7 @@ func newJobManagerForPop() *JobManager {
 				},
 			},
 		},
-	})
+	}
 	m := NewJobManager()
 	m.Add(j1)
 	m.Add(j2)

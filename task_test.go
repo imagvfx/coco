@@ -29,7 +29,7 @@ func TestTaskCalcPriority(t *testing.T) {
 			},
 		},
 	}
-	initJob(job)
+	job.Init(0)
 	cases := []struct {
 		t    *Task
 		want int
@@ -65,7 +65,7 @@ func TestTaskPop(t *testing.T) {
 		want []string
 	}{
 		{
-			j: initJob(&Job{
+			j: (&Job{
 				Task: &Task{
 					Title:          "simple serial",
 					SerialSubtasks: true,
@@ -75,11 +75,11 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}),
+			}).Init(0),
 			want: []string{"1", "", "2", "", "3", ""},
 		},
 		{
-			j: initJob(&Job{
+			j: (&Job{
 				Task: &Task{
 					Title:          "simple parallel",
 					SerialSubtasks: false,
@@ -89,11 +89,11 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}),
+			}).Init(0),
 			want: []string{"1", "2", "3"},
 		},
 		{
-			j: initJob(&Job{
+			j: (&Job{
 				Task: &Task{
 					Title:          "render",
 					SerialSubtasks: true,
@@ -130,11 +130,11 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}),
+			}).Init(0),
 			want: []string{"d1", "d2", "r1", "r2", "c1", "", "c2", ""},
 		},
 		{
-			j: initJob(&Job{
+			j: (&Job{
 				Task: &Task{
 					Title:          "sim",
 					SerialSubtasks: false,
@@ -165,7 +165,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}),
+			}).Init(0),
 			want: []string{"d1", "f1", "p1", "", "d2", "f2", "p2", ""},
 		},
 	}
