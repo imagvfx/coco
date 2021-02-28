@@ -87,8 +87,7 @@ func (j *Job) Validate() error {
 // initJob inits a job and it's tasks.
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
-func (j *Job) Init(order int) *Job {
-	j.order = order
+func (j *Job) Init() *Job {
 	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
 	j.CurrentPriority = j.Peek().CalcPriority()
 	return j
@@ -144,13 +143,45 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
+// SQLJob is a job information for sql database.
+type SQLJob struct {
+	ID        int
+	Target    string
+	AutoRetry int
+}
+
+// ForSQL converts a Job into a SQLJob.
+func (j *Job) ForSQL() *SQLJob {
+	s := &SQLJob{
+		ID:        j.order,
+		Target:    j.Target,
+		AutoRetry: j.AutoRetry,
+	}
+	return s
+}
+
+// JobService is an interface which let us use sqlite.JobService.
+type JobService interface {
+	AddJob(*SQLJob) (int, error)
+	// GetJob() (*Job, error)
+	// UpdateJob(*coco.JobUpdater) error
+	// FindJobs(*coco.JobFilter) ([]*Job, error)
+}
+
+// NopJobService is a JobService which does nothing.
+type NopJobService struct{}
+
+// AddJob returns (0, nil) always.
+func (s *NopJobService) AddJob(j *SQLJob) (int, error) {
+	return 0, nil
+}
+
 // JobManager manages jobs and pops tasks to run the commands by workers.
 type JobManager struct {
 	sync.Mutex
 
-	// nextOrder indicates next job's order.
-	// It will be incremented when a job has added.
-	nextOrder int
+	// JobService allows us to communicate with db for Jobs.
+	JobService JobService
 
 	// job is a map of an order to the job.
 	job map[int]*Job
@@ -169,6 +200,7 @@ type JobManager struct {
 // NewJobManager creates a new JobManager.
 func NewJobManager() *JobManager {
 	m := &JobManager{}
+	m.JobService = JobService(&NopJobService{})
 	m.job = make(map[int]*Job)
 	m.jobs = newJobHeap()
 	m.CancelTaskCh = make(chan *Task)
@@ -193,22 +225,26 @@ func (m *JobManager) GetTask(id string) (*Task, error) {
 	return m.job[ord].tasks[n], nil
 }
 
-// Add adds a job to the manager.
-func (m *JobManager) Add(j *Job) (int, error) {
+// Add adds a job to the manager and return it's ID.
+func (m *JobManager) Add(j *Job) (string, error) {
 	if j == nil {
-		return -1, fmt.Errorf("nil job cannot be added")
+		return "", fmt.Errorf("nil job cannot be added")
 	}
 	err := j.Validate()
 	if err != nil {
-		return -1, err
+		return "", err
 	}
-	j.Init(m.nextOrder)
-	m.nextOrder++
+	j.Init()
+
+	j.order, err = m.JobService.AddJob(j.ForSQL())
+	if err != nil {
+		return "", err
+	}
 
 	m.job[j.order] = j
 	heap.Push(m.jobs, j)
 
-	return j.order, nil
+	return j.ID(), nil
 }
 
 // Jobs searches jobs with a job filter.

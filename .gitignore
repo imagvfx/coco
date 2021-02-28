@@ -2,3 +2,4 @@ cmd/coco/coco
 cmd/cocofarm/cocofarm
 cmd/cocoworker/cocoworker
 maybe
+*.db*

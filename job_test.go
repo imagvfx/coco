@@ -62,7 +62,7 @@ var job = (&Job{
 			},
 		},
 	},
-}).Init(0)
+}).Init()
 
 func TestInitJob(t *testing.T) {
 	n := job.tasks[4].Stat.N()

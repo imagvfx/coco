@@ -29,7 +29,7 @@ func TestTaskCalcPriority(t *testing.T) {
 			},
 		},
 	}
-	job.Init(0)
+	job.Init()
 	cases := []struct {
 		t    *Task
 		want int
@@ -75,7 +75,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(0),
+			}).Init(),
 			want: []string{"1", "", "2", "", "3", ""},
 		},
 		{
@@ -89,7 +89,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(0),
+			}).Init(),
 			want: []string{"1", "2", "3"},
 		},
 		{
@@ -130,7 +130,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(0),
+			}).Init(),
 			want: []string{"d1", "d2", "r1", "r2", "c1", "", "c2", ""},
 		},
 		{
@@ -165,7 +165,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(0),
+			}).Init(),
 			want: []string{"d1", "f1", "p1", "", "d2", "f2", "p2", ""},
 		},
 	}

@@ -8,20 +8,37 @@ import (
 	"time"
 
 	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/sqlite"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}
 
 func main() {
-	var addr string
+	var (
+		addr   string
+		dbpath string
+	)
 	defaultAddr := os.Getenv("COCO_ADDR")
 	if defaultAddr == "" {
 		defaultAddr = "localhost:8282"
 	}
 	flag.StringVar(&addr, "addr", defaultAddr, "address to bind")
+	flag.StringVar(&dbpath, "db", "coco.db", "database path to be created/opened")
 	flag.Parse()
 
+	db, err := sqlite.Open(dbpath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	err = sqlite.Init(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	job := coco.NewJobManager()
+	job.JobService = sqlite.NewJobService(db)
 
 	wgrps, err := loadWorkerGroupsFromConfig()
 	if err != nil {
