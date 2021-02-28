@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/imagvfx/coco"
 )
@@ -34,12 +33,8 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 
 func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	id, err := strconv.Atoi(r.Form.Get("id"))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid job id: %v", err), http.StatusBadRequest)
-		return
-	}
-	err = h.jobman.Cancel(id)
+	id := r.Form.Get("id")
+	err := h.jobman.Cancel(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

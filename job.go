@@ -273,8 +273,12 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 // Cancel cancels a job.
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
-func (m *JobManager) Cancel(id int) error {
-	j, ok := m.job[id]
+func (m *JobManager) Cancel(id string) error {
+	ord, err := infoFromJobID(id)
+	if err != nil {
+		return err
+	}
+	j, ok := m.job[ord]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
