@@ -170,6 +170,7 @@ type JobService interface {
 }
 
 // NopJobService is a JobService which does nothing.
+// We need this for testing.
 type NopJobService struct{}
 
 // AddJob returns (0, nil) always.
