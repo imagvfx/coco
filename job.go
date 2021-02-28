@@ -145,6 +145,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 
 // SQLJob is a job information for sql database.
 type SQLJob struct {
+	// TODO: Do we need ID here? It will be generated from a db.
 	ID        int
 	Target    string
 	AutoRetry int

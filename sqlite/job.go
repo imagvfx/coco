@@ -43,6 +43,7 @@ func (s *JobService) AddJob(j *coco.SQLJob) (int, error) {
 }
 
 func addJob(tx *sql.Tx, j *coco.SQLJob) (int, error) {
+	// Don't insert the job's id, it will be generated from db.
 	result, err := tx.Exec(`
 		INSERT INTO jobs (
 			target,
