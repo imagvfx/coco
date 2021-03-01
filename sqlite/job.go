@@ -29,7 +29,8 @@ func CreateTasksTable(tx *sql.Tx) error {
 			parent_num INTEGER NOT NULL,
 			status INTEGER NOT NULL,
 			serial_subtasks BOOL NOT NULL,
-			commands TEXT NOT NULL
+			commands TEXT NOT NULL,
+			PRIMARY KEY (job_id, num)
 		);
 	`)
 	return err
