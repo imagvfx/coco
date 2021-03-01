@@ -149,6 +149,7 @@ type SQLJob struct {
 	ID        int
 	Target    string
 	AutoRetry int
+	Tasks     []*SQLTask
 }
 
 // ForSQL converts a Job into a SQLJob.
@@ -157,6 +158,10 @@ func (j *Job) ForSQL() *SQLJob {
 		ID:        j.order,
 		Target:    j.Target,
 		AutoRetry: j.AutoRetry,
+		Tasks:     make([]*SQLTask, len(j.tasks)),
+	}
+	for i, t := range j.tasks {
+		s.Tasks[i] = t.ForSQL()
 	}
 	return s
 }

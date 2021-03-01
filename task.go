@@ -1,6 +1,7 @@
 package coco
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -155,7 +156,7 @@ type Task struct {
 	isLeaf bool
 
 	// Commands are guaranteed that they run serially from a same worker.
-	Commands []Command
+	Commands Commands
 
 	//
 	// NOTE:
@@ -210,6 +211,31 @@ func infoFromTaskID(id string) (int, int, error) {
 	return jid, tnum, nil
 }
 
+// Commands are commands that are garuanteed to be run from a worker.
+type Commands []Command
+
+// Value implements driver.Valuer.
+func (cs Commands) Value() (driver.Value, error) {
+	v, err := json.Marshal(cs)
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// Scan implements sql.Scanner.
+func (cs *Commands) Scan(v interface{}) error {
+	if v == nil {
+		return fmt.Errorf("scan commands: nil")
+	}
+	b := v.([]byte)
+	err := json.Unmarshal(b, &cs)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Command is a command to be run in a worker.
 // First string is the executable and others are arguments.
 // When a Command is nil or empty, the command will be skipped.
@@ -224,7 +250,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Priority       int
 		Subtasks       []*Task
 		SerialSubtasks bool
-		Commands       []Command
+		Commands       Commands
 	}{
 		Title:          t.Title,
 		ID:             t.ID(),
@@ -235,6 +261,32 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Commands:       t.Commands,
 	}
 	return json.Marshal(m)
+}
+
+// SQLTask is a task information for sql database.
+type SQLTask struct {
+	JobID          int
+	Num            int
+	ParentNum      int
+	Status         TaskStatus
+	SerialSubtasks bool
+	Commands       Commands
+}
+
+// ForSQL converts a Task into a SQLTask.
+func (t *Task) ForSQL() *SQLTask {
+	s := &SQLTask{
+		JobID:          t.Job.order,
+		Num:            t.num,
+		Status:         t.status,
+		SerialSubtasks: t.SerialSubtasks,
+		Commands:       t.Commands,
+	}
+	s.ParentNum = -1
+	if t.parent != nil {
+		s.ParentNum = t.parent.num
+	}
+	return s
 }
 
 // Blocking returns a bool value that indicates whether the task is a blocking task.
