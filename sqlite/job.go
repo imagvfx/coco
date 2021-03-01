@@ -6,6 +6,8 @@ import (
 	"github.com/imagvfx/coco"
 )
 
+// CreateJobsTable creates jobs table to a database if not exists.
+// It is ok to call it multiple times.
 func CreateJobsTable(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		CREATE TABLE IF NOT EXISTS jobs (
@@ -33,14 +35,17 @@ func CreateTasksTable(tx *sql.Tx) error {
 	return err
 }
 
+// JobService interacts with a database for coco jobs.
 type JobService struct {
 	db *sql.DB
 }
 
+// NewJobService creates a new JobService.
 func NewJobService(db *sql.DB) *JobService {
 	return &JobService{db: db}
 }
 
+// AddJob adds a job and it's tasks into a database.
 func (s *JobService) AddJob(j *coco.SQLJob) (int, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -64,6 +69,7 @@ func (s *JobService) AddJob(j *coco.SQLJob) (int, error) {
 	return jobID, nil
 }
 
+// addJob adds a job into a database.
 func addJob(tx *sql.Tx, j *coco.SQLJob) (int, error) {
 	// Don't insert the job's id, it will be generated from db.
 	result, err := tx.Exec(`
@@ -87,7 +93,7 @@ func addJob(tx *sql.Tx, j *coco.SQLJob) (int, error) {
 	return jobID, nil
 }
 
-// addTask adds a task to a database.
+// addTask adds a task into a database.
 // It tasks a job ID, because the task doesn't know its job's id yet.
 func addTask(tx *sql.Tx, jobID int, t *coco.SQLTask) error {
 	_, err := tx.Exec(`
