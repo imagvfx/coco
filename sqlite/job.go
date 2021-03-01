@@ -11,7 +11,7 @@ import (
 func CreateJobsTable(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		CREATE TABLE IF NOT EXISTS jobs (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			ord INTEGER PRIMARY KEY AUTOINCREMENT,
 			target TEXT NOT NULL,
 			auto_retry INTEGER NOT NULL
 		);
@@ -24,13 +24,13 @@ func CreateJobsTable(tx *sql.Tx) error {
 func CreateTasksTable(tx *sql.Tx) error {
 	_, err := tx.Exec(`
 		CREATE TABLE IF NOT EXISTS tasks (
-			job_id INTEGER NOT NULL,
+			ord INTEGER NOT NULL,
 			num INTEGER NOT NULL,
 			parent_num INTEGER NOT NULL,
 			status INTEGER NOT NULL,
 			serial_subtasks BOOL NOT NULL,
 			commands TEXT NOT NULL,
-			PRIMARY KEY (job_id, num)
+			PRIMARY KEY (ord, num)
 		);
 	`)
 	return err
@@ -53,12 +53,12 @@ func (s *JobService) AddJob(j *coco.SQLJob) (int, error) {
 		return -1, err
 	}
 	defer tx.Rollback()
-	jobID, err := addJob(tx, j)
+	ord, err := addJob(tx, j)
 	if err != nil {
 		return -1, err
 	}
 	for _, t := range j.Tasks {
-		err := addTask(tx, jobID, t)
+		err := addTask(tx, ord, t)
 		if err != nil {
 			return -1, err
 		}
@@ -67,12 +67,12 @@ func (s *JobService) AddJob(j *coco.SQLJob) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	return jobID, nil
+	return ord, nil
 }
 
 // addJob adds a job into a database.
 func addJob(tx *sql.Tx, j *coco.SQLJob) (int, error) {
-	// Don't insert the job's id, it will be generated from db.
+	// Don't insert the job's order number, it will be generated from db.
 	result, err := tx.Exec(`
 		INSERT INTO jobs (
 			target,
@@ -90,16 +90,16 @@ func addJob(tx *sql.Tx, j *coco.SQLJob) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	jobID := int(id)
-	return jobID, nil
+	ord := int(id)
+	return ord, nil
 }
 
 // addTask adds a task into a database.
-// It tasks a job ID, because the task doesn't know its job's id yet.
-func addTask(tx *sql.Tx, jobID int, t *coco.SQLTask) error {
+// It tasks an order number of its job, because the task doesn't know it yet.
+func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 	_, err := tx.Exec(`
 		INSERT INTO tasks (
-			job_id,
+			ord,
 			num,
 			parent_num,
 			status,
@@ -108,7 +108,7 @@ func addTask(tx *sql.Tx, jobID int, t *coco.SQLTask) error {
 		)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`,
-		jobID,
+		ord,
 		t.Num,
 		t.ParentNum,
 		t.Status,

@@ -146,7 +146,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 // SQLJob is a job information for sql database.
 type SQLJob struct {
 	// TODO: Do we need ID here? It will be generated from a db.
-	ID        int
+	Order     int
 	Target    string
 	AutoRetry int
 	Tasks     []*SQLTask
@@ -155,7 +155,7 @@ type SQLJob struct {
 // ForSQL converts a Job into a SQLJob.
 func (j *Job) ForSQL() *SQLJob {
 	s := &SQLJob{
-		ID:        j.order,
+		Order:     j.order,
 		Target:    j.Target,
 		AutoRetry: j.AutoRetry,
 		Tasks:     make([]*SQLTask, len(j.tasks)),

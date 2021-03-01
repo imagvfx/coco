@@ -265,7 +265,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 
 // SQLTask is a task information for sql database.
 type SQLTask struct {
-	JobID          int
+	Order          int
 	Num            int
 	ParentNum      int
 	Status         TaskStatus
@@ -276,7 +276,7 @@ type SQLTask struct {
 // ForSQL converts a Task into a SQLTask.
 func (t *Task) ForSQL() *SQLTask {
 	s := &SQLTask{
-		JobID:          t.Job.order,
+		Order:          t.Job.order,
 		Num:            t.num,
 		Status:         t.status,
 		SerialSubtasks: t.SerialSubtasks,
