@@ -152,8 +152,8 @@ type SQLJob struct {
 	Tasks     []*SQLTask
 }
 
-// ForSQL converts a Job into a SQLJob.
-func (j *Job) ForSQL() *SQLJob {
+// ToSQL converts a Job into a SQLJob.
+func (j *Job) ToSQL() *SQLJob {
 	s := &SQLJob{
 		Order:     j.order,
 		Target:    j.Target,
@@ -161,9 +161,31 @@ func (j *Job) ForSQL() *SQLJob {
 		Tasks:     make([]*SQLTask, len(j.tasks)),
 	}
 	for i, t := range j.tasks {
-		s.Tasks[i] = t.ForSQL()
+		s.Tasks[i] = t.ToSQL()
 	}
 	return s
+}
+
+// FromSQL converts a SQLJob into a Job.
+func (j *Job) FromSQL(sj *SQLJob) {
+	j.order = sj.Order
+	j.Target = sj.Target
+	j.AutoRetry = sj.AutoRetry
+	j.tasks = make([]*Task, len(sj.Tasks))
+	for i, st := range sj.Tasks {
+		t := &Task{
+			Job: j,
+		}
+		t.FromSQL(st)
+		if i != 0 {
+			// Add a task to the parent's Subtasks.
+			// The parent should have already been created when the child is created.
+			parent := j.tasks[st.ParentNum]
+			parent.Subtasks = append(parent.Subtasks, t)
+		}
+		j.tasks[i] = t
+	}
+	j.Task = j.tasks[0]
 }
 
 // JobService is an interface which let us use sqlite.JobService.
@@ -171,7 +193,7 @@ type JobService interface {
 	AddJob(*SQLJob) (int, error)
 	// GetJob() (*Job, error)
 	// UpdateJob(*coco.JobUpdater) error
-	// FindJobs(*coco.JobFilter) ([]*Job, error)
+	FindJobs(JobFilter) ([]*SQLJob, error)
 }
 
 // NopJobService is a JobService which does nothing.
@@ -181,6 +203,11 @@ type NopJobService struct{}
 // AddJob returns (0, nil) always.
 func (s *NopJobService) AddJob(j *SQLJob) (int, error) {
 	return 0, nil
+}
+
+// FindJobs returns (nil, nil).
+func (s *NopJobService) FindJobs(f JobFilter) ([]*SQLJob, error) {
+	return nil, nil
 }
 
 // JobManager manages jobs and pops tasks to run the commands by workers.
@@ -214,6 +241,24 @@ func NewJobManager() *JobManager {
 	return m
 }
 
+// RestoreJobManager restores a JobManager from given JobService.
+func RestoreJobManager(js JobService) (*JobManager, error) {
+	m := NewJobManager()
+	m.JobService = js
+	sqlJobs, err := m.JobService.FindJobs(JobFilter{})
+	if err != nil {
+		return nil, err
+	}
+	for _, sj := range sqlJobs {
+		j := &Job{}
+		j.FromSQL(sj)
+		j.Init()
+		m.job[j.order] = j
+		heap.Push(m.jobs, j)
+	}
+	return m, nil
+}
+
 // Get gets a job with a job id.
 func (m *JobManager) Get(id string) (*Job, error) {
 	ord, err := infoFromJobID(id)
@@ -243,7 +288,7 @@ func (m *JobManager) Add(j *Job) (string, error) {
 	}
 	j.Init()
 
-	j.order, err = m.JobService.AddJob(j.ForSQL())
+	j.order, err = m.JobService.AddJob(j.ToSQL())
 	if err != nil {
 		return "", err
 	}

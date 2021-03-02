@@ -268,16 +268,18 @@ type SQLTask struct {
 	Order          int
 	Num            int
 	ParentNum      int
+	Title          string
 	Status         TaskStatus
 	SerialSubtasks bool
 	Commands       Commands
 }
 
-// ForSQL converts a Task into a SQLTask.
-func (t *Task) ForSQL() *SQLTask {
+// ToSQL converts a Task into a SQLTask.
+func (t *Task) ToSQL() *SQLTask {
 	s := &SQLTask{
 		Order:          t.Job.order,
 		Num:            t.num,
+		Title:          t.Title,
 		Status:         t.status,
 		SerialSubtasks: t.SerialSubtasks,
 		Commands:       t.Commands,
@@ -287,6 +289,15 @@ func (t *Task) ForSQL() *SQLTask {
 		s.ParentNum = t.parent.num
 	}
 	return s
+}
+
+// FromSQL converts a SQLTask into a Task.
+func (t *Task) FromSQL(st *SQLTask) {
+	t.num = st.Num
+	t.Title = st.Title
+	t.status = st.Status
+	t.SerialSubtasks = st.SerialSubtasks
+	t.Commands = st.Commands
 }
 
 // Blocking returns a bool value that indicates whether the task is a blocking task.

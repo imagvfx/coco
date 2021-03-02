@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/imagvfx/coco"
 )
@@ -27,6 +28,7 @@ func CreateTasksTable(tx *sql.Tx) error {
 			ord INTEGER NOT NULL,
 			num INTEGER NOT NULL,
 			parent_num INTEGER NOT NULL,
+			title TEXT,
 			status INTEGER NOT NULL,
 			serial_subtasks BOOL NOT NULL,
 			commands TEXT NOT NULL,
@@ -102,15 +104,17 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 			ord,
 			num,
 			parent_num,
+			title,
 			status,
 			serial_subtasks,
 			commands
 		)
-		VALUES (?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`,
 		ord,
 		t.Num,
 		t.ParentNum,
+		t.Title,
 		t.Status,
 		t.SerialSubtasks,
 		t.Commands,
@@ -118,5 +122,113 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// FindJobs finds jobs those matched with given filter.
+func (s *JobService) FindJobs(f coco.JobFilter) ([]*coco.SQLJob, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	jobs, err := findJobs(tx, f)
+	if err != nil {
+		return nil, err
+	}
+	for _, j := range jobs {
+		err := attachTasks(tx, j)
+		if err != nil {
+			return nil, err
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+// findJobs finds jobs those matched with given filter.
+func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
+	wh := NewWhere()
+	if f.Target != "" {
+		wh.Add("target", f.Target)
+	}
+
+	q := fmt.Sprintf(`
+		SELECT
+			ord,
+			target,
+			auto_retry
+		FROM jobs
+		%v
+		ORDER BY ord ASC
+	`, wh.Stmt())
+
+	rows, err := tx.Query(q, wh.Vals()...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	jobs := make([]*coco.SQLJob, 0)
+	for rows.Next() {
+		j := &coco.SQLJob{}
+		err := rows.Scan(
+			&j.Order,
+			&j.Target,
+			&j.AutoRetry,
+		)
+		if err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, j)
+	}
+	return jobs, nil
+}
+
+// attachTasks attach all tasks to it's job.
+func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
+	wh := NewWhere()
+	wh.Add("ord", j.Order)
+
+	q := fmt.Sprintf(`
+		SELECT
+			num,
+			parent_num,
+			title,
+			status,
+			serial_subtasks,
+			commands
+		FROM tasks
+		%v
+		ORDER BY num ASC
+	`, wh.Stmt())
+	rows, err := tx.Query(q, wh.Vals()...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	tasks := make([]*coco.SQLTask, 0)
+	for rows.Next() {
+		t := &coco.SQLTask{
+			Order: j.Order,
+		}
+		err := rows.Scan(
+			&t.Num,
+			&t.ParentNum,
+			&t.Title,
+			&t.Status,
+			&t.SerialSubtasks,
+			&t.Commands,
+		)
+		if err != nil {
+			return err
+		}
+		tasks = append(tasks, t)
+	}
+	j.Tasks = tasks
 	return nil
 }
