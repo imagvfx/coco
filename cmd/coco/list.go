@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -51,7 +52,13 @@ func list(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	if resp.StatusCode != 200 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Fatalf("%s", b)
+	}
 	var list []ListJob
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&list)

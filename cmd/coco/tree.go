@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -112,7 +113,13 @@ func tree(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	if resp.StatusCode != 200 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Fatalf("%s", b)
+	}
 	j := &TreeJob{}
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(j)

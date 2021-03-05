@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -33,8 +33,14 @@ func cancel(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(resp.Status)
-	body, err := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Fatalf("%s", b)
+	}
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
