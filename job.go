@@ -265,7 +265,11 @@ func (m *JobManager) Get(id string) (*Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.job[ord], nil
+	j, ok := m.job[ord]
+	if !ok {
+		return nil, fmt.Errorf("job not exists: %v", ord)
+	}
+	return j, nil
 }
 
 // GetTask gets a task with a task id.
@@ -274,7 +278,14 @@ func (m *JobManager) GetTask(id string) (*Task, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.job[ord].tasks[n], nil
+	j, ok := m.job[ord]
+	if !ok {
+		return nil, fmt.Errorf("job not exists: %v", id)
+	}
+	if n < 0 || n >= len(j.tasks) {
+		return nil, fmt.Errorf("task not exists: %v", id)
+	}
+	return j.tasks[n], nil
 }
 
 // Add adds a job to the manager and return it's ID.
