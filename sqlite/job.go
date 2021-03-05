@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"database/sql"
-	"fmt"
 
 	"github.com/imagvfx/coco"
 )
@@ -156,17 +155,17 @@ func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
 		wh.Add("target", f.Target)
 	}
 
-	q := fmt.Sprintf(`
+	rows, err := tx.Query(`
 		SELECT
 			ord,
 			target,
 			auto_retry
 		FROM jobs
-		%v
+		`+wh.Stmt()+`
 		ORDER BY ord ASC
-	`, wh.Stmt())
-
-	rows, err := tx.Query(q, wh.Vals()...)
+	`,
+		wh.Vals()...,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -190,10 +189,7 @@ func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
 
 // attachTasks attach all tasks to it's job.
 func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
-	wh := NewWhere()
-	wh.Add("ord", j.Order)
-
-	q := fmt.Sprintf(`
+	rows, err := tx.Query(`
 		SELECT
 			num,
 			parent_num,
@@ -202,10 +198,12 @@ func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
 			serial_subtasks,
 			commands
 		FROM tasks
-		%v
+		WHERE
+			ord = ?
 		ORDER BY num ASC
-	`, wh.Stmt())
-	rows, err := tx.Query(q, wh.Vals()...)
+	`,
+		j.Order,
+	)
 	if err != nil {
 		return err
 	}
