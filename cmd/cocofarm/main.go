@@ -46,11 +46,11 @@ func main() {
 	}
 	worker := coco.NewWorkerManager(wgrps)
 
-	farm := newFarmServer("localhost:8284", coco.NewFarm(job, worker))
-	go farm.Listen()
+	farm := coco.NewFarm(job, worker)
+	go newFarmServer("localhost:8284", farm).Listen()
 
-	go matching(job, worker)
-	go canceling(job, worker)
+	go farm.Matching()
+	go farm.Canceling()
 	go checking(job, "jobman")
 	go checking(worker, "workerman")
 
@@ -69,93 +69,6 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
-func matching(jobman *coco.JobManager, workerman *coco.WorkerManager) {
-	match := func() {
-		// ReadyCh gives faster matching loop when we are fortune.
-		// There might have a chance that there was no job
-		// when a worker sent a signal to ReadyCh.
-		// Then the signal spent, no more signal will come
-		// unless another worker sends a signal to the channel.
-		// Below time.After case will helps us prevent deadlock
-		// on matching loop in that case.
-		select {
-		case <-workerman.ReadyCh:
-			break
-		case <-time.After(time.Second):
-			break
-		}
-
-		jobman.Lock()
-		defer jobman.Unlock()
-		workerman.Lock()
-		defer workerman.Unlock()
-
-		t := jobman.PopTask(workerman.ServableTargets())
-		if t == nil {
-			return
-		}
-		// TODO: what if the job is deleted already?
-		j := t.Job
-		j.Lock()
-		defer j.Unlock()
-		cancel := len(t.Commands) == 0 || t.Status() == coco.TaskFailed // eg. user canceled this task
-		if cancel {
-			return
-		}
-		w := workerman.Pop(t.Job.Target)
-		if w == nil {
-			panic("at least one worker should be able to serve this tag")
-		}
-		err := workerman.SendTask(w, t)
-		if err != nil {
-			// Failed to communicate with the worker.
-			log.Printf("failed to send task to a worker: %v", err)
-			jobman.PushTask(t)
-			return
-		}
-		t.Assign(w)
-		// worker got the task.
-		t.SetStatus(coco.TaskRunning)
-	}
-
-	go func() {
-		for {
-			match()
-		}
-	}()
-}
-
-func canceling(jobman *coco.JobManager, workerman *coco.WorkerManager) {
-	cancel := func() {
-		t := <-jobman.CancelTaskCh
-		jobman.Lock()
-		defer jobman.Unlock()
-		t, err := jobman.GetTask(t.ID())
-		if err != nil {
-			log.Printf("failed to cancel task: %v", err)
-			return
-		}
-		workerman.Lock()
-		defer workerman.Unlock()
-		w := t.Assignee
-		if w == nil {
-			return
-		}
-		err = workerman.SendCancelTask(w, t)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		t.Unassign(w)
-	}
-
-	go func() {
-		for {
-			cancel()
-		}
-	}()
-}
-
 func checking(l Locker, label string) {
 	done := make(chan bool)
 	for {
@@ -172,5 +85,4 @@ func checking(l Locker, label string) {
 			log.Fatalf("deadlock: %v", label)
 		}
 	}
-
 }
