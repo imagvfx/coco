@@ -13,7 +13,7 @@ import (
 )
 
 type ListJob struct {
-	ID     int
+	ID     string
 	Status string
 	Title  string
 }
