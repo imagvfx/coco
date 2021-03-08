@@ -487,10 +487,8 @@ func (m *JobManager) PopTask(targets []string) *Task {
 	}
 }
 
-// pushTask pushes the task to it's job, so it can popped again.
-// When `retry` argument is true, it will act as retry mode.
-// It will return true when the push has succeed.
-func (m *JobManager) pushTask(t *Task, retry bool) (ok bool) {
+// PushTask pushes the task to it's job, so it can popped again.
+func (m *JobManager) PushTask(t *Task) {
 	j := t.Job
 	peek := j.Peek()
 	if peek == nil {
@@ -498,40 +496,13 @@ func (m *JobManager) pushTask(t *Task, retry bool) (ok bool) {
 		// The job isn't in m.jobs for both cases.
 		// But the job's priority should be recalculated first.
 		defer func() {
-			if !ok {
-				return
-			}
 			heap.Push(m.jobs, j)
 			j.blocked = false
 		}()
 	}
-
-	if retry {
-		ok = t.Retry()
-		if !ok {
-			return ok
-		}
-	} else {
-		t.Push()
-		ok = true
-	}
+	t.Push()
 	// Peek again to reflect possible change of the job's priority.
 	peek = j.Peek() // peek should not be nil
 	p := peek.CalcPriority()
 	j.CurrentPriority = p
-	return ok
-}
-
-// PushTask pushes the task to it's job so it can popped again.
-// It should be used when there is server/communication error.
-// Use PushTaskForRetry for failed tasks.
-func (m *JobManager) PushTask(t *Task) {
-	m.pushTask(t, false)
-}
-
-// RetryTask pushes the task to it's job so it can be retried when it's failed.
-// If the task already reaches to maxmium AutoRetry count, it will
-// refuse to push and return false.
-func (m *JobManager) PushTaskForRetry(t *Task) bool {
-	return m.pushTask(t, true)
 }

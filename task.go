@@ -419,23 +419,11 @@ func (t *Task) Push() {
 	}
 }
 
-// Retry pushes the task to the job again, and increment the retry count.
-// The push will set the task's status to TaskWaiting automatically.
-// When it's done successfully, it will return true.
-// when it already spent all the retries, it will do nothing and return false.
-func (t *Task) Retry() bool {
-	if !t.isLeaf {
-		panic("cannot retry a branch task")
-	}
-	n := t.Job.AutoRetry
-	if t.retry >= n {
-		// spent all the retries
+// CanRetry checks the task reaches maximum retry count of the job.
+func (t *Task) CanRetry() bool {
+	if t.retry >= t.Job.AutoRetry {
 		return false
 	}
-	t.retry++
-	// TODO: Handle error of SetStatus, after split Retry to it and CanRetry.
-	t.SetStatus(TaskWaiting)
-	t.Push()
 	return true
 }
 

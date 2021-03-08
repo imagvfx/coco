@@ -118,12 +118,18 @@ func (f *Farm) Failed(addr, task string) error {
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
-	ok := f.jobman.PushTaskForRetry(t)
-	if !ok {
+	if !t.CanRetry() {
 		err := t.SetStatus(TaskFailed)
 		if err != nil {
 			return err
 		}
+	} else {
+		err := t.SetStatus(TaskWaiting)
+		if err != nil {
+			return err
+		}
+		t.retry++
+		f.jobman.PushTask(t)
 	}
 	// TODO: need to verify the worker
 	f.workerman.Lock()
