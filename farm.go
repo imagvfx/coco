@@ -255,6 +255,7 @@ func (f *Farm) Canceling() {
 		w := f.workerman.FindByAddr(addr)
 		if w == nil {
 			log.Printf("failed to find worker: %v", addr)
+			return
 		}
 		err = f.workerman.SendCancelTask(w, t)
 		if err != nil {
@@ -266,6 +267,7 @@ func (f *Farm) Canceling() {
 		})
 		if err != nil {
 			log.Print(err)
+			return
 		}
 	}
 
