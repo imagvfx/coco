@@ -1,4 +1,4 @@
 run as the job owner
 JobManager should be reproducable from db jobs when cocofarm restarted
-think about good sync mechanism to db
-Job.Init with JobService?
+worker should keep send message until farm is responding to it
+make jobHeap a unique heap
