@@ -61,7 +61,10 @@ func (f *Farm) Bye(addr string) error {
 		if err != nil {
 			return err
 		}
-		t.SetStatus(TaskFailed)
+		err = t.SetStatus(TaskFailed)
+		if err != nil {
+			return err
+		}
 	}
 	f.workerman.Bye(w.addr)
 	return nil
@@ -78,7 +81,10 @@ func (f *Farm) Done(addr, task string) error {
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
-	t.SetStatus(TaskDone)
+	err = t.SetStatus(TaskDone)
+	if err != nil {
+		return err
+	}
 	if j.blocked {
 		peek := j.Peek()
 		if peek != nil {
@@ -114,7 +120,10 @@ func (f *Farm) Failed(addr, task string) error {
 	defer j.Unlock()
 	ok := f.jobman.PushTaskForRetry(t)
 	if !ok {
-		t.SetStatus(TaskFailed)
+		err := t.SetStatus(TaskFailed)
+		if err != nil {
+			return err
+		}
 	}
 	// TODO: need to verify the worker
 	f.workerman.Lock()
@@ -168,16 +177,27 @@ func (f *Farm) Matching() {
 		if w == nil {
 			panic("at least one worker should be able to serve this tag")
 		}
-		err := f.workerman.SendTask(w, t)
+		// A worker is more unpredictable than db.
+		// Set the task's fields first.
+		t.Assign(w)
+		err := t.SetStatus(TaskRunning)
+		if err != nil {
+			log.Printf("db: %v", err)
+			f.jobman.PushTask(t)
+			f.workerman.Push(w)
+			t.Unassign(w)
+			return
+		}
+
+		err = f.workerman.SendTask(w, t)
 		if err != nil {
 			// Failed to communicate with the worker.
 			log.Printf("failed to send task to a worker: %v", err)
 			f.jobman.PushTask(t)
+			f.workerman.Push(w)
+			t.Unassign(w)
 			return
 		}
-		t.Assign(w)
-		// worker got the task.
-		t.SetStatus(TaskRunning)
 	}
 
 	for {

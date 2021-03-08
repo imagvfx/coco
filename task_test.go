@@ -29,7 +29,7 @@ func TestTaskCalcPriority(t *testing.T) {
 			},
 		},
 	}
-	job.Init()
+	job.Init(&NopJobService{})
 	cases := []struct {
 		t    *Task
 		want int
@@ -75,7 +75,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(),
+			}).Init(&NopJobService{}),
 			want: []string{"1", "", "2", "", "3", ""},
 		},
 		{
@@ -89,7 +89,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(),
+			}).Init(&NopJobService{}),
 			want: []string{"1", "2", "3"},
 		},
 		{
@@ -130,7 +130,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(),
+			}).Init(&NopJobService{}),
 			want: []string{"d1", "d2", "r1", "r2", "c1", "", "c2", ""},
 		},
 		{
@@ -165,7 +165,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(),
+			}).Init(&NopJobService{}),
 			want: []string{"d1", "f1", "p1", "", "d2", "f2", "p2", ""},
 		},
 	}
@@ -186,7 +186,7 @@ func TestTaskPop(t *testing.T) {
 				}
 				got = append(got, "") // make the blocking point visible
 				for _, pt := range popTasks {
-					pt.SetStatus(TaskDone)
+					pt.SetStatus(TaskDone) // NopJobService doesn't raise error
 				}
 				popTasks = popTasks[:0]
 			} else {

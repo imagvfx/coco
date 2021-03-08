@@ -8,6 +8,13 @@ import (
 	"strings"
 )
 
+// TaskUpdater has information for updating a task.
+type TaskUpdater struct {
+	Order  int
+	Num    int
+	Status *TaskStatus
+}
+
 // TaskStatus is a task status.
 type TaskStatus int
 
@@ -154,6 +161,8 @@ type Task struct {
 
 	// isLeaf indicates whether the task is a leaf task.
 	isLeaf bool
+
+	update func(TaskUpdater) error
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands Commands
@@ -424,6 +433,7 @@ func (t *Task) Retry() bool {
 		return false
 	}
 	t.retry++
+	// TODO: Handle error of SetStatus, after split Retry to it and CanRetry.
 	t.SetStatus(TaskWaiting)
 	t.Push()
 	return true
@@ -440,17 +450,30 @@ func (t *Task) Status() TaskStatus {
 
 // SetStatus sets a leaf task's status.
 // It will panic if called on branch.
-func (t *Task) SetStatus(s TaskStatus) {
+// It will return error if it couldn't update the db.
+func (t *Task) SetStatus(s TaskStatus) error {
 	if !t.isLeaf {
 		panic("cannot set status to a branch task")
 	}
 	old := t.status
+	// TODO: remove this if when Job.Init inits t.update.
+	if t.update != nil {
+		err := t.update(TaskUpdater{
+			Order:  t.Job.order,
+			Num:    t.num,
+			Status: &s,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	t.status = s
 	parent := t.parent
 	for parent != nil {
 		parent.Stat.Change(old, s)
 		parent = parent.parent
 	}
+	return nil
 }
 
 // CalcPriority calculates the tasks prority.

@@ -62,7 +62,7 @@ var job = (&Job{
 			},
 		},
 	},
-}).Init()
+}).Init(&NopJobService{})
 
 func TestInitJob(t *testing.T) {
 	n := job.tasks[4].Stat.N()

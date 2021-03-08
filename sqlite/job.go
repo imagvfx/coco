@@ -230,3 +230,47 @@ func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
 	j.Tasks = tasks
 	return nil
 }
+
+func (s *JobService) UpdateTask(t coco.TaskUpdater) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	err = updateTask(tx, t)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
+	setStmt := "SET "
+	setVals := make([]interface{}, 0)
+	if t.Status != nil {
+		setStmt += "status = ?"
+		setVals = append(setVals, t.Status)
+	}
+	// if t.Assignee != nil {
+	// 	if len(setVals) != 0 {
+	// 		setStmt += ", "
+	// 	}
+	// 	setStmt += "assignee = ?"
+	// 	setVals = append(setVals, t.Assignee)
+	// }
+	vals := append(setVals, t.Order, t.Num)
+	_, err := tx.Exec(`
+		UPDATE tasks
+		`+setStmt+`
+		WHERE
+			ord = ? AND
+			num = ?
+	`,
+		vals...,
+	)
+	return err
+}

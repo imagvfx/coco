@@ -7,7 +7,7 @@ import (
 	"github.com/imagvfx/coco/sqlite"
 )
 
-var job = (&coco.Job{
+var job = &coco.Job{
 	Task: &coco.Task{
 		Title:          "root",
 		SerialSubtasks: true,
@@ -62,7 +62,7 @@ var job = (&coco.Job{
 			},
 		},
 	},
-}).Init()
+}
 
 func TestCocoRestoreJobManager(t *testing.T) {
 	db, err := sqlite.Open(t.TempDir() + "/test.db")

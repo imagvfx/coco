@@ -87,9 +87,12 @@ func (j *Job) Validate() error {
 // initJob inits a job and it's tasks.
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
-func (j *Job) Init() *Job {
+func (j *Job) Init(js JobService) *Job {
 	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
 	j.CurrentPriority = j.Peek().CalcPriority()
+	for _, t := range j.tasks {
+		t.update = js.UpdateTask
+	}
 	return j
 }
 
@@ -192,7 +195,7 @@ func (j *Job) FromSQL(sj *SQLJob) {
 type JobService interface {
 	AddJob(*SQLJob) (int, error)
 	// GetJob() (*Job, error)
-	// UpdateJob(*coco.JobUpdater) error
+	UpdateTask(TaskUpdater) error
 	FindJobs(JobFilter) ([]*SQLJob, error)
 }
 
@@ -203,6 +206,11 @@ type NopJobService struct{}
 // AddJob returns (0, nil) always.
 func (s *NopJobService) AddJob(j *SQLJob) (int, error) {
 	return 0, nil
+}
+
+// UpdateTask returns nil.
+func (s *NopJobService) UpdateTask(TaskUpdater) error {
+	return nil
 }
 
 // FindJobs returns (nil, nil).
@@ -252,7 +260,7 @@ func RestoreJobManager(js JobService) (*JobManager, error) {
 	for _, sj := range sqlJobs {
 		j := &Job{}
 		j.FromSQL(sj)
-		j.Init()
+		j.Init(m.JobService)
 		m.job[j.order] = j
 		heap.Push(m.jobs, j)
 	}
@@ -297,7 +305,7 @@ func (m *JobManager) Add(j *Job) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	j.Init()
+	j.Init(m.JobService)
 
 	j.order, err = m.JobService.AddJob(j.ToSQL())
 	if err != nil {
@@ -362,7 +370,11 @@ func (m *JobManager) Cancel(id string) error {
 			}()
 		}
 		if t.status != TaskDone {
-			t.SetStatus(TaskFailed)
+			err := t.SetStatus(TaskFailed)
+			if err != nil {
+				return err
+			}
+
 		}
 	}
 	return nil
@@ -387,7 +399,10 @@ func (m *JobManager) Retry(id string) error {
 		}
 		t.retry = 0
 		if t.Status() == TaskFailed {
-			t.SetStatus(TaskWaiting)
+			err := t.SetStatus(TaskWaiting)
+			if err != nil {
+				return err
+			}
 			t.Push()
 		}
 	}
