@@ -1,7 +1,6 @@
 package main
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/imagvfx/coco"
@@ -89,8 +88,9 @@ func TestCocoRestoreJobManager(t *testing.T) {
 	for {
 		want := m.PopTask([]string{"*"})
 		got := r.PopTask([]string{"*"})
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("restore job manager: got %+v, want %+v", got, want)
+		err := coco.ShouldEqualTask(got, want)
+		if err != nil {
+			t.Fatalf("restore job manager: %v", err)
 		}
 		if want == nil {
 			return
