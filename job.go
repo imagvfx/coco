@@ -370,7 +370,10 @@ func (m *JobManager) Cancel(id string) error {
 			}()
 		}
 		if t.status != TaskDone {
-			err := t.SetStatus(TaskFailed)
+			s := TaskFailed
+			err := t.Update(TaskUpdater{
+				Status: &s,
+			})
 			if err != nil {
 				return err
 			}
@@ -399,7 +402,10 @@ func (m *JobManager) Retry(id string) error {
 		}
 		t.retry = 0
 		if t.Status() == TaskFailed {
-			err := t.SetStatus(TaskWaiting)
+			s := TaskWaiting
+			err := t.Update(TaskUpdater{
+				Status: &s,
+			})
 			if err != nil {
 				return err
 			}

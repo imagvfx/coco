@@ -10,9 +10,10 @@ import (
 
 // TaskUpdater has information for updating a task.
 type TaskUpdater struct {
-	Order  int
-	Num    int
-	Status *TaskStatus
+	Order    int
+	Num      int
+	Status   *TaskStatus
+	Assignee *string
 }
 
 // TaskStatus is a task status.
@@ -194,7 +195,7 @@ type Task struct {
 	// Assignee is a worker who is running the task's commands currently.
 	// It is nil except, the task is running.
 	// It is only meaningful to a leaf task.
-	Assignee *Worker
+	Assignee string
 }
 
 // ID is a Task identifier make it distinct from all other tasks.
@@ -281,6 +282,7 @@ type SQLTask struct {
 	Status         TaskStatus
 	SerialSubtasks bool
 	Commands       Commands
+	Assignee       string
 }
 
 // ToSQL converts a Task into a SQLTask.
@@ -292,6 +294,7 @@ func (t *Task) ToSQL() *SQLTask {
 		Status:         t.status,
 		SerialSubtasks: t.SerialSubtasks,
 		Commands:       t.Commands,
+		Assignee:       t.Assignee,
 	}
 	s.ParentNum = -1
 	if t.parent != nil {
@@ -436,34 +439,6 @@ func (t *Task) Status() TaskStatus {
 	return t.Stat.Status()
 }
 
-// SetStatus sets a leaf task's status.
-// It will panic if called on branch.
-// It will return error if it couldn't update the db.
-func (t *Task) SetStatus(s TaskStatus) error {
-	if !t.isLeaf {
-		panic("cannot set status to a branch task")
-	}
-	old := t.status
-	// TODO: remove this if when Job.Init inits t.update.
-	if t.update != nil {
-		err := t.update(TaskUpdater{
-			Order:  t.Job.order,
-			Num:    t.num,
-			Status: &s,
-		})
-		if err != nil {
-			return err
-		}
-	}
-	t.status = s
-	parent := t.parent
-	for parent != nil {
-		parent.Stat.Change(old, s)
-		parent = parent.parent
-	}
-	return nil
-}
-
 // CalcPriority calculates the tasks prority.
 func (t *Task) CalcPriority() int {
 	tt := t
@@ -478,27 +453,24 @@ func (t *Task) CalcPriority() int {
 	return 0
 }
 
-// Assign assigns a worker to the task.
-// It will return error if the task has already assigned.
-func (t *Task) Assign(w *Worker) error {
-	a := t.Assignee
-	if a != nil {
-		return fmt.Errorf("task is assigned to a different worker: %v - %v", t.ID(), a.addr)
+func (t *Task) Update(u TaskUpdater) error {
+	u.Order = t.Job.order
+	u.Num = t.num
+	err := t.update(u)
+	if err != nil {
+		return err
 	}
-	t.Assignee = w
-	return nil
-}
-
-// Unassign unassigns current assignee from the task.
-// It will return error if given worker isn't assignee of the task.
-func (t *Task) Unassign(w *Worker) error {
-	a := t.Assignee
-	if a == nil {
-		return fmt.Errorf("task isn't assigned to any worker: %v", t.ID())
+	if u.Status != nil {
+		old := t.status
+		t.status = *(u.Status)
+		parent := t.parent
+		for parent != nil {
+			parent.Stat.Change(old, t.status)
+			parent = parent.parent
+		}
 	}
-	if w != a {
-		return fmt.Errorf("task is assigned to a different worker: %v", t.ID())
+	if u.Assignee != nil {
+		t.Assignee = *(u.Assignee)
 	}
-	t.Assignee = nil
 	return nil
 }

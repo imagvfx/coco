@@ -31,6 +31,7 @@ func CreateTasksTable(tx *sql.Tx) error {
 			status INTEGER NOT NULL,
 			serial_subtasks BOOL NOT NULL,
 			commands TEXT NOT NULL,
+			assignee TEXT NOT NULL,
 			PRIMARY KEY (ord, num)
 		);
 	`)
@@ -106,9 +107,10 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 			title,
 			status,
 			serial_subtasks,
-			commands
+			commands,
+			assignee
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		ord,
 		t.Num,
@@ -117,6 +119,7 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 		t.Status,
 		t.SerialSubtasks,
 		t.Commands,
+		t.Assignee,
 	)
 	if err != nil {
 		return err
@@ -255,13 +258,13 @@ func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
 		setStmt += "status = ?"
 		setVals = append(setVals, t.Status)
 	}
-	// if t.Assignee != nil {
-	// 	if len(setVals) != 0 {
-	// 		setStmt += ", "
-	// 	}
-	// 	setStmt += "assignee = ?"
-	// 	setVals = append(setVals, t.Assignee)
-	// }
+	if t.Assignee != nil {
+		if len(setVals) != 0 {
+			setStmt += ", "
+		}
+		setStmt += "assignee = ?"
+		setVals = append(setVals, t.Assignee)
+	}
 	vals := append(setVals, t.Order, t.Num)
 	_, err := tx.Exec(`
 		UPDATE tasks
