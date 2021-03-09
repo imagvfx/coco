@@ -45,7 +45,8 @@ func (f *farmServer) Ready(ctx context.Context, in *pb.ReadyRequest) (*pb.ReadyR
 	// TODO: need to verify the worker
 	err := f.farm.Ready(in.Addr)
 	if err != nil {
-		return &pb.ReadyResponse{}, err
+		// It's internal error. Don't send the error to the worker.
+		log.Printf("worker message didn't handled well: %v ready: %v", in.Addr, err)
 	}
 	return &pb.ReadyResponse{}, nil
 }
@@ -56,7 +57,8 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 	log.Printf("bye: %v", in.Addr)
 	err := f.farm.Bye(in.Addr)
 	if err != nil {
-		return &pb.ByeResponse{}, err
+		// It's internal error. Don't send the error to the worker.
+		log.Printf("worker message didn't handled well: %v bye: %v", in.Addr, err)
 	}
 	return &pb.ByeResponse{}, nil
 }
@@ -67,7 +69,8 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
 	err := f.farm.Done(in.Addr, in.TaskId)
 	if err != nil {
-		return &pb.DoneResponse{}, err
+		// It's internal error. Don't send the error to the worker.
+		log.Printf("worker message didn't handled well: %v done: %v", in.Addr, err)
 	}
 	return &pb.DoneResponse{}, nil
 }
@@ -78,7 +81,8 @@ func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.Fail
 	log.Printf("failed: %v %v", in.Addr, in.TaskId)
 	err := f.farm.Failed(in.Addr, in.TaskId)
 	if err != nil {
-		return &pb.FailedResponse{}, err
+		// It's internal error. Don't send the error to the worker.
+		log.Printf("worker message didn't handled well: %v failed: %v", in.Addr, err)
 	}
 	return &pb.FailedResponse{}, nil
 }

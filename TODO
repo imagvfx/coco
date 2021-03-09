@@ -1,5 +1,4 @@
 run as the job owner
 JobManager should be reproducable from db jobs when cocofarm restarted
-worker should keep send message until farm is responding to it
 task numbering that leaves get lower numbers than branches?
 

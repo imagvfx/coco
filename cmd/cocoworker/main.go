@@ -87,7 +87,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 				s.runningTaskID = ""
 				s.aborted = false
 				s.Unlock()
-				s.sendFailed(in.Id)
+				s.SendFailed(in.Id)
 				return
 			}
 			log.Print(string(out))
@@ -98,10 +98,7 @@ func (s *server) Run(ctx context.Context, in *pb.RunRequest) (*pb.RunResponse, e
 		s.runningTaskID = ""
 		s.aborted = false
 		s.Unlock()
-		err := s.sendDone(tid)
-		if err != nil {
-			log.Print(err)
-		}
+		s.SendDone(tid)
 	}()
 	return &pb.RunResponse{}, nil
 }
@@ -112,8 +109,22 @@ func (s *server) Cancel(ctx context.Context, in *pb.CancelRequest) (*pb.CancelRe
 	if err != nil {
 		return &pb.CancelResponse{}, err
 	}
-	go s.sendReady()
+	go s.SendReady()
 	return &pb.CancelResponse{}, nil
+}
+
+// SendReady sends a ready message until the farm has recieved it.
+// It blocks the next operations as syncronization with the farm is most important.
+func (s *server) SendReady() {
+	for {
+		err := s.sendReady()
+		if err == nil {
+			return
+		}
+		log.Print(err)
+		log.Print("failed to send that I'm ready. will try 5 seconds later...")
+		time.Sleep(5 * time.Second)
+	}
 }
 
 func (s *server) sendReady() error {
@@ -128,6 +139,20 @@ func (s *server) sendReady() error {
 	return nil
 }
 
+// SendDone sends a done message until the farm has recieved it.
+// It blocks the next operations as syncronization with the farm is most important.
+func (s *server) SendDone(taskID string) {
+	for {
+		err := s.sendDone(taskID)
+		if err == nil {
+			break
+		}
+		log.Print(err)
+		log.Print("failed to send the commands done. will try 5 seconds later...")
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func (s *server) sendDone(taskID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -140,12 +165,41 @@ func (s *server) sendDone(taskID string) error {
 	return nil
 }
 
+// SendFailed sends a failed message until the farm has recieved it.
+// It blocks the next operations as syncronization with the farm is most important.
+func (s *server) SendFailed(taskID string) {
+	for {
+		err := s.sendFailed(taskID)
+		if err == nil {
+			break
+		}
+		log.Print(err)
+		log.Print("failed to send the commands failed. will try 5 seconds later...")
+		time.Sleep(5 * time.Second)
+	}
+}
+
 func (s *server) sendFailed(taskID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	req := &pb.FailedRequest{Addr: s.addr, TaskId: taskID}
 	_, err := s.farmClient.Failed(ctx, req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SendBye let the farm knows the worker is quitting. Unlike other Send methods,
+// it cannot wait, also it's relatively safe when the message has not reached.
+// So it will just return an error if there is a communication problem.
+func (s *server) SendBye() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	req := &pb.ByeRequest{Addr: s.addr}
+	_, err := s.farmClient.Bye(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -163,18 +217,6 @@ func (s *server) handshakeWithFarm(n int) {
 		time.Sleep(30 * time.Second)
 	}
 	log.Fatalf("cannot find the farm: %v", s.farm)
-}
-
-func (s *server) bye() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	req := &pb.ByeRequest{Addr: s.addr}
-	_, err := s.farmClient.Bye(ctx, req)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func main() {
@@ -216,7 +258,7 @@ func main() {
 	signal.Notify(killed, syscall.SIGTERM, syscall.SIGINT)
 	go func() {
 		<-killed
-		err := srv.bye()
+		err := srv.SendBye()
 		if err != nil {
 			log.Fatalf("disconnection message was not reached to the farm")
 		}
