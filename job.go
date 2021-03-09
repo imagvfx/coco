@@ -232,11 +232,24 @@ type JobManager struct {
 	// Delete a job doesn't delete the job in this heap,
 	// Because it is expensive to search an item from heap.
 	// It will be deleted when it is popped from PopTask.
-	jobs *jobHeap
+	jobs *uniqueHeap
 
 	// CancelTaskCh pass tasks to make them canceled and
 	// stop the processes running by workers.
 	CancelTaskCh chan *Task
+}
+
+func popCompare(i, j interface{}) bool {
+	iv := i.(*Job)
+	jv := j.(*Job)
+	if iv.CurrentPriority > jv.CurrentPriority {
+		return true
+	}
+	if iv.CurrentPriority < jv.CurrentPriority {
+		return false
+	}
+	return iv.order < jv.order
+
 }
 
 // NewJobManager creates a new JobManager.
@@ -244,7 +257,7 @@ func NewJobManager(js JobService) *JobManager {
 	m := &JobManager{}
 	m.JobService = js
 	m.job = make(map[int]*Job)
-	m.jobs = newJobHeap()
+	m.jobs = newUniqueHeap(popCompare)
 	m.CancelTaskCh = make(chan *Task)
 	return m
 }
