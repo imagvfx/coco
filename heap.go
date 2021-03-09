@@ -30,6 +30,7 @@ func (h *uniqueHeap) Push(el interface{}) {
 	if h.has[el] {
 		return
 	}
+	h.has[el] = true
 	h.heap = append(h.heap, el)
 }
 
