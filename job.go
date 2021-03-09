@@ -53,9 +53,6 @@ type Job struct {
 	// Jobs with higher values take precedence to jobs with lower values.
 	// If multiple jobs are having same priority, server will take a job with rotation rule.
 	CurrentPriority int
-
-	// blocked indicates whether the job has blocked due to a failed/unfinished task.
-	blocked bool
 }
 
 // ID returns the job's order number as a string.
@@ -424,11 +421,7 @@ func (m *JobManager) Retry(id string) error {
 			t.Push()
 		}
 	}
-	if j.Peek() == nil {
-		// The job has blocked or popped all tasks.
-		// The job isn't in m.jobs for both cases.
-		heap.Push(m.jobs, j)
-	}
+	heap.Push(m.jobs, j)
 	return nil
 }
 
@@ -496,8 +489,6 @@ func (m *JobManager) PopTask(targets []string) *Task {
 				p := peek.CalcPriority()
 				j.CurrentPriority = p
 				heap.Push(m.jobs, j)
-			} else {
-				j.blocked = true
 			}
 		}
 
@@ -508,19 +499,10 @@ func (m *JobManager) PopTask(targets []string) *Task {
 // PushTask pushes the task to it's job, so it can popped again.
 func (m *JobManager) PushTask(t *Task) {
 	j := t.Job
-	peek := j.Peek()
-	if peek == nil {
-		// The job has blocked or popped all tasks.
-		// The job isn't in m.jobs for both cases.
-		// But the job's priority should be recalculated first.
-		defer func() {
-			heap.Push(m.jobs, j)
-			j.blocked = false
-		}()
-	}
 	t.Push()
 	// Peek again to reflect possible change of the job's priority.
-	peek = j.Peek() // peek should not be nil
+	peek := j.Peek() // peek should not be nil
 	p := peek.CalcPriority()
 	j.CurrentPriority = p
+	heap.Push(m.jobs, j)
 }

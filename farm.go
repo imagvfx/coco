@@ -89,13 +89,7 @@ func (f *Farm) Done(addr, task string) error {
 	if err != nil {
 		return err
 	}
-	if j.blocked {
-		peek := j.Peek()
-		if peek != nil {
-			t.Job.blocked = false
-			heap.Push(f.jobman.jobs, j)
-		}
-	}
+	heap.Push(f.jobman.jobs, j)
 	// TODO: need to verify the worker
 	f.workerman.Lock()
 	defer f.workerman.Unlock()
