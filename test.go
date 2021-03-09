@@ -22,8 +22,16 @@ func ShouldEqualTask(got, want *Task) error {
 	if got.num != want.num {
 		return fmt.Errorf("num: got %v, want %v", got.num, want.num)
 	}
-	if got.parent.num != want.parent.num {
-		return fmt.Errorf("parent: got %v, want %v", got.parent.num, want.parent.num)
+	if !(got.parent == nil && want.parent == nil) {
+		if got.parent != nil && want.parent != nil {
+			if got.parent.num != want.parent.num {
+				return fmt.Errorf("parent: got %v, want %v", got.parent.num, want.parent.num)
+			}
+		} else if got.parent == nil {
+			return fmt.Errorf("only got.parent is nil")
+		} else {
+			return fmt.Errorf("only want.parent is nil")
+		}
 	}
 	if got.Title != want.Title {
 		return fmt.Errorf("Title: got %v, want %v", got.Title, want.Title)
