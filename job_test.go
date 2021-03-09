@@ -255,10 +255,9 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 		// Fortunately, those are hardly changed after initialized. Skip them for now.
 		for i, g := range got.jobs.heap {
 			w := want.jobs.heap[i]
-			sg := sprintJob(g.(*Job))
-			sw := sprintJob(w.(*Job))
-			if sg != sw {
-				return fmt.Errorf("\ngot jobs[%v]: %v\nwant jobs[%v]: %v", i, sg, i, sw)
+			err := ShouldEqualJob(g.(*Job), w.(*Job))
+			if err != nil {
+				return err
 			}
 		}
 		return nil

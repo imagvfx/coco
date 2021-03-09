@@ -2,6 +2,38 @@ package coco
 
 import "fmt"
 
+// ShouldEqualJob checks that given two jobs (got, want) are equal.
+// It returns an error which tell which member is different, when find a difference.
+// It doesn't compare pointer addresses, but their values if possible.
+// It doesn't compare it's subtasks except the root task.
+func ShouldEqualJob(got, want *Job) error {
+	if got == nil && want == nil {
+		return nil
+	}
+	if got == nil {
+		return fmt.Errorf("only got is nil")
+	}
+	if want == nil {
+		return fmt.Errorf("only want is nil")
+	}
+	if got.order != want.order {
+		return fmt.Errorf("order: got %v, want %v", got.order, want.order)
+	}
+	if got.Target != want.Target {
+		return fmt.Errorf("Target: got %v, want %v", got.Target, want.Target)
+	}
+	if got.AutoRetry != want.AutoRetry {
+		return fmt.Errorf("AutoRetry: got %v, want %v", got.AutoRetry, want.AutoRetry)
+	}
+	if len(got.tasks) != len(want.tasks) {
+		return fmt.Errorf("len(tasks): got %v, want %v", len(got.tasks), len(want.tasks))
+	}
+	if got.CurrentPriority != want.CurrentPriority {
+		return fmt.Errorf("CurrentPriority: got %v, want %v", got.CurrentPriority, want.CurrentPriority)
+	}
+	return ShouldEqualTask(got.Task, want.Task)
+}
+
 // ShouldEqualTask checks that given two tasks are equal and raises an error
 // about which parts are different between two.
 // It considers the first is 'got' and the second is 'want'.
