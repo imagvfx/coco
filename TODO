@@ -3,4 +3,5 @@ JobManager should be reproducable from db jobs when cocofarm restarted
 worker should keep send message until farm is responding to it
 add test for unique heap
 task numbering that leaves get lower numbers than branches?
+what does Job.blocked do?
 
