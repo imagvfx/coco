@@ -240,9 +240,9 @@ type JobManager struct {
 }
 
 // NewJobManager creates a new JobManager.
-func NewJobManager() *JobManager {
+func NewJobManager(js JobService) *JobManager {
 	m := &JobManager{}
-	m.JobService = JobService(&NopJobService{})
+	m.JobService = js
 	m.job = make(map[int]*Job)
 	m.jobs = newJobHeap()
 	m.CancelTaskCh = make(chan *Task)
@@ -251,8 +251,7 @@ func NewJobManager() *JobManager {
 
 // RestoreJobManager restores a JobManager from given JobService.
 func RestoreJobManager(js JobService) (*JobManager, error) {
-	m := NewJobManager()
-	m.JobService = js
+	m := NewJobManager(js)
 	sqlJobs, err := m.JobService.FindJobs(JobFilter{})
 	if err != nil {
 		return nil, err

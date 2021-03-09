@@ -37,8 +37,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	job := coco.NewJobManager()
-	job.JobService = sqlite.NewJobService(db)
+	js := sqlite.NewJobService(db)
+	job := coco.NewJobManager(js)
 
 	wgrps, err := loadWorkerGroupsFromConfig()
 	if err != nil {

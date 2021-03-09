@@ -73,9 +73,8 @@ func TestCocoRestoreJobManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("init: %v", err)
 	}
-	m := coco.NewJobManager()
 	js := sqlite.NewJobService(db)
-	m.JobService = js
+	m := coco.NewJobManager(js)
 	_, err = m.Add(job)
 	if err != nil {
 		t.Fatalf("add: %v", err)

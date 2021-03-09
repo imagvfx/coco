@@ -182,7 +182,7 @@ func newJobManagerForPop() *JobManager {
 			},
 		},
 	}
-	m := NewJobManager()
+	m := NewJobManager(&NopJobService{})
 	m.Add(j1)
 	m.Add(j2)
 	return m
