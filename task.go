@@ -461,16 +461,26 @@ func (t *Task) Update(u TaskUpdater) error {
 		return err
 	}
 	if u.Status != nil {
-		old := t.status
-		t.status = *(u.Status)
-		parent := t.parent
-		for parent != nil {
-			parent.Stat.Change(old, t.status)
-			parent = parent.parent
-		}
+		t.setStatus(*u.Status)
 	}
 	if u.Assignee != nil {
 		t.Assignee = *(u.Assignee)
 	}
 	return nil
+}
+
+// setStatus sets the task and it's parents status.
+// Don't use this directly and use Task.Update unless there is need for
+// updating task status without db update.
+func (t *Task) setStatus(s TaskStatus) {
+	if !t.isLeaf {
+		panic("setStatus applied to a leaf task only")
+	}
+	old := t.status
+	t.status = s
+	parent := t.parent
+	for parent != nil {
+		parent.Stat.Change(old, s)
+		parent = parent.parent
+	}
 }

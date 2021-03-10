@@ -270,6 +270,13 @@ func RestoreJobManager(js JobService) (*JobManager, error) {
 		j := &Job{}
 		j.FromSQL(sj)
 		j.Init(m.JobService)
+		// update branch tasks status
+		for _, t := range j.tasks {
+			if !t.isLeaf {
+				continue
+			}
+			t.setStatus(t.status)
+		}
 		m.job[j.order] = j
 		heap.Push(m.jobs, j)
 	}
