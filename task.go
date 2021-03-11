@@ -383,6 +383,31 @@ func (t *Task) Pop() (*Task, bool) {
 	return popt, t.popIdx == -1
 }
 
+// restorePopIdx restores the task and it's subtasks' popIdx
+// from status of it's leaves.
+// It is used for a job which just resurrected from db.
+func (t *Task) restorePopIdx() {
+	if t.isLeaf {
+		if t.status == TaskWaiting {
+			t.popIdx = 0
+			return
+		}
+		t.popIdx = -1
+		return
+	}
+	// branch
+	for _, subt := range t.Subtasks {
+		subt.restorePopIdx()
+	}
+	t.popIdx = -1 // in case all subtasks are popped
+	for i, subt := range t.Subtasks {
+		if subt.popIdx != -1 {
+			t.popIdx = i
+			break
+		}
+	}
+}
+
 // Peek peeks the next task that will be popped.
 // It will be nil, if all the tasks are popped or
 // a task cannot be popped due to one of the prior subtask is blocking the process.

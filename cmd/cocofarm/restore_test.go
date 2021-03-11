@@ -1,98 +1,129 @@
 package main
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/imagvfx/coco"
 	"github.com/imagvfx/coco/sqlite"
 )
 
-var job = &coco.Job{
-	Task: &coco.Task{
-		Title:          "root",
-		SerialSubtasks: true,
-		Subtasks: []*coco.Task{
-			&coco.Task{
-				Title:          "sim",
-				SerialSubtasks: true,
-				Subtasks: []*coco.Task{
-					&coco.Task{
-						Title:          "ocean",
-						SerialSubtasks: true,
-					},
-					&coco.Task{
-						Title:          "foam",
-						SerialSubtasks: true,
-					},
-				},
-			},
-			&coco.Task{
-				Title:          "render",
-				SerialSubtasks: true,
-				Subtasks: []*coco.Task{
-					&coco.Task{
-						Title:          "diffuse",
-						SerialSubtasks: false,
-						Subtasks: []*coco.Task{
-							&coco.Task{
-								Title:          "1",
-								SerialSubtasks: true,
-							},
-							&coco.Task{
-								Title:          "2",
-								SerialSubtasks: true,
-							},
+func newJob() *coco.Job {
+	return &coco.Job{
+		Task: &coco.Task{
+			Title:          "root",
+			SerialSubtasks: true,
+			Subtasks: []*coco.Task{
+				&coco.Task{
+					Title:          "sim",
+					SerialSubtasks: true,
+					Subtasks: []*coco.Task{
+						&coco.Task{
+							Title:          "ocean",
+							SerialSubtasks: true,
+						},
+						&coco.Task{
+							Title:          "foam",
+							SerialSubtasks: true,
 						},
 					},
-					&coco.Task{
-						Title:          "reflection",
-						SerialSubtasks: false,
-						Subtasks: []*coco.Task{
-							&coco.Task{
-								Title:          "1",
-								SerialSubtasks: true,
+				},
+				&coco.Task{
+					Title:          "render",
+					SerialSubtasks: true,
+					Subtasks: []*coco.Task{
+						&coco.Task{
+							Title:          "diffuse",
+							SerialSubtasks: false,
+							Subtasks: []*coco.Task{
+								&coco.Task{
+									Title:          "1",
+									SerialSubtasks: true,
+								},
+								&coco.Task{
+									Title:          "2",
+									SerialSubtasks: true,
+								},
 							},
-							&coco.Task{
-								Title:          "2",
-								SerialSubtasks: true,
+						},
+						&coco.Task{
+							Title:          "reflection",
+							SerialSubtasks: false,
+							Subtasks: []*coco.Task{
+								&coco.Task{
+									Title:          "1",
+									SerialSubtasks: true,
+								},
+								&coco.Task{
+									Title:          "2",
+									SerialSubtasks: true,
+								},
 							},
 						},
 					},
 				},
 			},
 		},
-	},
+	}
 }
 
 func TestCocoRestoreJobManager(t *testing.T) {
-	db, err := sqlite.Open(t.TempDir() + "/test.db")
-	if err != nil {
-		t.Fatalf("cannot open db: %v", err)
-	}
-	err = sqlite.Init(db)
-	if err != nil {
-		t.Fatalf("init: %v", err)
-	}
-	js := sqlite.NewJobService(db)
-	m := coco.NewJobManager(js)
-	_, err = m.Add(job)
-	if err != nil {
-		t.Fatalf("add: %v", err)
-	}
-	// TODO: test with updated tasks
-	r, err := coco.RestoreJobManager(js)
-	if err != nil {
-		t.Fatalf("restore: %v", err)
-	}
-	for {
-		want := m.PopTask([]string{"*"})
-		got := r.PopTask([]string{"*"})
-		err := coco.ShouldEqualTask(got, want)
+	test := func(i int) {
+		db, err := sqlite.Open(t.TempDir() + fmt.Sprintf("/test_%v.db", i))
 		if err != nil {
-			t.Fatalf("restore job manager: %v", err)
+			t.Fatalf("cannot open db: %v", err)
 		}
-		if want == nil {
-			return
+		defer db.Close()
+		err = sqlite.Init(db)
+		if err != nil {
+			t.Fatalf("init: %v", err)
 		}
+		js := sqlite.NewJobService(db)
+		workerman := coco.NewWorkerManager(nil)
+		jobman := coco.NewJobManager(js)
+		farm := coco.NewFarm(jobman, workerman)
+		_, err = jobman.Add(newJob())
+		if err != nil {
+			t.Fatalf("add: %v", err)
+		}
+		// TODO: need a better way to test restored popIdx
+		// This one only catches the situation that everything has done well.
+		for {
+			t := jobman.PopTask([]string{"*"})
+			if t == nil {
+				break
+			}
+			// <-- THE RANDOM PROCESS
+			rand.Seed(time.Now().UnixNano())
+			n := rand.Intn(5)
+			if n < 4 {
+				farm.Done("", t.ID())
+			} else {
+				farm.Failed("", t.ID())
+			}
+		}
+		// TODO: test with updated tasks
+		r, err := coco.RestoreJobManager(js)
+		if err != nil {
+			t.Fatalf("restore: %v", err)
+		}
+		for {
+			want := jobman.PopTask([]string{"*"})
+			got := r.PopTask([]string{"*"})
+			err := coco.ShouldEqualTask(got, want)
+			if err != nil {
+				t.Fatalf("restore job manager: %v", err)
+			}
+			if want == nil {
+				return
+			}
+		}
+	}
+	// The test could produce different results due to the random process inside of it.
+	// Run reasonable times.
+	for i := 0; i < 10; i++ {
+		test(i)
 	}
 }
