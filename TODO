@@ -1,5 +1,5 @@
 run as the job owner
-JobManager should be reproducable from db jobs when cocofarm restarted
 task numbering that leaves get lower numbers than branches?
 logging from commands
 cmd/cocofarm: better test for restored popIdx
+restore WorkerManager at start of cocofarm?

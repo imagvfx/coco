@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -26,19 +27,31 @@ func main() {
 	flag.StringVar(&dbpath, "db", "coco.db", "database path to be created/opened")
 	flag.Parse()
 
+	dbCreated := false
 	db, err := sqlite.Open(dbpath)
 	if err != nil {
-		log.Fatal(err)
+		if !errors.Is(err, os.ErrNotExist) {
+			log.Fatal(err)
+		}
+		db, err = sqlite.Create(dbpath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		dbCreated = true
 	}
 	defer db.Close()
 
-	err = sqlite.Init(db)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	js := sqlite.NewJobService(db)
-	job := coco.NewJobManager(js)
+
+	var job *coco.JobManager
+	if dbCreated {
+		job = coco.NewJobManager(js)
+	} else {
+		job, err = coco.RestoreJobManager(js)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	wgrps, err := loadWorkerGroupsFromConfig()
 	if err != nil {

@@ -3,13 +3,21 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Open opens a db at path.
+// It will check stat of the db file before open it.
+// It returns an error if the check or openning of the db failed.
 func Open(path string) (*sql.DB, error) {
 	if path == "" {
 		fmt.Errorf("db path required")
+	}
+	_, err := os.Stat(path)
+	if err != nil {
+		return nil, err
 	}
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
@@ -26,21 +34,28 @@ func Open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-// Init initialize tables to the db.
-// It is safe to call Init multiple times.
-func Init(db *sql.DB) error {
+// Create creates a new initialized db.
+// It returns an error if failed to create the db.
+func Create(path string) (*sql.DB, error) {
+	if path == "" {
+		fmt.Errorf("db path required")
+	}
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		return nil, err
+	}
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 	err = CreateJobsTable(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = CreateTasksTable(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return tx.Commit()
+	return db, tx.Commit()
 }

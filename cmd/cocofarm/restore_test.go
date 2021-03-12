@@ -71,15 +71,11 @@ func newJob() *coco.Job {
 
 func TestCocoRestoreJobManager(t *testing.T) {
 	test := func(i int) {
-		db, err := sqlite.Open(t.TempDir() + fmt.Sprintf("/test_%v.db", i))
+		db, err := sqlite.Create(t.TempDir() + fmt.Sprintf("/test_%v.db", i))
 		if err != nil {
-			t.Fatalf("cannot open db: %v", err)
+			t.Fatalf("cannot create db: %v", err)
 		}
 		defer db.Close()
-		err = sqlite.Init(db)
-		if err != nil {
-			t.Fatalf("init: %v", err)
-		}
 		js := sqlite.NewJobService(db)
 		workerman := coco.NewWorkerManager(nil)
 		jobman := coco.NewJobManager(js)
