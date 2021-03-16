@@ -68,7 +68,7 @@ func newWorkerServer(addr, farm string) *server {
 	s.farmConn, err = grpc.DialContext(ctx, farm, grpc.WithInsecure())
 	if err != nil {
 		// actually, I don't think we can see this message un.
-		log.Print("failed to connect to farm: %v", err)
+		log.Printf("failed to connect to farm: %v", err)
 	}
 	s.farmClient = pb.NewFarmClient(s.farmConn)
 	return s
