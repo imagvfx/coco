@@ -57,5 +57,9 @@ func Create(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = CreateWorkersTable(tx)
+	if err != nil {
+		return nil, err
+	}
 	return db, tx.Commit()
 }

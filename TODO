@@ -2,4 +2,4 @@ run as the job owner
 task numbering that leaves get lower numbers than branches?
 logging from commands
 cmd/cocofarm: better test for restored popIdx
-restore WorkerManager at start of cocofarm?
+good tests for WorkerManager restoration

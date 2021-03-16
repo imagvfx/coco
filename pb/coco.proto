@@ -5,8 +5,15 @@ package pb;
 option go_package = "github.com/imagvfx/coco/pb";
 
 service Worker {
+	rpc Ping(PingRequest) returns (PingResponse) {};
 	rpc Run(RunRequest) returns (RunResponse) {};
 	rpc Cancel(CancelRequest) returns (CancelResponse) {};
+}
+
+message PingRequest {}
+
+message PingResponse {
+	string task_id = 1;
 }
 
 message Command {

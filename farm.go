@@ -21,6 +21,81 @@ func NewFarm(jobman *JobManager, workerman *WorkerManager) *Farm {
 	}
 }
 
+// RefreshWorker communicates with all remembered workers and refresh their status.
+func (f *Farm) RefreshWorkers() {
+	refresh := func(w *Worker) {
+		f.workerman.Lock()
+		defer f.workerman.Unlock()
+		tid, err := f.workerman.SendPing(w)
+		if err != nil {
+			log.Print(err)
+			s := WorkerNotFound
+			t := ""
+			err := w.Update(WorkerUpdater{
+				Status: &s,
+				Task:   &t,
+			})
+			if err != nil {
+				log.Print(err)
+			}
+			if w.task != "" {
+				t, err := f.jobman.GetTask(w.task)
+				if err != nil {
+					log.Print(err)
+					return
+				}
+				s := TaskFailed
+				a := ""
+				err = t.Update(TaskUpdater{
+					Status:   &s,
+					Assignee: &a,
+				})
+				if err != nil {
+					log.Printf("couldn't update task: %v", w.task)
+				}
+			}
+			return
+		}
+		if tid != w.task {
+			if w.task != "" {
+				log.Printf("worker is not running on expected task: %v", w.task)
+				t, err := f.jobman.GetTask(w.task)
+				if err != nil {
+					log.Print(err)
+					return
+				}
+				s := TaskFailed
+				a := ""
+				err = t.Update(TaskUpdater{
+					Status:   &s,
+					Assignee: &a,
+				})
+				if err != nil {
+					log.Printf("couldn't update task: %v", w.task)
+				}
+			}
+			if tid != "" {
+				log.Printf("worker is running on unexpected task: %v", w.task)
+				t, err := f.jobman.GetTask(tid)
+				if err != nil {
+					log.Print(err)
+					return
+				}
+				if t.Assignee != w.addr {
+					f.jobman.CancelTaskCh <- t
+				}
+				// TODO: What should we do to the task?
+			}
+		}
+
+	}
+	f.workerman.Lock()
+	defer f.workerman.Unlock()
+	for _, w := range f.workerman.worker {
+		go refresh(w)
+	}
+}
+
 // Ready indicates the worker is idle and waiting for commands to run.
 func (f *Farm) Ready(addr string) error {
 	// TODO: need to verify the worker

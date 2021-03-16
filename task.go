@@ -8,14 +8,6 @@ import (
 	"strings"
 )
 
-// TaskUpdater has information for updating a task.
-type TaskUpdater struct {
-	Order    int
-	Num      int
-	Status   *TaskStatus
-	Assignee *string
-}
-
 // TaskStatus is a task status.
 type TaskStatus int
 

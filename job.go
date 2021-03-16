@@ -9,11 +9,6 @@ import (
 	"sync"
 )
 
-// JobFilter is a job filter for searching jobs.
-type JobFilter struct {
-	Target string
-}
-
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// Job is a Task. Please also check Task.
@@ -143,15 +138,6 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// SQLJob is a job information for sql database.
-type SQLJob struct {
-	// TODO: Do we need ID here? It will be generated from a db.
-	Order     int
-	Target    string
-	AutoRetry int
-	Tasks     []*SQLTask
-}
-
 // ToSQL converts a Job into a SQLJob.
 func (j *Job) ToSQL() *SQLJob {
 	s := &SQLJob{
@@ -186,33 +172,6 @@ func (j *Job) FromSQL(sj *SQLJob) {
 		j.tasks[i] = t
 	}
 	j.Task = j.tasks[0]
-}
-
-// JobService is an interface which let us use sqlite.JobService.
-type JobService interface {
-	AddJob(*SQLJob) (int, error)
-	// GetJob() (*Job, error)
-	UpdateTask(TaskUpdater) error
-	FindJobs(JobFilter) ([]*SQLJob, error)
-}
-
-// NopJobService is a JobService which does nothing.
-// We need this for testing.
-type NopJobService struct{}
-
-// AddJob returns (0, nil) always.
-func (s *NopJobService) AddJob(j *SQLJob) (int, error) {
-	return 0, nil
-}
-
-// UpdateTask returns nil.
-func (s *NopJobService) UpdateTask(TaskUpdater) error {
-	return nil
-}
-
-// FindJobs returns (nil, nil).
-func (s *NopJobService) FindJobs(f JobFilter) ([]*SQLJob, error) {
-	return nil, nil
 }
 
 // JobManager manages jobs and pops tasks to run the commands by workers.

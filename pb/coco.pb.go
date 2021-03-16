@@ -25,6 +25,91 @@ const (
 // of the legacy proto package is being used.
 const _ = proto.ProtoPackageIsVersion4
 
+type PingRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *PingRequest) Reset() {
+	*x = PingRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_coco_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingRequest) ProtoMessage() {}
+
+func (x *PingRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_coco_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
+func (*PingRequest) Descriptor() ([]byte, []int) {
+	return file_coco_proto_rawDescGZIP(), []int{0}
+}
+
+type PingResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TaskId string `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+}
+
+func (x *PingResponse) Reset() {
+	*x = PingResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_coco_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PingResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PingResponse) ProtoMessage() {}
+
+func (x *PingResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_coco_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
+func (*PingResponse) Descriptor() ([]byte, []int) {
+	return file_coco_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PingResponse) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
 type Command struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -36,7 +121,7 @@ type Command struct {
 func (x *Command) Reset() {
 	*x = Command{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[0]
+		mi := &file_coco_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -49,7 +134,7 @@ func (x *Command) String() string {
 func (*Command) ProtoMessage() {}
 
 func (x *Command) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[0]
+	mi := &file_coco_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -62,7 +147,7 @@ func (x *Command) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Command.ProtoReflect.Descriptor instead.
 func (*Command) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{0}
+	return file_coco_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Command) GetArgs() []string {
@@ -84,7 +169,7 @@ type RunRequest struct {
 func (x *RunRequest) Reset() {
 	*x = RunRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[1]
+		mi := &file_coco_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -97,7 +182,7 @@ func (x *RunRequest) String() string {
 func (*RunRequest) ProtoMessage() {}
 
 func (x *RunRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[1]
+	mi := &file_coco_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -110,7 +195,7 @@ func (x *RunRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunRequest.ProtoReflect.Descriptor instead.
 func (*RunRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{1}
+	return file_coco_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *RunRequest) GetId() string {
@@ -136,7 +221,7 @@ type RunResponse struct {
 func (x *RunResponse) Reset() {
 	*x = RunResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[2]
+		mi := &file_coco_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -149,7 +234,7 @@ func (x *RunResponse) String() string {
 func (*RunResponse) ProtoMessage() {}
 
 func (x *RunResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[2]
+	mi := &file_coco_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -162,7 +247,7 @@ func (x *RunResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunResponse.ProtoReflect.Descriptor instead.
 func (*RunResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{2}
+	return file_coco_proto_rawDescGZIP(), []int{4}
 }
 
 type CancelRequest struct {
@@ -176,7 +261,7 @@ type CancelRequest struct {
 func (x *CancelRequest) Reset() {
 	*x = CancelRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[3]
+		mi := &file_coco_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -189,7 +274,7 @@ func (x *CancelRequest) String() string {
 func (*CancelRequest) ProtoMessage() {}
 
 func (x *CancelRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[3]
+	mi := &file_coco_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -202,7 +287,7 @@ func (x *CancelRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRequest.ProtoReflect.Descriptor instead.
 func (*CancelRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{3}
+	return file_coco_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CancelRequest) GetId() string {
@@ -221,7 +306,7 @@ type CancelResponse struct {
 func (x *CancelResponse) Reset() {
 	*x = CancelResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[4]
+		mi := &file_coco_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -234,7 +319,7 @@ func (x *CancelResponse) String() string {
 func (*CancelResponse) ProtoMessage() {}
 
 func (x *CancelResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[4]
+	mi := &file_coco_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -247,7 +332,7 @@ func (x *CancelResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelResponse.ProtoReflect.Descriptor instead.
 func (*CancelResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{4}
+	return file_coco_proto_rawDescGZIP(), []int{6}
 }
 
 type ReadyRequest struct {
@@ -261,7 +346,7 @@ type ReadyRequest struct {
 func (x *ReadyRequest) Reset() {
 	*x = ReadyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[5]
+		mi := &file_coco_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -274,7 +359,7 @@ func (x *ReadyRequest) String() string {
 func (*ReadyRequest) ProtoMessage() {}
 
 func (x *ReadyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[5]
+	mi := &file_coco_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +372,7 @@ func (x *ReadyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadyRequest.ProtoReflect.Descriptor instead.
 func (*ReadyRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{5}
+	return file_coco_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ReadyRequest) GetAddr() string {
@@ -306,7 +391,7 @@ type ReadyResponse struct {
 func (x *ReadyResponse) Reset() {
 	*x = ReadyResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[6]
+		mi := &file_coco_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -319,7 +404,7 @@ func (x *ReadyResponse) String() string {
 func (*ReadyResponse) ProtoMessage() {}
 
 func (x *ReadyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[6]
+	mi := &file_coco_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -332,7 +417,7 @@ func (x *ReadyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadyResponse.ProtoReflect.Descriptor instead.
 func (*ReadyResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{6}
+	return file_coco_proto_rawDescGZIP(), []int{8}
 }
 
 type ByeRequest struct {
@@ -346,7 +431,7 @@ type ByeRequest struct {
 func (x *ByeRequest) Reset() {
 	*x = ByeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[7]
+		mi := &file_coco_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -359,7 +444,7 @@ func (x *ByeRequest) String() string {
 func (*ByeRequest) ProtoMessage() {}
 
 func (x *ByeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[7]
+	mi := &file_coco_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -372,7 +457,7 @@ func (x *ByeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ByeRequest.ProtoReflect.Descriptor instead.
 func (*ByeRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{7}
+	return file_coco_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ByeRequest) GetAddr() string {
@@ -391,7 +476,7 @@ type ByeResponse struct {
 func (x *ByeResponse) Reset() {
 	*x = ByeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[8]
+		mi := &file_coco_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -404,7 +489,7 @@ func (x *ByeResponse) String() string {
 func (*ByeResponse) ProtoMessage() {}
 
 func (x *ByeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[8]
+	mi := &file_coco_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -417,7 +502,7 @@ func (x *ByeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ByeResponse.ProtoReflect.Descriptor instead.
 func (*ByeResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{8}
+	return file_coco_proto_rawDescGZIP(), []int{10}
 }
 
 type DoneRequest struct {
@@ -432,7 +517,7 @@ type DoneRequest struct {
 func (x *DoneRequest) Reset() {
 	*x = DoneRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[9]
+		mi := &file_coco_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -445,7 +530,7 @@ func (x *DoneRequest) String() string {
 func (*DoneRequest) ProtoMessage() {}
 
 func (x *DoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[9]
+	mi := &file_coco_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +543,7 @@ func (x *DoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoneRequest.ProtoReflect.Descriptor instead.
 func (*DoneRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{9}
+	return file_coco_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *DoneRequest) GetAddr() string {
@@ -484,7 +569,7 @@ type DoneResponse struct {
 func (x *DoneResponse) Reset() {
 	*x = DoneResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[10]
+		mi := &file_coco_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -497,7 +582,7 @@ func (x *DoneResponse) String() string {
 func (*DoneResponse) ProtoMessage() {}
 
 func (x *DoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[10]
+	mi := &file_coco_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -510,7 +595,7 @@ func (x *DoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoneResponse.ProtoReflect.Descriptor instead.
 func (*DoneResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{10}
+	return file_coco_proto_rawDescGZIP(), []int{12}
 }
 
 type FailedRequest struct {
@@ -525,7 +610,7 @@ type FailedRequest struct {
 func (x *FailedRequest) Reset() {
 	*x = FailedRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[11]
+		mi := &file_coco_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -538,7 +623,7 @@ func (x *FailedRequest) String() string {
 func (*FailedRequest) ProtoMessage() {}
 
 func (x *FailedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[11]
+	mi := &file_coco_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -551,7 +636,7 @@ func (x *FailedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailedRequest.ProtoReflect.Descriptor instead.
 func (*FailedRequest) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{11}
+	return file_coco_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *FailedRequest) GetAddr() string {
@@ -577,7 +662,7 @@ type FailedResponse struct {
 func (x *FailedResponse) Reset() {
 	*x = FailedResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_coco_proto_msgTypes[12]
+		mi := &file_coco_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -590,7 +675,7 @@ func (x *FailedResponse) String() string {
 func (*FailedResponse) ProtoMessage() {}
 
 func (x *FailedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_coco_proto_msgTypes[12]
+	mi := &file_coco_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,61 +688,67 @@ func (x *FailedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FailedResponse.ProtoReflect.Descriptor instead.
 func (*FailedResponse) Descriptor() ([]byte, []int) {
-	return file_coco_proto_rawDescGZIP(), []int{12}
+	return file_coco_proto_rawDescGZIP(), []int{14}
 }
 
 var File_coco_proto protoreflect.FileDescriptor
 
 var file_coco_proto_rawDesc = []byte{
 	0x0a, 0x0a, 0x63, 0x6f, 0x63, 0x6f, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x70, 0x62,
-	0x22, 0x1d, 0x0a, 0x07, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x61,
-	0x72, 0x67, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x61, 0x72, 0x67, 0x73, 0x22,
-	0x3d, 0x0a, 0x0a, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a,
-	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1f, 0x0a,
-	0x04, 0x63, 0x6d, 0x64, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x0b, 0x2e, 0x70, 0x62,
-	0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x52, 0x04, 0x63, 0x6d, 0x64, 0x73, 0x22, 0x0d,
-	0x0a, 0x0b, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1f, 0x0a,
-	0x0d, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e,
-	0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x10,
-	0x0a, 0x0e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x22, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x12, 0x0a, 0x04, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
-	0x61, 0x64, 0x64, 0x72, 0x22, 0x0f, 0x0a, 0x0d, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x73,
-	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x20, 0x0a, 0x0a, 0x42, 0x79, 0x65, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x22, 0x0d, 0x0a, 0x0b, 0x42, 0x79, 0x65, 0x52, 0x65,
-	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3a, 0x0a, 0x0b, 0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x61, 0x73,
-	0x6b, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x61, 0x73, 0x6b,
-	0x49, 0x64, 0x22, 0x0e, 0x0a, 0x0c, 0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x22, 0x3c, 0x0a, 0x0d, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x61, 0x73, 0x6b, 0x5f,
-	0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x74, 0x61, 0x73, 0x6b, 0x49, 0x64,
-	0x22, 0x10, 0x0a, 0x0e, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x32, 0x65, 0x0a, 0x06, 0x57, 0x6f, 0x72, 0x6b, 0x65, 0x72, 0x12, 0x28, 0x0a, 0x03,
-	0x52, 0x75, 0x6e, 0x12, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x73, 0x70,
-	0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x06, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c,
-	0x12, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x32, 0xc0, 0x01, 0x0a, 0x04, 0x46, 0x61,
-	0x72, 0x6d, 0x12, 0x2e, 0x0a, 0x05, 0x52, 0x65, 0x61, 0x64, 0x79, 0x12, 0x10, 0x2e, 0x70, 0x62,
-	0x2e, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x11, 0x2e,
-	0x70, 0x62, 0x2e, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x22, 0x00, 0x12, 0x28, 0x0a, 0x03, 0x42, 0x79, 0x65, 0x12, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x42,
-	0x79, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x70, 0x62, 0x2e, 0x42,
-	0x79, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x2b, 0x0a, 0x04,
-	0x44, 0x6f, 0x6e, 0x65, 0x12, 0x0f, 0x2e, 0x70, 0x62, 0x2e, 0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x70, 0x62, 0x2e, 0x44, 0x6f, 0x6e, 0x65, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x06, 0x46, 0x61, 0x69,
-	0x6c, 0x65, 0x64, 0x12, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x70, 0x62, 0x2e, 0x46, 0x61, 0x69, 0x6c,
-	0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x1c, 0x5a, 0x1a,
-	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x69, 0x6d, 0x61, 0x67, 0x76,
-	0x66, 0x78, 0x2f, 0x63, 0x6f, 0x63, 0x6f, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x22, 0x0d, 0x0a, 0x0b, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22,
+	0x27, 0x0a, 0x0c, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12,
+	0x17, 0x0a, 0x07, 0x74, 0x61, 0x73, 0x6b, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x74, 0x61, 0x73, 0x6b, 0x49, 0x64, 0x22, 0x1d, 0x0a, 0x07, 0x43, 0x6f, 0x6d, 0x6d,
+	0x61, 0x6e, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x72, 0x67, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x04, 0x61, 0x72, 0x67, 0x73, 0x22, 0x3d, 0x0a, 0x0a, 0x52, 0x75, 0x6e, 0x52, 0x65,
+	0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28,
+	0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1f, 0x0a, 0x04, 0x63, 0x6d, 0x64, 0x73, 0x18, 0x02, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x0b, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64,
+	0x52, 0x04, 0x63, 0x6d, 0x64, 0x73, 0x22, 0x0d, 0x0a, 0x0b, 0x52, 0x75, 0x6e, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x1f, 0x0a, 0x0d, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x22, 0x10, 0x0a, 0x0e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c,
+	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x22, 0x0a, 0x0c, 0x52, 0x65, 0x61, 0x64,
+	0x79, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x64, 0x64, 0x72,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x22, 0x0f, 0x0a, 0x0d,
+	0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x20, 0x0a,
+	0x0a, 0x42, 0x79, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61,
+	0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x22,
+	0x0d, 0x0a, 0x0b, 0x42, 0x79, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3a,
+	0x0a, 0x0b, 0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a,
+	0x04, 0x61, 0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x61, 0x64, 0x64,
+	0x72, 0x12, 0x17, 0x0a, 0x07, 0x74, 0x61, 0x73, 0x6b, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x74, 0x61, 0x73, 0x6b, 0x49, 0x64, 0x22, 0x0e, 0x0a, 0x0c, 0x44, 0x6f,
+	0x6e, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x3c, 0x0a, 0x0d, 0x46, 0x61,
+	0x69, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x61,
+	0x64, 0x64, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x61, 0x64, 0x64, 0x72, 0x12,
+	0x17, 0x0a, 0x07, 0x74, 0x61, 0x73, 0x6b, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x06, 0x74, 0x61, 0x73, 0x6b, 0x49, 0x64, 0x22, 0x10, 0x0a, 0x0e, 0x46, 0x61, 0x69, 0x6c,
+	0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x32, 0x92, 0x01, 0x0a, 0x06, 0x57,
+	0x6f, 0x72, 0x6b, 0x65, 0x72, 0x12, 0x2b, 0x0a, 0x04, 0x50, 0x69, 0x6e, 0x67, 0x12, 0x0f, 0x2e,
+	0x70, 0x62, 0x2e, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10,
+	0x2e, 0x70, 0x62, 0x2e, 0x50, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x28, 0x0a, 0x03, 0x52, 0x75, 0x6e, 0x12, 0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x52,
+	0x75, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x70, 0x62, 0x2e, 0x52,
+	0x75, 0x6e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x31, 0x0a, 0x06,
+	0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x12, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x43, 0x61, 0x6e, 0x63,
+	0x65, 0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x70, 0x62, 0x2e, 0x43,
+	0x61, 0x6e, 0x63, 0x65, 0x6c, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x32,
+	0xc0, 0x01, 0x0a, 0x04, 0x46, 0x61, 0x72, 0x6d, 0x12, 0x2e, 0x0a, 0x05, 0x52, 0x65, 0x61, 0x64,
+	0x79, 0x12, 0x10, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x52, 0x65, 0x61, 0x64, 0x79, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12, 0x28, 0x0a, 0x03, 0x42, 0x79, 0x65, 0x12,
+	0x0e, 0x2e, 0x70, 0x62, 0x2e, 0x42, 0x79, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x0f, 0x2e, 0x70, 0x62, 0x2e, 0x42, 0x79, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x12, 0x2b, 0x0a, 0x04, 0x44, 0x6f, 0x6e, 0x65, 0x12, 0x0f, 0x2e, 0x70, 0x62, 0x2e,
+	0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x10, 0x2e, 0x70, 0x62,
+	0x2e, 0x44, 0x6f, 0x6e, 0x65, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x22, 0x00, 0x12,
+	0x31, 0x0a, 0x06, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x12, 0x11, 0x2e, 0x70, 0x62, 0x2e, 0x46,
+	0x61, 0x69, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x12, 0x2e, 0x70,
+	0x62, 0x2e, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x22, 0x00, 0x42, 0x1c, 0x5a, 0x1a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d,
+	0x2f, 0x69, 0x6d, 0x61, 0x67, 0x76, 0x66, 0x78, 0x2f, 0x63, 0x6f, 0x63, 0x6f, 0x2f, 0x70, 0x62,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -672,38 +763,42 @@ func file_coco_proto_rawDescGZIP() []byte {
 	return file_coco_proto_rawDescData
 }
 
-var file_coco_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_coco_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_coco_proto_goTypes = []interface{}{
-	(*Command)(nil),        // 0: pb.Command
-	(*RunRequest)(nil),     // 1: pb.RunRequest
-	(*RunResponse)(nil),    // 2: pb.RunResponse
-	(*CancelRequest)(nil),  // 3: pb.CancelRequest
-	(*CancelResponse)(nil), // 4: pb.CancelResponse
-	(*ReadyRequest)(nil),   // 5: pb.ReadyRequest
-	(*ReadyResponse)(nil),  // 6: pb.ReadyResponse
-	(*ByeRequest)(nil),     // 7: pb.ByeRequest
-	(*ByeResponse)(nil),    // 8: pb.ByeResponse
-	(*DoneRequest)(nil),    // 9: pb.DoneRequest
-	(*DoneResponse)(nil),   // 10: pb.DoneResponse
-	(*FailedRequest)(nil),  // 11: pb.FailedRequest
-	(*FailedResponse)(nil), // 12: pb.FailedResponse
+	(*PingRequest)(nil),    // 0: pb.PingRequest
+	(*PingResponse)(nil),   // 1: pb.PingResponse
+	(*Command)(nil),        // 2: pb.Command
+	(*RunRequest)(nil),     // 3: pb.RunRequest
+	(*RunResponse)(nil),    // 4: pb.RunResponse
+	(*CancelRequest)(nil),  // 5: pb.CancelRequest
+	(*CancelResponse)(nil), // 6: pb.CancelResponse
+	(*ReadyRequest)(nil),   // 7: pb.ReadyRequest
+	(*ReadyResponse)(nil),  // 8: pb.ReadyResponse
+	(*ByeRequest)(nil),     // 9: pb.ByeRequest
+	(*ByeResponse)(nil),    // 10: pb.ByeResponse
+	(*DoneRequest)(nil),    // 11: pb.DoneRequest
+	(*DoneResponse)(nil),   // 12: pb.DoneResponse
+	(*FailedRequest)(nil),  // 13: pb.FailedRequest
+	(*FailedResponse)(nil), // 14: pb.FailedResponse
 }
 var file_coco_proto_depIdxs = []int32{
-	0,  // 0: pb.RunRequest.cmds:type_name -> pb.Command
-	1,  // 1: pb.Worker.Run:input_type -> pb.RunRequest
-	3,  // 2: pb.Worker.Cancel:input_type -> pb.CancelRequest
-	5,  // 3: pb.Farm.Ready:input_type -> pb.ReadyRequest
-	7,  // 4: pb.Farm.Bye:input_type -> pb.ByeRequest
-	9,  // 5: pb.Farm.Done:input_type -> pb.DoneRequest
-	11, // 6: pb.Farm.Failed:input_type -> pb.FailedRequest
-	2,  // 7: pb.Worker.Run:output_type -> pb.RunResponse
-	4,  // 8: pb.Worker.Cancel:output_type -> pb.CancelResponse
-	6,  // 9: pb.Farm.Ready:output_type -> pb.ReadyResponse
-	8,  // 10: pb.Farm.Bye:output_type -> pb.ByeResponse
-	10, // 11: pb.Farm.Done:output_type -> pb.DoneResponse
-	12, // 12: pb.Farm.Failed:output_type -> pb.FailedResponse
-	7,  // [7:13] is the sub-list for method output_type
-	1,  // [1:7] is the sub-list for method input_type
+	2,  // 0: pb.RunRequest.cmds:type_name -> pb.Command
+	0,  // 1: pb.Worker.Ping:input_type -> pb.PingRequest
+	3,  // 2: pb.Worker.Run:input_type -> pb.RunRequest
+	5,  // 3: pb.Worker.Cancel:input_type -> pb.CancelRequest
+	7,  // 4: pb.Farm.Ready:input_type -> pb.ReadyRequest
+	9,  // 5: pb.Farm.Bye:input_type -> pb.ByeRequest
+	11, // 6: pb.Farm.Done:input_type -> pb.DoneRequest
+	13, // 7: pb.Farm.Failed:input_type -> pb.FailedRequest
+	1,  // 8: pb.Worker.Ping:output_type -> pb.PingResponse
+	4,  // 9: pb.Worker.Run:output_type -> pb.RunResponse
+	6,  // 10: pb.Worker.Cancel:output_type -> pb.CancelResponse
+	8,  // 11: pb.Farm.Ready:output_type -> pb.ReadyResponse
+	10, // 12: pb.Farm.Bye:output_type -> pb.ByeResponse
+	12, // 13: pb.Farm.Done:output_type -> pb.DoneResponse
+	14, // 14: pb.Farm.Failed:output_type -> pb.FailedResponse
+	8,  // [8:15] is the sub-list for method output_type
+	1,  // [1:8] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -716,7 +811,7 @@ func file_coco_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_coco_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Command); i {
+			switch v := v.(*PingRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -728,7 +823,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RunRequest); i {
+			switch v := v.(*PingResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -740,7 +835,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RunResponse); i {
+			switch v := v.(*Command); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -752,7 +847,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CancelRequest); i {
+			switch v := v.(*RunRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -764,7 +859,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CancelResponse); i {
+			switch v := v.(*RunResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -776,7 +871,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadyRequest); i {
+			switch v := v.(*CancelRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -788,7 +883,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ReadyResponse); i {
+			switch v := v.(*CancelResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -800,7 +895,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ByeRequest); i {
+			switch v := v.(*ReadyRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -812,7 +907,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ByeResponse); i {
+			switch v := v.(*ReadyResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -824,7 +919,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DoneRequest); i {
+			switch v := v.(*ByeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -836,7 +931,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DoneResponse); i {
+			switch v := v.(*ByeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -848,7 +943,7 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*FailedRequest); i {
+			switch v := v.(*DoneRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -860,6 +955,30 @@ func file_coco_proto_init() {
 			}
 		}
 		file_coco_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DoneResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_coco_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*FailedRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_coco_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*FailedResponse); i {
 			case 0:
 				return &v.state
@@ -878,7 +997,7 @@ func file_coco_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_coco_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

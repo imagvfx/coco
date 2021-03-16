@@ -27,6 +27,11 @@ func main() {
 	flag.StringVar(&dbpath, "db", "coco.db", "database path to be created/opened")
 	flag.Parse()
 
+	wgrps, err := loadWorkerGroupsFromConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	dbCreated := false
 	db, err := sqlite.Open(dbpath)
 	if err != nil {
@@ -42,26 +47,30 @@ func main() {
 	defer db.Close()
 
 	js := sqlite.NewJobService(db)
+	ws := sqlite.NewWorkerService(db)
 
 	var job *coco.JobManager
+	var worker *coco.WorkerManager
 	if dbCreated {
 		job = coco.NewJobManager(js)
+		worker = coco.NewWorkerManager(ws, wgrps)
 	} else {
 		job, err = coco.RestoreJobManager(js)
 		if err != nil {
 			log.Fatal(err)
 		}
+		worker, err = coco.RestoreWorkerManager(ws, wgrps)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-
-	wgrps, err := loadWorkerGroupsFromConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	worker := coco.NewWorkerManager(wgrps)
-
 	farm := coco.NewFarm(job, worker)
+
 	go newFarmServer("localhost:8284", farm).Listen()
 
+	if !dbCreated {
+		farm.RefreshWorkers()
+	}
 	go farm.Matching()
 	go farm.Canceling()
 	go checking(job, "jobman")

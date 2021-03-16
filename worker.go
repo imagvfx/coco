@@ -36,10 +36,45 @@ type Worker struct {
 	task string
 
 	group *WorkerGroup
+
+	update func(WorkerUpdater) error
 }
 
 func NewWorker(addr string) *Worker {
 	return &Worker{addr: addr, status: WorkerReady}
+}
+
+// ToSQL converts a Worker into a SQLWorker.
+func (w *Worker) ToSQL() *SQLWorker {
+	sw := &SQLWorker{
+		Addr:   w.addr,
+		Status: w.status,
+		Task:   w.task,
+	}
+	return sw
+}
+
+// FromSQL converts a SQLWorker into a Worker.
+func (w *Worker) FromSQL(sw *SQLWorker) {
+	w.addr = sw.Addr
+	w.status = sw.Status
+	w.task = sw.Task
+}
+
+// Update updates a worker in both the program and the db.
+func (w *Worker) Update(u WorkerUpdater) error {
+	u.Addr = w.addr
+	err := w.update(u)
+	if err != nil {
+		return err
+	}
+	if u.Status != nil {
+		w.status = *u.Status
+	}
+	if u.Task != nil {
+		w.task = *u.Task
+	}
+	return nil
 }
 
 type WorkerGroup struct {
@@ -59,22 +94,39 @@ func (g WorkerGroup) Match(addr string) bool {
 
 type WorkerManager struct {
 	sync.Mutex
-	worker       map[string]*Worker
-	workers      *uniqueQueue
-	workerGroups []*WorkerGroup
-	nForTag      map[string]int
+	WorkerService WorkerService
+	worker        map[string]*Worker
+	workers       *uniqueQueue
+	workerGroups  []*WorkerGroup
+	nForTag       map[string]int
 	// ReadyCh tries fast matching of a worker and a task.
 	ReadyCh chan struct{}
 }
 
-func NewWorkerManager(wgrps []*WorkerGroup) *WorkerManager {
+func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) *WorkerManager {
 	m := &WorkerManager{}
+	m.WorkerService = ws
 	m.worker = make(map[string]*Worker)
 	m.workers = newUniqueQueue()
 	m.workerGroups = wgrps
 	m.nForTag = make(map[string]int)
 	m.ReadyCh = make(chan struct{})
 	return m
+}
+
+// RestoreWorkerManager restores a WorkerManager from a db.
+func RestoreWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, error) {
+	m := NewWorkerManager(ws, wgrps)
+	sqlWorkers, err := m.WorkerService.FindWorkers(WorkerFilter{})
+	if err != nil {
+		return nil, err
+	}
+	for _, sw := range sqlWorkers {
+		w := &Worker{}
+		w.FromSQL(sw)
+		m.add(w)
+	}
+	return m, nil
 }
 
 func (m *WorkerManager) ServableTargets() []string {
@@ -92,20 +144,26 @@ func (m *WorkerManager) Add(w *Worker) error {
 	if ok {
 		return fmt.Errorf("worker already exists: %v", w.addr)
 	}
+	err := m.WorkerService.AddWorker(w.ToSQL())
+	if err != nil {
+		return err
+	}
+	m.add(w)
+	return nil
+}
+
+// add adds a worker to the WorkerManager without update a db.
+// Use Add instead of this, except when it is really needed.
+func (m *WorkerManager) add(w *Worker) {
 	addr := strings.Split(w.addr, ":")[0] // remove port
-	find := false
 	for _, g := range m.workerGroups {
 		if g.Match(addr) {
-			find = true
 			w.group = g
 			break
 		}
 	}
-	if !find {
-		return fmt.Errorf("worker address not defined any groups")
-	}
+	w.update = m.WorkerService.UpdateWorker
 	m.worker[w.addr] = w
-	return nil
 }
 
 func (m *WorkerManager) Bye(workerAddr string) error {
@@ -113,7 +171,22 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 	if !ok {
 		return fmt.Errorf("worker not found: %v", workerAddr)
 	}
-	delete(m.worker, workerAddr)
+	if w.task != "" {
+		// TODO: how to cancel the task?
+	}
+	olds := w.status
+	if olds == WorkerNotFound {
+		return fmt.Errorf("worker already logged off: %v", workerAddr)
+	}
+	s := WorkerNotFound
+	t := ""
+	err := w.Update(WorkerUpdater{
+		Status: &s,
+		Task:   &t,
+	})
+	if err != nil {
+		return err
+	}
 	m.workers.Remove(w)
 	for _, t := range w.group.ServeTargets {
 		m.nForTag[t] -= 1
@@ -130,14 +203,22 @@ func (m *WorkerManager) FindByAddr(addr string) *Worker {
 
 // Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
-func (m *WorkerManager) Ready(w *Worker) {
-	w.status = WorkerReady
-	w.task = ""
+func (m *WorkerManager) Ready(w *Worker) error {
+	s := WorkerReady
+	t := ""
+	err := w.Update(WorkerUpdater{
+		Status: &s,
+		Task:   &t,
+	})
+	if err != nil {
+		return err
+	}
 	m.workers.Push(w)
 	for _, t := range w.group.ServeTargets {
 		m.nForTag[t] += 1
 	}
 	go func() { m.ReadyCh <- struct{}{} }()
+	return nil
 }
 
 func (m *WorkerManager) Pop(target string) *Worker {
@@ -173,7 +254,37 @@ func (m *WorkerManager) Push(w *Worker) {
 	m.workers.Push(w)
 }
 
-func (m *WorkerManager) SendTask(w *Worker, t *Task) (err error) {
+// SendPing sends a ping to a worker.
+// The worker will let us know the task the worker is currently working on.
+// It will return an error if the communication is failed.
+func (m *WorkerManager) SendPing(w *Worker) (string, error) {
+	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+
+	c := pb.NewWorkerClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	resp, err := c.Ping(ctx, &pb.PingRequest{})
+	if err != nil {
+		return "", err
+	}
+	return resp.TaskId, err
+}
+
+func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
+	s := WorkerRunning
+	tid := t.ID()
+	err := w.Update(WorkerUpdater{
+		Status: &s,
+		Task:   &tid,
+	})
+	if err != nil {
+		return err
+	}
+
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -197,8 +308,6 @@ func (m *WorkerManager) SendTask(w *Worker, t *Task) (err error) {
 	if err != nil {
 		return err
 	}
-	w.status = WorkerRunning
-	w.task = t.ID()
 	return nil
 }
 

@@ -77,7 +77,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		}
 		defer db.Close()
 		js := sqlite.NewJobService(db)
-		workerman := coco.NewWorkerManager(nil)
+		workerman := coco.NewWorkerManager(&coco.NopWorkerService{}, nil)
 		jobman := coco.NewJobManager(js)
 		farm := coco.NewFarm(jobman, workerman)
 		_, err = jobman.Add(newJob())
