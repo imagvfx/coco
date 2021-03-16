@@ -88,7 +88,8 @@ type WorkerFilter struct {
 
 // WorkerUpdater has information for updating a worker.
 type WorkerUpdater struct {
-	Addr   string
+	Addr string
+
 	Status *WorkerStatus
 	Task   *string
 }

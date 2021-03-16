@@ -178,11 +178,9 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 	if olds == WorkerNotFound {
 		return fmt.Errorf("worker already logged off: %v", workerAddr)
 	}
-	s := WorkerNotFound
-	t := ""
 	err := w.Update(WorkerUpdater{
-		Status: &s,
-		Task:   &t,
+		Status: ptrWorkerStatus(WorkerNotFound),
+		Task:   ptrString(""),
 	})
 	if err != nil {
 		return err
@@ -204,11 +202,9 @@ func (m *WorkerManager) FindByAddr(addr string) *Worker {
 // Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
 func (m *WorkerManager) Ready(w *Worker) error {
-	s := WorkerReady
-	t := ""
 	err := w.Update(WorkerUpdater{
-		Status: &s,
-		Task:   &t,
+		Status: ptrWorkerStatus(WorkerReady),
+		Task:   ptrString(""),
 	})
 	if err != nil {
 		return err
@@ -275,11 +271,9 @@ func (m *WorkerManager) SendPing(w *Worker) (string, error) {
 }
 
 func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
-	s := WorkerRunning
-	tid := t.ID()
 	err := w.Update(WorkerUpdater{
-		Status: &s,
-		Task:   &tid,
+		Status: ptrWorkerStatus(WorkerRunning),
+		Task:   ptrString(t.ID()),
 	})
 	if err != nil {
 		return err

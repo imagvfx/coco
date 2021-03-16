@@ -29,11 +29,9 @@ func (f *Farm) RefreshWorkers() {
 		tid, err := f.workerman.SendPing(w)
 		if err != nil {
 			log.Print(err)
-			s := WorkerNotFound
-			t := ""
 			err := w.Update(WorkerUpdater{
-				Status: &s,
-				Task:   &t,
+				Status: ptrWorkerStatus(WorkerNotFound),
+				Task:   ptrString(""),
 			})
 			if err != nil {
 				log.Print(err)
@@ -44,11 +42,9 @@ func (f *Farm) RefreshWorkers() {
 					log.Print(err)
 					return
 				}
-				s := TaskFailed
-				a := ""
 				err = t.Update(TaskUpdater{
-					Status:   &s,
-					Assignee: &a,
+					Status:   ptrTaskStatus(TaskFailed),
+					Assignee: ptrString(""),
 				})
 				if err != nil {
 					log.Printf("couldn't update task: %v", w.task)
@@ -64,11 +60,9 @@ func (f *Farm) RefreshWorkers() {
 					log.Print(err)
 					return
 				}
-				s := TaskFailed
-				a := ""
 				err = t.Update(TaskUpdater{
-					Status:   &s,
-					Assignee: &a,
+					Status:   ptrTaskStatus(TaskFailed),
+					Assignee: ptrString(""),
 				})
 				if err != nil {
 					log.Printf("couldn't update task: %v", w.task)
@@ -132,11 +126,9 @@ func (f *Farm) Bye(addr string) error {
 		j := t.Job
 		j.Lock()
 		defer j.Unlock()
-		s := TaskFailed
-		a := ""
 		err = t.Update(TaskUpdater{
-			Status:   &s,
-			Assignee: &a,
+			Status:   ptrTaskStatus(TaskFailed),
+			Assignee: ptrString(""),
 		})
 		if err != nil {
 			return err
@@ -157,9 +149,8 @@ func (f *Farm) Done(addr, task string) error {
 	j := t.Job
 	j.Lock()
 	defer j.Unlock()
-	s := TaskDone
 	err = t.Update(TaskUpdater{
-		Status: &s,
+		Status: ptrTaskStatus(TaskDone),
 	})
 	if err != nil {
 		return err
@@ -172,9 +163,8 @@ func (f *Farm) Done(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	a := ""
 	err = t.Update(TaskUpdater{
-		Assignee: &a,
+		Assignee: ptrString(""),
 	})
 	if err != nil {
 		return err
@@ -195,17 +185,15 @@ func (f *Farm) Failed(addr, task string) error {
 	j.Lock()
 	defer j.Unlock()
 	if !t.CanRetry() {
-		s := TaskFailed
 		err := t.Update(TaskUpdater{
-			Status: &s,
+			Status: ptrTaskStatus(TaskFailed),
 		})
 		if err != nil {
 			return err
 		}
 	} else {
-		s := TaskWaiting
 		err := t.Update(TaskUpdater{
-			Status: &s,
+			Status: ptrTaskStatus(TaskWaiting),
 		})
 		if err != nil {
 			return err
@@ -220,9 +208,8 @@ func (f *Farm) Failed(addr, task string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	a := ""
 	err = t.Update(TaskUpdater{
-		Assignee: &a,
+		Assignee: ptrString(""),
 	})
 	if err != nil {
 		return err
@@ -270,18 +257,16 @@ func (f *Farm) Matching() {
 		}
 		// A worker is more unpredictable than db.
 		// Set the task's fields first.
-		s := TaskRunning
 		err := t.Update(TaskUpdater{
-			Status:   &s,
+			Status:   ptrTaskStatus(TaskRunning),
 			Assignee: &w.addr,
 		})
 		if err != nil {
 			log.Printf("db: %v", err)
 			f.jobman.PushTask(t)
 			f.workerman.Push(w)
-			a := ""
 			t.Update(TaskUpdater{
-				Assignee: &a,
+				Assignee: ptrString(""),
 			})
 			return
 		}
@@ -292,9 +277,8 @@ func (f *Farm) Matching() {
 			log.Printf("failed to send task to a worker: %v", err)
 			f.jobman.PushTask(t)
 			f.workerman.Push(w)
-			a := ""
 			t.Update(TaskUpdater{
-				Assignee: &a,
+				Assignee: ptrString(""),
 			})
 			return
 		}
