@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"strings"
 
 	"github.com/imagvfx/coco"
 )
@@ -153,9 +154,15 @@ func (s *JobService) FindJobs(f coco.JobFilter) ([]*coco.SQLJob, error) {
 
 // findJobs finds jobs those matched with given filter.
 func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
-	wh := NewWhere()
+	keys := []string{}
+	vals := []interface{}{}
 	if f.Target != "" {
-		wh.Add("target", f.Target)
+		keys = append(keys, "target = ?")
+		vals = append(vals, f.Target)
+	}
+	where := ""
+	if len(keys) != 0 {
+		where = "WHERE " + strings.Join(keys, " AND ")
 	}
 
 	rows, err := tx.Query(`
@@ -164,10 +171,10 @@ func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
 			target,
 			auto_retry
 		FROM jobs
-		`+wh.Stmt()+`
+		`+where+`
 		ORDER BY ord ASC
 	`,
-		wh.Vals()...,
+		vals...,
 	)
 	if err != nil {
 		return nil, err

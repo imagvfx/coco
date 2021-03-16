@@ -3,6 +3,7 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/imagvfx/coco"
 )
@@ -82,9 +83,15 @@ func (s *WorkerService) FindWorkers(f coco.WorkerFilter) ([]*coco.SQLWorker, err
 
 // findWorkers finds workers those matched with given filter.
 func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
-	wh := NewWhere()
+	keys := []string{}
+	vals := []interface{}{}
 	if w.Addr != "" {
-		wh.Add("addr", w.Addr)
+		keys = append(keys, "addr = ?")
+		vals = append(vals, w.Addr)
+	}
+	where := ""
+	if len(keys) != 0 {
+		where = "WHERE " + strings.Join(keys, " AND ")
 	}
 
 	rows, err := tx.Query(`
@@ -93,10 +100,10 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 			status,
 			task
 		FROM workers
-		`+wh.Stmt()+`
+		`+where+`
 		ORDER BY addr ASC
 	`,
-		wh.Vals()...,
+		vals...,
 	)
 	if err != nil {
 		return nil, err
