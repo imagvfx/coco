@@ -144,26 +144,23 @@ func (s *WorkerService) UpdateWorker(w coco.WorkerUpdater) error {
 }
 
 func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
-	setStmt := "SET "
-	setVals := make([]interface{}, 0)
+	keys := []string{}
+	vals := []interface{}{}
 	if w.Status != nil {
-		setStmt += "status = ?"
-		setVals = append(setVals, w.Status)
+		keys = append(keys, "status = ?")
+		vals = append(vals, w.Status)
 	}
 	if w.Task != nil {
-		if len(setVals) != 0 {
-			setStmt += ", "
-		}
-		setStmt += "task = ?"
-		setVals = append(setVals, w.Task)
+		keys = append(keys, "task = ?")
+		vals = append(vals, w.Task)
 	}
-	if len(setVals) == 0 {
+	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")
 	}
-	vals := append(setVals, w.Addr)
+	vals = append(vals, w.Addr)
 	_, err := tx.Exec(`
 		UPDATE workers
-		`+setStmt+`
+		SET `+strings.Join(keys, ", ")+`
 		WHERE
 			addr = ?
 	`,

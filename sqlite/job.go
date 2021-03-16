@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/imagvfx/coco"
@@ -259,23 +260,23 @@ func (s *JobService) UpdateTask(t coco.TaskUpdater) error {
 }
 
 func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
-	setStmt := "SET "
-	setVals := make([]interface{}, 0)
+	keys := []string{}
+	vals := []interface{}{}
 	if t.Status != nil {
-		setStmt += "status = ?"
-		setVals = append(setVals, t.Status)
+		keys = append(keys, "status = ?")
+		vals = append(vals, t.Status)
 	}
 	if t.Assignee != nil {
-		if len(setVals) != 0 {
-			setStmt += ", "
-		}
-		setStmt += "assignee = ?"
-		setVals = append(setVals, t.Assignee)
+		keys = append(keys, "assignee = ?")
+		vals = append(vals, t.Assignee)
 	}
-	vals := append(setVals, t.Order, t.Num)
+	if len(keys) == 0 {
+		return fmt.Errorf("need at least one parameter to update")
+	}
+	vals = append(vals, t.Order, t.Num)
 	_, err := tx.Exec(`
 		UPDATE tasks
-		`+setStmt+`
+		SET `+strings.Join(keys, ", ")+`
 		WHERE
 			ord = ? AND
 			num = ?
