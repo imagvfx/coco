@@ -29,13 +29,6 @@ func (f *Farm) RefreshWorkers() {
 		tid, err := f.workerman.SendPing(w)
 		if err != nil {
 			log.Print(err)
-			err := w.Update(WorkerUpdater{
-				Status: ptrWorkerStatus(WorkerNotFound),
-				Task:   ptrString(""),
-			})
-			if err != nil {
-				log.Print(err)
-			}
 			if w.task != "" {
 				t, err := f.jobman.GetTask(w.task)
 				if err != nil {
@@ -49,6 +42,13 @@ func (f *Farm) RefreshWorkers() {
 				if err != nil {
 					log.Printf("couldn't update task: %v", w.task)
 				}
+			}
+			err := w.Update(WorkerUpdater{
+				Status: ptrWorkerStatus(WorkerNotFound),
+				Task:   ptrString(""),
+			})
+			if err != nil {
+				log.Print(err)
 			}
 			return
 		}
