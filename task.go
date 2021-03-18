@@ -192,12 +192,12 @@ type Task struct {
 
 // ID is a Task identifier make it distinct from all other tasks.
 func (t *Task) ID() string {
-	return strconv.Itoa(t.Job.order) + "-" + strconv.Itoa(t.num)
+	return toTaskID(t.Job.order, t.num)
 }
 
-// infoFromTaskID splits a task id string into job ID and task number.
+// fromTaskID splits a task id string into job ID and task number.
 // If the given string isn't valid, it will return an error as a third argument.
-func infoFromTaskID(id string) (int, int, error) {
+func fromTaskID(id string) (int, int, error) {
 	toks := strings.Split(id, "-")
 	if len(toks) != 2 {
 		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
@@ -211,6 +211,11 @@ func infoFromTaskID(id string) (int, int, error) {
 		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
 	}
 	return jid, tnum, nil
+}
+
+// toTaskID returns the tasks's id in the form of {ord}-{tasknum}.
+func toTaskID(ord int, tasknum int) string {
+	return strconv.Itoa(ord) + "-" + strconv.Itoa(tasknum)
 }
 
 // Commands are commands that are garuanteed to be run from a worker.

@@ -52,17 +52,22 @@ type Job struct {
 
 // ID returns the job's order number as a string.
 func (j *Job) ID() string {
-	return strconv.Itoa(j.order)
+	return toJobID(j.order)
 }
 
-// infoFromJobID returns the job's order number which is basically an id but of type int.
+// fromJobID returns the job's order number which is basically an id but of type int.
 // It will return an error as a second argument if the id string cannot be converted to int.
-func infoFromJobID(id string) (int, error) {
+func fromJobID(id string) (int, error) {
 	ord, err := strconv.Atoi(id)
 	if err != nil {
 		return -1, fmt.Errorf("invalid job id: %v", id)
 	}
 	return ord, nil
+}
+
+// toJobID returns the job's id which is order number but of type string.
+func toJobID(ord int) string {
+	return strconv.Itoa(ord)
 }
 
 // Validate validates a raw Job that is sended from user.
@@ -249,7 +254,7 @@ func RestoreJobManager(js JobService) (*JobManager, error) {
 
 // Get gets a job with a job id.
 func (m *JobManager) Get(id string) (*Job, error) {
-	ord, err := infoFromJobID(id)
+	ord, err := fromJobID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +267,7 @@ func (m *JobManager) Get(id string) (*Job, error) {
 
 // GetTask gets a task with a task id.
 func (m *JobManager) GetTask(id string) (*Task, error) {
-	ord, n, err := infoFromTaskID(id)
+	ord, n, err := fromTaskID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +330,7 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
 func (m *JobManager) Cancel(id string) error {
-	ord, err := infoFromJobID(id)
+	ord, err := fromJobID(id)
 	if err != nil {
 		return err
 	}
@@ -365,7 +370,7 @@ func (m *JobManager) Cancel(id string) error {
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
 func (m *JobManager) Retry(id string) error {
-	ord, err := infoFromJobID(id)
+	ord, err := fromJobID(id)
 	if err != nil {
 		return err
 	}
@@ -396,7 +401,7 @@ func (m *JobManager) Retry(id string) error {
 
 // Delete deletes a job irrecoverably.
 func (m *JobManager) Delete(id string) error {
-	ord, err := infoFromJobID(id)
+	ord, err := fromJobID(id)
 	if err != nil {
 		return err
 	}
