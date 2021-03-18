@@ -32,7 +32,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	dbCreated := false
 	db, err := sqlite.Open(dbpath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
@@ -42,7 +41,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		dbCreated = true
 	}
 	defer db.Close()
 
@@ -51,26 +49,19 @@ func main() {
 
 	var job *coco.JobManager
 	var worker *coco.WorkerManager
-	if dbCreated {
-		job = coco.NewJobManager(js)
-		worker = coco.NewWorkerManager(ws, wgrps)
-	} else {
-		job, err = coco.RestoreJobManager(js)
-		if err != nil {
-			log.Fatal(err)
-		}
-		worker, err = coco.RestoreWorkerManager(ws, wgrps)
-		if err != nil {
-			log.Fatal(err)
-		}
+	job, err = coco.NewJobManager(js)
+	if err != nil {
+		log.Fatal(err)
+	}
+	worker, err = coco.NewWorkerManager(ws, wgrps)
+	if err != nil {
+		log.Fatal(err)
 	}
 	farm := coco.NewFarm(job, worker)
 
 	go newFarmServer("localhost:8284", farm).Listen()
 
-	if !dbCreated {
-		farm.RefreshWorkers()
-	}
+	farm.RefreshWorkers()
 	go farm.Matching()
 	go farm.Canceling()
 	go checking(job, "jobman")

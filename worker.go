@@ -103,7 +103,9 @@ type WorkerManager struct {
 	ReadyCh chan struct{}
 }
 
-func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) *WorkerManager {
+// NewWorkerManager create a new WorkerManager.
+// It restores previous data with WorkerService.
+func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, error) {
 	m := &WorkerManager{}
 	m.WorkerService = ws
 	m.worker = make(map[string]*Worker)
@@ -111,22 +113,25 @@ func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) *WorkerManager {
 	m.workerGroups = wgrps
 	m.nForTag = make(map[string]int)
 	m.ReadyCh = make(chan struct{})
-	return m
-}
-
-// RestoreWorkerManager restores a WorkerManager from a db.
-func RestoreWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, error) {
-	m := NewWorkerManager(ws, wgrps)
-	sqlWorkers, err := m.WorkerService.FindWorkers(WorkerFilter{})
+	err := m.restore()
 	if err != nil {
 		return nil, err
+	}
+	return m, nil
+}
+
+// restore restores a WorkerManager from a db with WorkerService.
+func (m *WorkerManager) restore() error {
+	sqlWorkers, err := m.WorkerService.FindWorkers(WorkerFilter{})
+	if err != nil {
+		return err
 	}
 	for _, sw := range sqlWorkers {
 		w := &Worker{}
 		w.FromSQL(sw)
 		m.add(w)
 	}
-	return m, nil
+	return nil
 }
 
 func (m *WorkerManager) ServableTargets() []string {

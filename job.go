@@ -214,21 +214,25 @@ func popCompare(i, j interface{}) bool {
 }
 
 // NewJobManager creates a new JobManager.
-func NewJobManager(js JobService) *JobManager {
+// It restores previous data with JobService.
+func NewJobManager(js JobService) (*JobManager, error) {
 	m := &JobManager{}
 	m.JobService = js
 	m.job = make(map[int]*Job)
 	m.jobs = newUniqueHeap(popCompare)
 	m.CancelTaskCh = make(chan *Task)
-	return m
-}
-
-// RestoreJobManager restores a JobManager from given JobService.
-func RestoreJobManager(js JobService) (*JobManager, error) {
-	m := NewJobManager(js)
-	sqlJobs, err := m.JobService.FindJobs(JobFilter{})
+	err := m.restore()
 	if err != nil {
 		return nil, err
+	}
+	return m, nil
+}
+
+// restore restores a JobManager from a db with JobService.
+func (m *JobManager) restore() error {
+	sqlJobs, err := m.JobService.FindJobs(JobFilter{})
+	if err != nil {
+		return err
 	}
 	for _, sj := range sqlJobs {
 		j := &Job{}
@@ -249,7 +253,7 @@ func RestoreJobManager(js JobService) (*JobManager, error) {
 		m.job[j.order] = j
 		heap.Push(m.jobs, j)
 	}
-	return m, nil
+	return nil
 }
 
 // Get gets a job with a job id.

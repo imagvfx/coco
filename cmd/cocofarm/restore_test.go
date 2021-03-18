@@ -77,8 +77,14 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		}
 		defer db.Close()
 		js := sqlite.NewJobService(db)
-		workerman := coco.NewWorkerManager(&coco.NopWorkerService{}, nil)
-		jobman := coco.NewJobManager(js)
+		workerman, err := coco.NewWorkerManager(&coco.NopWorkerService{}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		jobman, err := coco.NewJobManager(js)
+		if err != nil {
+			t.Fatal(err)
+		}
 		farm := coco.NewFarm(jobman, workerman)
 		_, err = jobman.Add(newJob())
 		if err != nil {
@@ -101,7 +107,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 			}
 		}
 		// TODO: test with updated tasks
-		r, err := coco.RestoreJobManager(js)
+		r, err := coco.NewJobManager(js)
 		if err != nil {
 			t.Fatalf("restore: %v", err)
 		}
