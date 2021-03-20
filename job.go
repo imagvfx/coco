@@ -52,12 +52,12 @@ type Job struct {
 
 // ID returns the job's order number as a string.
 func (j *Job) ID() string {
-	return toJobID(j.order)
+	return ToJobID(j.order)
 }
 
-// fromJobID returns the job's order number which is basically an id but of type int.
+// FromJobID returns the job's order number which is basically an id but of type int.
 // It will return an error as a second argument if the id string cannot be converted to int.
-func fromJobID(id string) (int, error) {
+func FromJobID(id string) (int, error) {
 	ord, err := strconv.Atoi(id)
 	if err != nil {
 		return -1, fmt.Errorf("invalid job id: %v", id)
@@ -65,8 +65,8 @@ func fromJobID(id string) (int, error) {
 	return ord, nil
 }
 
-// toJobID returns the job's id which is order number but of type string.
-func toJobID(ord int) string {
+// ToJobID returns the job's id which is order number but of type string.
+func ToJobID(ord int) string {
 	return strconv.Itoa(ord)
 }
 
@@ -258,7 +258,7 @@ func (m *JobManager) restore() error {
 
 // Get gets a job with a job id.
 func (m *JobManager) Get(id string) (*Job, error) {
-	ord, err := fromJobID(id)
+	ord, err := FromJobID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +271,7 @@ func (m *JobManager) Get(id string) (*Job, error) {
 
 // GetTask gets a task with a task id.
 func (m *JobManager) GetTask(id string) (*Task, error) {
-	ord, n, err := fromTaskID(id)
+	ord, n, err := FromTaskID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
 func (m *JobManager) Cancel(id string) error {
-	ord, err := fromJobID(id)
+	ord, err := FromJobID(id)
 	if err != nil {
 		return err
 	}
@@ -360,7 +360,8 @@ func (m *JobManager) Cancel(id string) error {
 		}
 		if t.status != TaskDone {
 			err := t.Update(TaskUpdater{
-				Status: ptrTaskStatus(TaskFailed),
+				Status:   ptrTaskStatus(TaskFailed),
+				Assignee: ptrString(""),
 			})
 			if err != nil {
 				return err
@@ -374,7 +375,7 @@ func (m *JobManager) Cancel(id string) error {
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
 func (m *JobManager) Retry(id string) error {
-	ord, err := fromJobID(id)
+	ord, err := FromJobID(id)
 	if err != nil {
 		return err
 	}
@@ -405,7 +406,7 @@ func (m *JobManager) Retry(id string) error {
 
 // Delete deletes a job irrecoverably.
 func (m *JobManager) Delete(id string) error {
-	ord, err := fromJobID(id)
+	ord, err := FromJobID(id)
 	if err != nil {
 		return err
 	}
@@ -450,7 +451,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			defer func() {
 				// The job has remaing tasks. So, push back this job
 				// after we've found a servable job.
-				m.jobs.Push(j)
+				heap.Push(m.jobs, j)
 			}()
 			continue
 		}

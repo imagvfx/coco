@@ -207,6 +207,9 @@ func (m *WorkerManager) FindByAddr(addr string) *Worker {
 // Ready reports that a worker is ready for a new task.
 // NOTE: It should be only called by the worker through workerFarm.
 func (m *WorkerManager) Ready(w *Worker) error {
+	if w == nil {
+		return fmt.Errorf("nil worker")
+	}
 	err := w.Update(WorkerUpdater{
 		Status: ptrWorkerStatus(WorkerReady),
 		Task:   ptrString(""),
@@ -215,8 +218,10 @@ func (m *WorkerManager) Ready(w *Worker) error {
 		return err
 	}
 	m.workers.Push(w)
-	for _, t := range w.group.ServeTargets {
-		m.nForTag[t] += 1
+	if w.group != nil {
+		for _, t := range w.group.ServeTargets {
+			m.nForTag[t] += 1
+		}
 	}
 	go func() { m.ReadyCh <- struct{}{} }()
 	return nil
@@ -276,14 +281,6 @@ func (m *WorkerManager) SendPing(w *Worker) (string, error) {
 }
 
 func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
-	err := w.Update(WorkerUpdater{
-		Status: ptrWorkerStatus(WorkerRunning),
-		Task:   ptrString(t.ID()),
-	})
-	if err != nil {
-		return err
-	}
-
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -329,7 +326,5 @@ func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
 	if err != nil {
 		return err
 	}
-	w.status = WorkerCooling
-	w.task = ""
 	return nil
 }

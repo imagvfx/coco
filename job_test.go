@@ -135,7 +135,7 @@ func TestWalkFrom(t *testing.T) {
 	}
 }
 
-func newJobManagerForPop() *JobManager {
+func newJobManagerForPop() (*JobManager, error) {
 	j1 := &Job{
 		Target: "2d",
 		Task: &Task{
@@ -182,10 +182,13 @@ func newJobManagerForPop() *JobManager {
 			},
 		},
 	}
-	m := NewJobManager(&NopJobService{})
+	m, err := NewJobManager(&NopJobService{})
+	if err != nil {
+		return nil, err
+	}
 	m.Add(j1)
 	m.Add(j2)
-	return m
+	return m, nil
 }
 
 func TestJobManagerPopTask(t *testing.T) {
@@ -231,7 +234,10 @@ func TestJobManagerPopTask(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		m := newJobManagerForPop()
+		m, err := newJobManagerForPop()
+		if err != nil {
+			t.Fatal(err)
+		}
 		got := []string{}
 		for {
 			t := m.PopTask(c.targets)
@@ -263,7 +269,10 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 		return nil
 	}
 
-	m := newJobManagerForPop()
+	m, err := newJobManagerForPop()
+	if err != nil {
+		t.Fatal(err)
+	}
 	tasks := make([]*Task, 0)
 	for {
 		t := m.PopTask([]string{"*"})
@@ -275,9 +284,12 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 	for _, t := range tasks {
 		m.PushTask(t)
 	}
-	want := newJobManagerForPop()
+	want, err := newJobManagerForPop()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := shouldEqual(m, want)
+	err = shouldEqual(m, want)
 	if err != nil {
 		t.Fatalf("pop all then push all should get the same jobManager: %v", err)
 	}

@@ -1,5 +1,30 @@
 package coco
 
+type Services interface {
+	FarmService() FarmService
+	JobService() JobService
+	WorkerService() WorkerService
+}
+
+type FarmService interface {
+	UpdateAssign(AssignUpdater) error
+}
+
+type AssignUpdater struct {
+	Order        int
+	TaskNum      int
+	TaskStatus   *TaskStatus
+	TaskRetry    *int
+	TaskAssignee *string
+	Worker       string
+	WorkerStatus *WorkerStatus
+}
+
+// ID returns ID of the task.
+func (a AssignUpdater) ID() string {
+	return ToTaskID(a.Order, a.TaskNum)
+}
+
 // JobService is an interface which let us use sqlite.JobService.
 type JobService interface {
 	AddJob(*SQLJob) (int, error)
@@ -35,6 +60,19 @@ type SQLJob struct {
 	Tasks     []*SQLTask
 }
 
+// SQLTask is a task information for sql database.
+type SQLTask struct {
+	Order          int
+	Num            int
+	ParentNum      int
+	Title          string
+	Status         TaskStatus
+	SerialSubtasks bool
+	Commands       Commands
+	Assignee       string
+	Retry          int
+}
+
 // JobFilter is a job filter for searching jobs.
 type JobFilter struct {
 	Target string
@@ -42,10 +80,17 @@ type JobFilter struct {
 
 // TaskUpdater has information for updating a task.
 type TaskUpdater struct {
-	Order    int
-	Num      int
-	Status   *TaskStatus
+	Order  int
+	Num    int
+	Status *TaskStatus
+	// Assingee information actually stored to workers table.
 	Assignee *string
+	Retry    *int
+}
+
+// ID returns ID of the task.
+func (t TaskUpdater) ID() string {
+	return ToTaskID(t.Order, t.Num)
 }
 
 // WorkerService is an interface which let us use sqlite.WorkerService.
@@ -88,8 +133,7 @@ type WorkerFilter struct {
 
 // WorkerUpdater has information for updating a worker.
 type WorkerUpdater struct {
-	Addr string
-
+	Addr   string
 	Status *WorkerStatus
 	Task   *string
 }

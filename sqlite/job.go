@@ -34,6 +34,7 @@ func CreateTasksTable(tx *sql.Tx) error {
 			serial_subtasks BOOL NOT NULL,
 			commands TEXT NOT NULL,
 			assignee TEXT NOT NULL,
+			retry INTEGER NOT NULL,
 			PRIMARY KEY (ord, num)
 		);
 	`)
@@ -110,9 +111,10 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 			status,
 			serial_subtasks,
 			commands,
-			assignee
+			assignee,
+			retry
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
 		ord,
 		t.Num,
@@ -122,6 +124,7 @@ func addTask(tx *sql.Tx, ord int, t *coco.SQLTask) error {
 		t.SerialSubtasks,
 		t.Commands,
 		t.Assignee,
+		t.Retry,
 	)
 	if err != nil {
 		return err

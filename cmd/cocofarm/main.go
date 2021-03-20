@@ -44,31 +44,23 @@ func main() {
 	}
 	defer db.Close()
 
-	js := sqlite.NewJobService(db)
-	ws := sqlite.NewWorkerService(db)
+	srvcs := sqlite.NewServices(db)
 
-	var job *coco.JobManager
-	var worker *coco.WorkerManager
-	job, err = coco.NewJobManager(js)
+	farm, err := coco.NewFarm(srvcs, wgrps)
 	if err != nil {
 		log.Fatal(err)
 	}
-	worker, err = coco.NewWorkerManager(ws, wgrps)
-	if err != nil {
-		log.Fatal(err)
-	}
-	farm := coco.NewFarm(job, worker)
 
 	go newFarmServer("localhost:8284", farm).Listen()
 
 	farm.RefreshWorkers()
 	go farm.Matching()
 	go farm.Canceling()
-	go checking(job, "jobman")
-	go checking(worker, "workerman")
+	go checking(farm.JobManager(), "jobman")
+	go checking(farm.WorkerManager(), "workerman")
 
 	api := &apiHandler{
-		jobman: job,
+		jobman: farm.JobManager(),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)

@@ -31,7 +31,15 @@ func ShouldEqualJob(got, want *Job) error {
 	if got.CurrentPriority != want.CurrentPriority {
 		return fmt.Errorf("CurrentPriority: got %v, want %v", got.CurrentPriority, want.CurrentPriority)
 	}
-	return ShouldEqualTask(got.Task, want.Task)
+	for i := range got.tasks {
+		g := got.tasks[i]
+		w := want.tasks[i]
+		err := ShouldEqualTask(g, w)
+		if err != nil {
+			return fmt.Errorf("task[%v]: %v", i, err)
+		}
+	}
+	return nil
 }
 
 // ShouldEqualTask checks that given two tasks are equal and raises an error

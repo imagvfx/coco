@@ -192,12 +192,17 @@ type Task struct {
 
 // ID is a Task identifier make it distinct from all other tasks.
 func (t *Task) ID() string {
-	return toTaskID(t.Job.order, t.num)
+	return ToTaskID(t.Job.order, t.num)
 }
 
-// fromTaskID splits a task id string into job ID and task number.
+// Order is the task's job order.
+func (t *Task) Order() int {
+	return t.Job.order
+}
+
+// FromTaskID splits a task id string into job ID and task number.
 // If the given string isn't valid, it will return an error as a third argument.
-func fromTaskID(id string) (int, int, error) {
+func FromTaskID(id string) (int, int, error) {
 	toks := strings.Split(id, "-")
 	if len(toks) != 2 {
 		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
@@ -213,8 +218,8 @@ func fromTaskID(id string) (int, int, error) {
 	return jid, tnum, nil
 }
 
-// toTaskID returns the tasks's id in the form of {ord}-{tasknum}.
-func toTaskID(ord int, tasknum int) string {
+// ToTaskID returns the tasks's id in the form of {ord}-{tasknum}.
+func ToTaskID(ord int, tasknum int) string {
 	return strconv.Itoa(ord) + "-" + strconv.Itoa(tasknum)
 }
 
@@ -270,18 +275,6 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// SQLTask is a task information for sql database.
-type SQLTask struct {
-	Order          int
-	Num            int
-	ParentNum      int
-	Title          string
-	Status         TaskStatus
-	SerialSubtasks bool
-	Commands       Commands
-	Assignee       string
-}
-
 // ToSQL converts a Task into a SQLTask.
 func (t *Task) ToSQL() *SQLTask {
 	s := &SQLTask{
@@ -291,7 +284,6 @@ func (t *Task) ToSQL() *SQLTask {
 		Status:         t.status,
 		SerialSubtasks: t.SerialSubtasks,
 		Commands:       t.Commands,
-		Assignee:       t.Assignee,
 	}
 	s.ParentNum = -1
 	if t.parent != nil {

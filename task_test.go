@@ -186,10 +186,12 @@ func TestTaskPop(t *testing.T) {
 				}
 				got = append(got, "") // make the blocking point visible
 				for _, pt := range popTasks {
-					// NopJobService doesn't raise error
-					pt.Update(TaskUpdater{
+					err := pt.Update(TaskUpdater{
 						Status: ptrTaskStatus(TaskDone),
 					})
+					if err != nil {
+						t.Fatal(err)
+					}
 				}
 				popTasks = popTasks[:0]
 			} else {

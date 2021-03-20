@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/imagvfx/coco"
 	"github.com/imagvfx/coco/sqlite"
@@ -76,56 +74,65 @@ func TestCocoRestoreJobManager(t *testing.T) {
 			t.Fatalf("cannot create db: %v", err)
 		}
 		defer db.Close()
-		js := sqlite.NewJobService(db)
-		workerman, err := coco.NewWorkerManager(&coco.NopWorkerService{}, nil)
+		services := sqlite.NewServices(db)
+		farm, err := coco.NewFarm(services, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		jobman, err := coco.NewJobManager(js)
-		if err != nil {
-			t.Fatal(err)
-		}
-		farm := coco.NewFarm(jobman, workerman)
-		_, err = jobman.Add(newJob())
+		jobman := farm.JobManager()
+		jid, err := jobman.Add(newJob())
 		if err != nil {
 			t.Fatalf("add: %v", err)
 		}
-		// TODO: need a better way to test restored popIdx
-		// This one only catches the situation that everything has done well.
-		for {
-			t := jobman.PopTask([]string{"*"})
-			if t == nil {
-				break
+		workerman := farm.WorkerManager()
+		worker := "localhost:0000"
+		w := coco.NewWorker(worker)
+		err = workerman.Add(w)
+		n := 0
+		for n <= i {
+			popt := jobman.PopTask([]string{"*"})
+			if popt == nil {
+				t.Fatal("should get a task")
 			}
-			// <-- THE RANDOM PROCESS
-			rand.Seed(time.Now().UnixNano())
-			n := rand.Intn(5)
-			if n < 4 {
-				farm.Done("", t.ID())
+			err := farm.Assign(worker, popt.ID())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if n < i {
+				err := farm.Done(worker, popt.ID())
+				if err != nil {
+					t.Fatal(err)
+				}
 			} else {
-				farm.Failed("", t.ID())
+				// n == i
+				err := farm.Failed(worker, popt.ID())
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
+			n++
 		}
-		// TODO: test with updated tasks
-		r, err := coco.NewJobManager(js)
+		f, err := coco.NewFarm(services, nil)
 		if err != nil {
 			t.Fatalf("restore: %v", err)
 		}
-		for {
-			want := jobman.PopTask([]string{"*"})
-			got := r.PopTask([]string{"*"})
-			err := coco.ShouldEqualTask(got, want)
-			if err != nil {
-				t.Fatalf("restore job manager: %v", err)
-			}
-			if want == nil {
-				return
-			}
+		r := f.JobManager()
+		want, err := jobman.Get(jid)
+		if err != nil {
+			t.Fatal(err)
 		}
+		got, err := r.Get(jid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = coco.ShouldEqualJob(got, want)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 	}
-	// The test could produce different results due to the random process inside of it.
-	// Run reasonable times.
-	for i := 0; i < 10; i++ {
+	// test all possible results
+	for i := 0; i < 6; i++ {
 		test(i)
 	}
 }
