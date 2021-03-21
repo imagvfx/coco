@@ -63,7 +63,8 @@ func (s *JobService) AddJob(j *coco.SQLJob) (coco.JobID, error) {
 		return -1, err
 	}
 	for _, t := range j.Tasks {
-		err := addTask(tx, ord, t)
+		t.ID[0] = int(ord)
+		err := addTask(tx, t)
 		if err != nil {
 			return -1, err
 		}
@@ -101,7 +102,7 @@ func addJob(tx *sql.Tx, j *coco.SQLJob) (coco.JobID, error) {
 
 // addTask adds a task into a database.
 // It tasks an order number of its job, because the task doesn't know it yet.
-func addTask(tx *sql.Tx, ord coco.JobID, t *coco.SQLTask) error {
+func addTask(tx *sql.Tx, t *coco.SQLTask) error {
 	_, err := tx.Exec(`
 		INSERT INTO tasks (
 			ord,
@@ -116,7 +117,7 @@ func addTask(tx *sql.Tx, ord coco.JobID, t *coco.SQLTask) error {
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
-		ord,
+		t.ID[0],
 		t.ID[1],
 		t.ParentNum,
 		t.Title,
