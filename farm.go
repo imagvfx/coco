@@ -118,7 +118,7 @@ func (f *Farm) RefreshWorkers() {
 			return
 		}
 		if !tid.IsValid() && !w.task.IsValid() {
-			// invalid task id indicates that there isn't a task running.
+			// invalid task id indicates that the worker isn't running a task.
 			return
 		}
 		if tid == w.task {
