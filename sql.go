@@ -11,8 +11,7 @@ type FarmService interface {
 }
 
 type AssignUpdater struct {
-	Order        int
-	TaskNum      int
+	Task         TaskID
 	TaskStatus   *TaskStatus
 	TaskRetry    *int
 	TaskAssignee *string
@@ -20,14 +19,9 @@ type AssignUpdater struct {
 	WorkerStatus *WorkerStatus
 }
 
-// ID returns ID of the task.
-func (a AssignUpdater) ID() string {
-	return ToTaskID(a.Order, a.TaskNum)
-}
-
 // JobService is an interface which let us use sqlite.JobService.
 type JobService interface {
-	AddJob(*SQLJob) (int, error)
+	AddJob(*SQLJob) (JobID, error)
 	FindJobs(JobFilter) ([]*SQLJob, error)
 	UpdateTask(TaskUpdater) error
 }
@@ -37,7 +31,7 @@ type JobService interface {
 type NopJobService struct{}
 
 // AddJob returns (0, nil) always.
-func (s *NopJobService) AddJob(j *SQLJob) (int, error) {
+func (s *NopJobService) AddJob(j *SQLJob) (JobID, error) {
 	return 0, nil
 }
 
@@ -53,8 +47,7 @@ func (s *NopJobService) FindJobs(f JobFilter) ([]*SQLJob, error) {
 
 // SQLJob is a job information for sql database.
 type SQLJob struct {
-	// TODO: Do we need ID here? It will be generated from a db.
-	Order     int
+	ID        JobID
 	Target    string
 	AutoRetry int
 	Tasks     []*SQLTask
@@ -62,8 +55,7 @@ type SQLJob struct {
 
 // SQLTask is a task information for sql database.
 type SQLTask struct {
-	Order          int
-	Num            int
+	ID             TaskID
 	ParentNum      int
 	Title          string
 	Status         TaskStatus
@@ -80,17 +72,11 @@ type JobFilter struct {
 
 // TaskUpdater has information for updating a task.
 type TaskUpdater struct {
-	Order  int
-	Num    int
+	ID     TaskID
 	Status *TaskStatus
 	// Assingee information actually stored to workers table.
 	Assignee *string
 	Retry    *int
-}
-
-// ID returns ID of the task.
-func (t TaskUpdater) ID() string {
-	return ToTaskID(t.Order, t.Num)
 }
 
 // WorkerService is an interface which let us use sqlite.WorkerService.
@@ -123,7 +109,7 @@ func (s *NopWorkerService) FindWorkers(f WorkerFilter) ([]*SQLWorker, error) {
 type SQLWorker struct {
 	Addr   string
 	Status WorkerStatus
-	Task   string
+	Task   TaskID
 }
 
 // WorkerFilter is a job filter for searching workers.
@@ -135,5 +121,5 @@ type WorkerFilter struct {
 type WorkerUpdater struct {
 	Addr   string
 	Status *WorkerStatus
-	Task   *string
+	Task   *TaskID
 }

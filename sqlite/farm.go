@@ -35,8 +35,7 @@ func (s *FarmService) UpdateAssign(a coco.AssignUpdater) error {
 
 func updateAssign(tx *sql.Tx, a coco.AssignUpdater) error {
 	err := updateTask(tx, coco.TaskUpdater{
-		Order:    a.Order,
-		Num:      a.TaskNum,
+		ID:       a.Task,
 		Status:   a.TaskStatus,
 		Retry:    a.TaskRetry,
 		Assignee: a.TaskAssignee,
@@ -44,11 +43,10 @@ func updateAssign(tx *sql.Tx, a coco.AssignUpdater) error {
 	if err != nil {
 		return err
 	}
-	tid := a.ID()
 	err = updateWorker(tx, coco.WorkerUpdater{
 		Addr:   a.Worker,
 		Status: a.WorkerStatus,
-		Task:   &tid,
+		Task:   &a.Task,
 	})
 	if err != nil {
 		return err

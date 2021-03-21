@@ -106,6 +106,26 @@ func (st *branchStat) Status() TaskStatus {
 	return TaskDone
 }
 
+// TaskID is a task id.
+type TaskID [2]int
+
+// String returns string representation of a task id.
+func (id TaskID) String() string {
+	return strconv.Itoa(id[0]) + "-" + strconv.Itoa(id[1])
+}
+
+// IsValid checks the TaskID is valid.
+func (id TaskID) IsValid() bool {
+	if id[0] < 1 {
+		// 0 is invalid with sqlite
+		return false
+	}
+	if id[1] < 0 {
+		return false
+	}
+	return true
+}
+
 // Task has a command and/or subtasks that will be run by workers.
 //
 // Task having subtasks are called Branch.
@@ -113,6 +133,9 @@ func (st *branchStat) Status() TaskStatus {
 // Leaf not having commands are valid, but barely useful.
 // A Task is either a Branch or a Leaf. It cannot be both at same time.
 type Task struct {
+	// ID is an id of the task.
+	ID TaskID
+
 	// Job is a job the task is belong to.
 	Job *Job
 
@@ -126,10 +149,6 @@ type Task struct {
 	// next is the next task for walking a job's tasks.
 	// When it is nil, the task is last task of the job.
 	next *Task
-
-	// num is internal order of the leaf task in a job.
-	// Only leaf task has value in num.
-	num int
 
 	// Title is human readable title for task.
 	// Empty Title is allowed.
@@ -190,37 +209,28 @@ type Task struct {
 	Assignee string
 }
 
-// ID is a Task identifier make it distinct from all other tasks.
-func (t *Task) ID() string {
-	return ToTaskID(t.Job.order, t.num)
-}
-
-// Order is the task's job order.
-func (t *Task) Order() int {
-	return t.Job.order
-}
-
-// FromTaskID splits a task id string into job ID and task number.
+// TaskIDFromString splits a task id string into job ID and task number.
 // If the given string isn't valid, it will return an error as a third argument.
-func FromTaskID(id string) (int, int, error) {
+func TaskIDFromString(id string) (TaskID, error) {
 	toks := strings.Split(id, "-")
 	if len(toks) != 2 {
-		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+		return TaskID{-1, -1}, fmt.Errorf("invalid task id: %v", id)
 	}
-	jid, err := strconv.Atoi(toks[0])
+	ord, err := strconv.Atoi(toks[0])
 	if err != nil {
-		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+		return TaskID{-1, -1}, fmt.Errorf("invalid task id: %v", id)
 	}
-	tnum, err := strconv.Atoi(toks[1])
+	if ord < 0 {
+		return TaskID{-1, -1}, fmt.Errorf("invalid task id: %v", id)
+	}
+	num, err := strconv.Atoi(toks[1])
 	if err != nil {
-		return -1, -1, fmt.Errorf("invalid task id: %v", toks)
+		return TaskID{-1, -1}, fmt.Errorf("invalid task id: %v", id)
 	}
-	return jid, tnum, nil
-}
-
-// ToTaskID returns the tasks's id in the form of {ord}-{tasknum}.
-func ToTaskID(ord int, tasknum int) string {
-	return strconv.Itoa(ord) + "-" + strconv.Itoa(tasknum)
+	if num < 0 {
+		return TaskID{-1, -1}, fmt.Errorf("invalid task id: %v", id)
+	}
+	return TaskID{ord, num}, nil
 }
 
 // Commands are commands that are garuanteed to be run from a worker.
@@ -265,7 +275,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 		Commands       Commands
 	}{
 		Title:          t.Title,
-		ID:             t.ID(),
+		ID:             t.ID.String(),
 		Status:         t.Status().String(),
 		Priority:       t.Priority,
 		Subtasks:       t.Subtasks,
@@ -278,8 +288,7 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 // ToSQL converts a Task into a SQLTask.
 func (t *Task) ToSQL() *SQLTask {
 	s := &SQLTask{
-		Order:          t.Job.order,
-		Num:            t.num,
+		ID:             t.ID,
 		Title:          t.Title,
 		Status:         t.status,
 		SerialSubtasks: t.SerialSubtasks,
@@ -287,14 +296,14 @@ func (t *Task) ToSQL() *SQLTask {
 	}
 	s.ParentNum = -1
 	if t.parent != nil {
-		s.ParentNum = t.parent.num
+		s.ParentNum = t.parent.ID[1]
 	}
 	return s
 }
 
 // FromSQL converts a SQLTask into a Task.
 func (t *Task) FromSQL(st *SQLTask) {
-	t.num = st.Num
+	t.ID = st.ID
 	t.Title = st.Title
 	t.status = st.Status
 	t.SerialSubtasks = st.SerialSubtasks
@@ -468,8 +477,7 @@ func (t *Task) CalcPriority() int {
 }
 
 func (t *Task) Update(u TaskUpdater) error {
-	u.Order = t.Job.order
-	u.Num = t.num
+	u.ID = t.ID
 	err := t.update(u)
 	if err != nil {
 		return err

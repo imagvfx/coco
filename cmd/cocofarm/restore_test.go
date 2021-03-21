@@ -69,7 +69,9 @@ func newJob() *coco.Job {
 
 func TestCocoRestoreJobManager(t *testing.T) {
 	test := func(i int) {
-		db, err := sqlite.Create(t.TempDir() + fmt.Sprintf("/test_%v.db", i))
+		dbpath := t.TempDir() + fmt.Sprintf("/test_%v.db", i)
+		// fmt.Println(dbpath)
+		db, err := sqlite.Create(dbpath)
 		if err != nil {
 			t.Fatalf("cannot create db: %v", err)
 		}
@@ -88,30 +90,34 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		worker := "localhost:0000"
 		w := coco.NewWorker(worker)
 		err = workerman.Add(w)
+		if err != nil {
+			t.Fatal(err)
+		}
 		n := 0
 		for n <= i {
 			popt := jobman.PopTask([]string{"*"})
 			if popt == nil {
 				t.Fatal("should get a task")
 			}
-			err := farm.Assign(worker, popt.ID())
+			err := farm.Assign(worker, popt.ID)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if n < i {
-				err := farm.Done(worker, popt.ID())
+				err := farm.Done(worker, popt.ID)
 				if err != nil {
 					t.Fatal(err)
 				}
 			} else {
 				// n == i
-				err := farm.Failed(worker, popt.ID())
+				err := farm.Failed(worker, popt.ID)
 				if err != nil {
 					t.Fatal(err)
 				}
 			}
 			n++
 		}
+		// time.Sleep(time.Hour)
 		f, err := coco.NewFarm(services, nil)
 		if err != nil {
 			t.Fatalf("restore: %v", err)

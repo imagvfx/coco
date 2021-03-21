@@ -16,8 +16,8 @@ func ShouldEqualJob(got, want *Job) error {
 	if want == nil {
 		return fmt.Errorf("only want is nil")
 	}
-	if got.order != want.order {
-		return fmt.Errorf("order: got %v, want %v", got.order, want.order)
+	if got.ID != want.ID {
+		return fmt.Errorf("ID: got %v, want %v", got.ID, want.ID)
 	}
 	if got.Target != want.Target {
 		return fmt.Errorf("Target: got %v, want %v", got.Target, want.Target)
@@ -56,16 +56,13 @@ func ShouldEqualTask(got, want *Task) error {
 	if want == nil {
 		return fmt.Errorf("only want is nil")
 	}
-	if got.Job.order != want.Job.order {
-		return fmt.Errorf("job: got %v, want %v", got.Job.order, want.Job.order)
-	}
-	if got.num != want.num {
-		return fmt.Errorf("num: got %v, want %v", got.num, want.num)
+	if got.ID != want.ID {
+		return fmt.Errorf("ID: got %v, want %v", got.ID, want.ID)
 	}
 	if !(got.parent == nil && want.parent == nil) {
 		if got.parent != nil && want.parent != nil {
-			if got.parent.num != want.parent.num {
-				return fmt.Errorf("parent: got %v, want %v", got.parent.num, want.parent.num)
+			if got.parent.ID != want.parent.ID {
+				return fmt.Errorf("parent: got %v, want %v", got.parent.ID, want.parent.ID)
 			}
 		} else if got.parent == nil {
 			return fmt.Errorf("only got.parent is nil")

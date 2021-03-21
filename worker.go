@@ -32,8 +32,8 @@ type Worker struct {
 	status WorkerStatus
 
 	// task directs a task the worker is currently working.
-	// The worker is in idle when it is empty string.
-	task string
+	// It is {-1, -1} if the worker is in idle.
+	task TaskID
 
 	group *WorkerGroup
 
@@ -176,7 +176,7 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 	if !ok {
 		return fmt.Errorf("worker not found: %v", workerAddr)
 	}
-	if w.task != "" {
+	if w.task.IsValid() {
 		// TODO: how to cancel the task?
 	}
 	olds := w.status
@@ -185,7 +185,7 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 	}
 	err := w.Update(WorkerUpdater{
 		Status: ptrWorkerStatus(WorkerNotFound),
-		Task:   ptrString(""),
+		Task:   &w.task,
 	})
 	if err != nil {
 		return err
@@ -212,7 +212,7 @@ func (m *WorkerManager) Ready(w *Worker) error {
 	}
 	err := w.Update(WorkerUpdater{
 		Status: ptrWorkerStatus(WorkerReady),
-		Task:   ptrString(""),
+		Task:   &TaskID{-1, -1},
 	})
 	if err != nil {
 		return err
@@ -261,12 +261,13 @@ func (m *WorkerManager) Push(w *Worker) {
 }
 
 // SendPing sends a ping to a worker.
-// The worker will let us know the task the worker is currently working on.
+// The worker will let us know the task id the worker is currently working on.
+// It returns a pointer of the task id. Or returns nil if the worker is currently in idle.
 // It will return an error if the communication is failed.
-func (m *WorkerManager) SendPing(w *Worker) (string, error) {
+func (m *WorkerManager) SendPing(w *Worker) (TaskID, error) {
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
-		return "", err
+		return TaskID{-1, -1}, err
 	}
 	defer conn.Close()
 
@@ -275,9 +276,13 @@ func (m *WorkerManager) SendPing(w *Worker) (string, error) {
 	defer cancel()
 	resp, err := c.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
-		return "", err
+		return TaskID{-1, -1}, err
 	}
-	return resp.TaskId, err
+	tid, err := TaskIDFromString(resp.TaskId)
+	if err != nil {
+		return TaskID{-1, -1}, err
+	}
+	return tid, nil
 }
 
 func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
@@ -292,7 +297,7 @@ func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
 	defer cancel()
 
 	req := &pb.RunRequest{}
-	req.Id = t.ID()
+	req.Id = t.ID.String()
 	for _, c := range t.Commands {
 		reqCmd := &pb.Command{
 			Args: c,
@@ -308,7 +313,7 @@ func (m *WorkerManager) SendTask(w *Worker, t *Task) error {
 }
 
 func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
-	log.Printf("cancel: %v %v", w.addr, t.ID())
+	log.Printf("cancel: %v %v", w.addr, t.ID)
 	conn, err := grpc.Dial(w.addr, grpc.WithInsecure(), grpc.WithTimeout(time.Second))
 	if err != nil {
 		return err
@@ -320,7 +325,7 @@ func (m *WorkerManager) SendCancelTask(w *Worker, t *Task) (err error) {
 	defer cancel()
 
 	req := &pb.CancelRequest{}
-	req.Id = t.ID()
+	req.Id = t.ID.String()
 
 	_, err = c.Cancel(ctx, req)
 	if err != nil {

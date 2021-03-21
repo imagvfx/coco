@@ -34,7 +34,12 @@ func (h *apiHandler) handleOrder(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")
-	err := h.jobman.Cancel(id)
+	jid, err := coco.JobIDFromString(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Cancel(jid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -44,7 +49,12 @@ func (h *apiHandler) handleCancel(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")
-	err := h.jobman.Retry(id)
+	jid, err := coco.JobIDFromString(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Retry(jid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -54,7 +64,12 @@ func (h *apiHandler) handleRetry(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")
-	err := h.jobman.Delete(id)
+	jid, err := coco.JobIDFromString(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = h.jobman.Delete(jid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -64,7 +79,12 @@ func (h *apiHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	id := r.Form.Get("id")
-	j, err := h.jobman.Get(id)
+	jid, err := coco.JobIDFromString(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	j, err := h.jobman.Get(jid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

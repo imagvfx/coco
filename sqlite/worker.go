@@ -15,7 +15,8 @@ func CreateWorkersTable(tx *sql.Tx) error {
 		CREATE TABLE IF NOT EXISTS workers (
 			addr TEXT PRIMARY KEY,
 			status INT NOT NULL,
-			task TEXT NOT NULL
+			job INT NOT NULL,
+			task INT NOT NULL
 		);
 	`)
 	return err
@@ -52,13 +53,15 @@ func addWorker(tx *sql.Tx, w *coco.SQLWorker) error {
 		INSERT INTO workers (
 			addr,
 			status,
+			job,
 			task
 		)
-		VALUES (?, ?, ?)
+		VALUES (?, ?, ?, ?)
 	`,
 		w.Addr,
 		w.Status,
-		w.Task,
+		w.Task[0],
+		w.Task[1],
 	)
 	return err
 }
@@ -98,6 +101,7 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 		SELECT
 			addr,
 			status,
+			job,
 			task
 		FROM workers
 		`+where+`
@@ -116,7 +120,8 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 		err := rows.Scan(
 			&w.Addr,
 			&w.Status,
-			&w.Task,
+			&w.Task[0],
+			&w.Task[1],
 		)
 		if err != nil {
 			return nil, err
@@ -151,8 +156,10 @@ func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
 		vals = append(vals, w.Status)
 	}
 	if w.Task != nil {
+		keys = append(keys, "job = ?")
+		vals = append(vals, (*w.Task)[0])
 		keys = append(keys, "task = ?")
-		vals = append(vals, w.Task)
+		vals = append(vals, (*w.Task)[1])
 	}
 	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")

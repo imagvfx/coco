@@ -33,16 +33,11 @@ func NewFarm(services Services, wgrps []*WorkerGroup) (*Farm, error) {
 	return f, nil
 }
 
-func (f *Farm) Assign(worker, task string) error {
-	ord, num, err := FromTaskID(task)
-	if err != nil {
-		return err
-	}
+func (f *Farm) Assign(worker string, task TaskID) error {
 	tRunning := TaskRunning
 	wRunning := WorkerRunning
-	err = f.updateAssign(AssignUpdater{
-		Order:        ord,
-		TaskNum:      num,
+	err := f.updateAssign(AssignUpdater{
+		Task:         task,
 		TaskStatus:   &tRunning,
 		TaskAssignee: &worker,
 		Worker:       worker,
@@ -55,8 +50,7 @@ func (f *Farm) Assign(worker, task string) error {
 }
 
 func (f *Farm) updateAssign(a AssignUpdater) error {
-	task := ToTaskID(a.Order, a.TaskNum)
-	t, err := f.jobman.GetTask(task)
+	t, err := f.jobman.GetTask(a.Task)
 	if err != nil {
 		return err
 	}
@@ -75,7 +69,7 @@ func (f *Farm) updateAssign(a AssignUpdater) error {
 	if a.TaskRetry != nil {
 		t.retry = *a.TaskRetry
 	}
-	w.task = task
+	w.task = a.Task
 	if a.WorkerStatus != nil {
 		w.status = *a.WorkerStatus
 	}
@@ -100,7 +94,7 @@ func (f *Farm) RefreshWorkers() {
 		tid, err := f.workerman.SendPing(w)
 		if err != nil {
 			log.Print(err)
-			if w.task != "" {
+			if w.task.IsValid() {
 				t, err := f.jobman.GetTask(w.task)
 				if err != nil {
 					log.Print(err)
@@ -116,43 +110,47 @@ func (f *Farm) RefreshWorkers() {
 			}
 			err := w.Update(WorkerUpdater{
 				Status: ptrWorkerStatus(WorkerNotFound),
-				Task:   ptrString(""),
+				Task:   &w.task,
 			})
 			if err != nil {
 				log.Print(err)
 			}
 			return
 		}
-		if tid != w.task {
-			if w.task != "" {
-				log.Printf("worker is not running on expected task: %v", w.task)
-				t, err := f.jobman.GetTask(w.task)
-				if err != nil {
-					log.Print(err)
-					return
-				}
-				err = t.Update(TaskUpdater{
-					Status:   ptrTaskStatus(TaskFailed),
-					Assignee: ptrString(""),
-				})
-				if err != nil {
-					log.Printf("couldn't update task: %v", w.task)
-				}
+		if !tid.IsValid() && !w.task.IsValid() {
+			// invalid task id indicates that there isn't a task running.
+			return
+		}
+		if tid == w.task {
+			return
+		}
+		if w.task.IsValid() {
+			log.Printf("worker is not running on expected task: %v", w.task)
+			t, err := f.jobman.GetTask(w.task)
+			if err != nil {
+				log.Print(err)
+				return
 			}
-			if tid != "" {
-				log.Printf("worker is running on unexpected task: %v", w.task)
-				t, err := f.jobman.GetTask(tid)
-				if err != nil {
-					log.Print(err)
-					return
-				}
-				if t.Assignee != w.addr {
-					f.jobman.CancelTaskCh <- t
-				}
-				// TODO: What should we do to the task?
+			err = t.Update(TaskUpdater{
+				Status:   ptrTaskStatus(TaskFailed),
+				Assignee: ptrString(""),
+			})
+			if err != nil {
+				log.Printf("couldn't update task: %v", w.task)
 			}
 		}
-
+		if tid.IsValid() {
+			log.Printf("worker is running on unexpected task: %v", tid)
+			t, err := f.jobman.GetTask(tid)
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			if t.Assignee != w.addr {
+				f.jobman.CancelTaskCh <- t
+			}
+			// TODO: What should we do to the task?
+		}
 	}
 	f.workerman.Lock()
 	defer f.workerman.Unlock()
@@ -187,7 +185,7 @@ func (f *Farm) Bye(addr string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	if w.task != "" {
+	if w.task.IsValid() {
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
 		t, err := f.jobman.GetTask(w.task)
@@ -198,8 +196,7 @@ func (f *Farm) Bye(addr string) error {
 		j.Lock()
 		defer j.Unlock()
 		err = f.updateAssign(AssignUpdater{
-			Order:        j.order,
-			TaskNum:      t.num,
+			Task:         t.ID,
 			TaskStatus:   ptrTaskStatus(TaskFailed),
 			TaskAssignee: ptrString(""),
 			Worker:       addr,
@@ -214,7 +211,7 @@ func (f *Farm) Bye(addr string) error {
 }
 
 // Done indicates the worker finished the requested task.
-func (f *Farm) Done(addr, task string) error {
+func (f *Farm) Done(addr string, task TaskID) error {
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
 	t, err := f.jobman.GetTask(task)
@@ -235,8 +232,7 @@ func (f *Farm) Done(addr, task string) error {
 		return fmt.Errorf("unmatched task and worker information: %v.Assignee=%v, %v.task=%v", task, t.Assignee, addr, w.task)
 	}
 	err = f.updateAssign(AssignUpdater{
-		Order:        t.Job.order,
-		TaskNum:      t.num,
+		Task:         t.ID,
 		TaskStatus:   ptrTaskStatus(TaskDone),
 		TaskAssignee: ptrString(""),
 		Worker:       addr,
@@ -251,7 +247,7 @@ func (f *Farm) Done(addr, task string) error {
 }
 
 // Failed indicates the worker failed to finish the requested task.
-func (f *Farm) Failed(addr, task string) error {
+func (f *Farm) Failed(addr string, task TaskID) error {
 	f.jobman.Lock()
 	defer f.jobman.Unlock()
 	t, err := f.jobman.GetTask(task)
@@ -278,8 +274,7 @@ func (f *Farm) Failed(addr, task string) error {
 		ts = TaskWaiting
 	}
 	err = f.updateAssign(AssignUpdater{
-		Order:        t.Job.order,
-		TaskNum:      t.num,
+		Task:         t.ID,
 		TaskStatus:   &ts,
 		TaskRetry:    &t.retry,
 		TaskAssignee: ptrString(""),
@@ -297,7 +292,7 @@ func (f *Farm) Failed(addr, task string) error {
 	return nil
 }
 
-func (f *Farm) match(worker, task string) error {
+func (f *Farm) match(worker string, task TaskID) error {
 	w := f.workerman.FindByAddr(worker)
 	if w == nil {
 		return fmt.Errorf("worker not found: %v", worker)
@@ -353,7 +348,7 @@ func (f *Farm) Matching() {
 		if w == nil {
 			panic("at least one worker should be able to serve this tag")
 		}
-		err := f.match(w.addr, t.ID())
+		err := f.match(w.addr, t.ID)
 		if err != nil {
 			log.Print(err)
 			f.jobman.PushTask(t)
@@ -366,7 +361,7 @@ func (f *Farm) Matching() {
 	}
 }
 
-func (f *Farm) cancel(worker, task string) error {
+func (f *Farm) cancel(worker string, task TaskID) error {
 	w := f.workerman.FindByAddr(worker)
 	if w == nil {
 		return fmt.Errorf("worker not found: %v", worker)
@@ -380,8 +375,7 @@ func (f *Farm) cancel(worker, task string) error {
 		return err
 	}
 	err = f.updateAssign(AssignUpdater{
-		Order:        t.Job.order,
-		TaskNum:      t.num,
+		Task:         t.ID,
 		TaskStatus:   ptrTaskStatus(TaskFailed),
 		TaskAssignee: ptrString(""),
 		Worker:       w.addr,
@@ -398,14 +392,14 @@ func (f *Farm) Canceling() {
 		t := <-f.jobman.CancelTaskCh
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
-		t, err := f.jobman.GetTask(t.ID())
+		t, err := f.jobman.GetTask(t.ID)
 		if err != nil {
 			log.Printf("failed to cancel task: %v", err)
 			return
 		}
 		f.workerman.Lock()
 		defer f.workerman.Unlock()
-		err = f.cancel(t.ID(), t.Assignee)
+		err = f.cancel(t.Assignee, t.ID)
 		if err != nil {
 			log.Print(err)
 		}

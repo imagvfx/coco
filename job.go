@@ -9,15 +9,21 @@ import (
 	"sync"
 )
 
+// JobID is a job id.
+type JobID int
+
+// String returns string representation of the job id.
+func (id JobID) String() string {
+	return strconv.Itoa(int(id))
+}
+
 // Job is a job, user sended to server to run them in a farm.
 type Job struct {
 	// Job is a Task. Please also check Task.
 	*Task
 
-	// order is the order number of the job.
-	// It has a same value with ID but of int type.
-	// Think ID is external type, order is internal type of Job.
-	order int
+	// ID is an id of the job.
+	ID JobID
 
 	// Target defines which worker groups should work for the job.
 	// A target can be served by multiple worker groups.
@@ -50,24 +56,17 @@ type Job struct {
 	CurrentPriority int
 }
 
-// ID returns the job's order number as a string.
-func (j *Job) ID() string {
-	return ToJobID(j.order)
-}
-
-// FromJobID returns the job's order number which is basically an id but of type int.
-// It will return an error as a second argument if the id string cannot be converted to int.
-func FromJobID(id string) (int, error) {
+// JobIDFromString creates a JobID from given string.
+func JobIDFromString(id string) (JobID, error) {
 	ord, err := strconv.Atoi(id)
 	if err != nil {
-		return -1, fmt.Errorf("invalid job id: %v", id)
+		return JobID(-1), fmt.Errorf("invalid job id: %v", err)
 	}
-	return ord, nil
-}
-
-// ToJobID returns the job's id which is order number but of type string.
-func ToJobID(ord int) string {
-	return strconv.Itoa(ord)
+	if ord < 1 {
+		// sqlite's autoincrement id starts from 1.
+		return JobID(-1), fmt.Errorf("invalid job id: %v", err)
+	}
+	return JobID(ord), nil
 }
 
 // Validate validates a raw Job that is sended from user.
@@ -96,7 +95,10 @@ func (j *Job) Init(js JobService) *Job {
 // initJobTasks inits a job's tasks recursively before it is added to jobManager.
 // No need to hold the lock.
 func initJobTasks(t *Task, j *Job, parent *Task, nth, i int, tasks []*Task) (int, []*Task) {
-	t.num = len(tasks)
+	// If this is not a restoration, we don't know the job ID yet.
+	// For the case it should be handled outside of init process.
+	t.ID[0] = int(j.ID)
+	t.ID[1] = len(tasks)
 	tasks = append(tasks, t)
 	if t.Title == "" {
 		t.Title = "untitled"
@@ -132,7 +134,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 		Subtasks        []*Task
 		SerialSubtasks  bool
 	}{
-		ID:              j.ID(),
+		ID:              j.ID.String(),
 		Status:          j.Status().String(),
 		Title:           j.Title,
 		Priority:        j.Priority,
@@ -146,7 +148,7 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 // ToSQL converts a Job into a SQLJob.
 func (j *Job) ToSQL() *SQLJob {
 	s := &SQLJob{
-		Order:     j.order,
+		ID:        j.ID,
 		Target:    j.Target,
 		AutoRetry: j.AutoRetry,
 		Tasks:     make([]*SQLTask, len(j.tasks)),
@@ -159,7 +161,7 @@ func (j *Job) ToSQL() *SQLJob {
 
 // FromSQL converts a SQLJob into a Job.
 func (j *Job) FromSQL(sj *SQLJob) {
-	j.order = sj.Order
+	j.ID = sj.ID
 	j.Target = sj.Target
 	j.AutoRetry = sj.AutoRetry
 	j.tasks = make([]*Task, len(sj.Tasks))
@@ -187,7 +189,7 @@ type JobManager struct {
 	JobService JobService
 
 	// job is a map of an order to the job.
-	job map[int]*Job
+	job map[JobID]*Job
 
 	// jobs is a job heap for PopTask.
 	// Delete a job doesn't delete the job in this heap,
@@ -209,7 +211,7 @@ func popCompare(i, j interface{}) bool {
 	if iv.CurrentPriority < jv.CurrentPriority {
 		return false
 	}
-	return iv.order < jv.order
+	return iv.ID < jv.ID
 
 }
 
@@ -218,7 +220,7 @@ func popCompare(i, j interface{}) bool {
 func NewJobManager(js JobService) (*JobManager, error) {
 	m := &JobManager{}
 	m.JobService = js
-	m.job = make(map[int]*Job)
+	m.job = make(map[JobID]*Job)
 	m.jobs = newUniqueHeap(popCompare)
 	m.CancelTaskCh = make(chan *Task)
 	err := m.restore()
@@ -250,61 +252,59 @@ func (m *JobManager) restore() error {
 			}
 		}
 		j.restorePopIdx()
-		m.job[j.order] = j
+		m.job[j.ID] = j
 		heap.Push(m.jobs, j)
 	}
 	return nil
 }
 
 // Get gets a job with a job id.
-func (m *JobManager) Get(id string) (*Job, error) {
-	ord, err := FromJobID(id)
-	if err != nil {
-		return nil, err
-	}
-	j, ok := m.job[ord]
+func (m *JobManager) Get(id JobID) (*Job, error) {
+	j, ok := m.job[id]
 	if !ok {
-		return nil, fmt.Errorf("job not exists: %v", ord)
+		return nil, fmt.Errorf("job not exists: %v", id)
 	}
 	return j, nil
 }
 
 // GetTask gets a task with a task id.
-func (m *JobManager) GetTask(id string) (*Task, error) {
-	ord, n, err := FromTaskID(id)
-	if err != nil {
-		return nil, err
-	}
-	j, ok := m.job[ord]
+func (m *JobManager) GetTask(id TaskID) (*Task, error) {
+	ord := id[0]
+	j, ok := m.job[JobID(ord)]
 	if !ok {
 		return nil, fmt.Errorf("job not exists: %v", id)
 	}
-	if n < 0 || n >= len(j.tasks) {
+	num := id[1]
+	if num < 0 || num >= len(j.tasks) {
 		return nil, fmt.Errorf("task not exists: %v", id)
 	}
-	return j.tasks[n], nil
+	return j.tasks[num], nil
 }
 
 // Add adds a job to the manager and return it's ID.
-func (m *JobManager) Add(j *Job) (string, error) {
+func (m *JobManager) Add(j *Job) (JobID, error) {
 	if j == nil {
-		return "", fmt.Errorf("nil job cannot be added")
+		return JobID(-1), fmt.Errorf("nil job cannot be added")
 	}
 	err := j.Validate()
 	if err != nil {
-		return "", err
+		return JobID(-1), err
 	}
 	j.Init(m.JobService)
 
-	j.order, err = m.JobService.AddJob(j.ToSQL())
+	id, err := m.JobService.AddJob(j.ToSQL())
 	if err != nil {
-		return "", err
+		return JobID(-1), err
+	}
+	j.ID = id
+	for _, t := range j.tasks {
+		t.ID[0] = int(j.ID)
 	}
 
-	m.job[j.order] = j
+	m.job[j.ID] = j
 	heap.Push(m.jobs, j)
 
-	return j.ID(), nil
+	return j.ID, nil
 }
 
 // Jobs searches jobs with a job filter.
@@ -325,7 +325,7 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 		}
 	}
 	sort.Slice(jobs, func(i, j int) bool {
-		return jobs[i].order < jobs[j].order
+		return jobs[i].ID < jobs[j].ID
 	})
 	return jobs
 }
@@ -333,12 +333,8 @@ func (m *JobManager) Jobs(filter JobFilter) []*Job {
 // Cancel cancels a job.
 // Both running and waiting tasks of the job will be marked as failed,
 // and commands executing from running tasks will be canceled right away.
-func (m *JobManager) Cancel(id string) error {
-	ord, err := FromJobID(id)
-	if err != nil {
-		return err
-	}
-	j, ok := m.job[ord]
+func (m *JobManager) Cancel(id JobID) error {
+	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
@@ -374,12 +370,8 @@ func (m *JobManager) Cancel(id string) error {
 
 // Retry resets all tasks of the job's retry count to 0,
 // then retries all of the failed tasks,
-func (m *JobManager) Retry(id string) error {
-	ord, err := FromJobID(id)
-	if err != nil {
-		return err
-	}
-	j, ok := m.job[ord]
+func (m *JobManager) Retry(id JobID) error {
+	j, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
@@ -405,16 +397,12 @@ func (m *JobManager) Retry(id string) error {
 }
 
 // Delete deletes a job irrecoverably.
-func (m *JobManager) Delete(id string) error {
-	ord, err := FromJobID(id)
-	if err != nil {
-		return err
-	}
-	_, ok := m.job[ord]
+func (m *JobManager) Delete(id JobID) error {
+	_, ok := m.job[id]
 	if !ok {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
-	delete(m.job, ord)
+	delete(m.job, id)
 	return nil
 }
 
@@ -429,7 +417,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		_, ok := m.job[j.order]
+		_, ok := m.job[j.ID]
 		if !ok {
 			// the job deleted
 			continue

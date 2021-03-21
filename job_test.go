@@ -116,7 +116,7 @@ func TestWalkLeafTask(t *testing.T) {
 
 func TestWalkFrom(t *testing.T) {
 	got := []string{}
-	n := job.Subtasks[0].Subtasks[1].num
+	n := job.Subtasks[0].Subtasks[1].ID[1]
 	for _, t := range job.tasks[n:] {
 		got = append(got, t.Title)
 	}
@@ -297,7 +297,7 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 
 // sprintJob only print partial fields of the Job that is meaningful for comparing two jobs.
 func sprintJob(j *Job) string {
-	jstr := fmt.Sprintf("Job order=%v, CurrentPriority=%v\n", j.order, j.CurrentPriority)
+	jstr := fmt.Sprintf("Job ID=%v, CurrentPriority=%v\n", j.ID, j.CurrentPriority)
 	tstr := sprintTask(j.Task, 1)
 	return jstr + tstr
 }

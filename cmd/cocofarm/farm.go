@@ -67,7 +67,12 @@ func (f *farmServer) Bye(ctx context.Context, in *pb.ByeRequest) (*pb.ByeRespons
 // It indicates the caller finished the requested task.
 func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResponse, error) {
 	log.Printf("done: %v %v", in.Addr, in.TaskId)
-	err := f.farm.Done(in.Addr, in.TaskId)
+	tid, err := coco.TaskIDFromString(in.TaskId)
+	if err != nil {
+		log.Print(err)
+		return &pb.DoneResponse{}, nil
+	}
+	err = f.farm.Done(in.Addr, tid)
 	if err != nil {
 		// It's internal error. Don't send the error to the worker.
 		log.Printf("worker message didn't handled well: %v done: %v", in.Addr, err)
@@ -79,7 +84,12 @@ func (f *farmServer) Done(ctx context.Context, in *pb.DoneRequest) (*pb.DoneResp
 // It indicates the caller finished the requested task.
 func (f *farmServer) Failed(ctx context.Context, in *pb.FailedRequest) (*pb.FailedResponse, error) {
 	log.Printf("failed: %v %v", in.Addr, in.TaskId)
-	err := f.farm.Failed(in.Addr, in.TaskId)
+	tid, err := coco.TaskIDFromString(in.TaskId)
+	if err != nil {
+		log.Print(err)
+		return &pb.FailedResponse{}, nil
+	}
+	err = f.farm.Failed(in.Addr, tid)
 	if err != nil {
 		// It's internal error. Don't send the error to the worker.
 		log.Printf("worker message didn't handled well: %v failed: %v", in.Addr, err)
