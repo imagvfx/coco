@@ -34,19 +34,15 @@ func NewFarm(services Services, wgrps []*WorkerGroup) (*Farm, error) {
 }
 
 func (f *Farm) Assign(worker, task string) error {
-	t, err := f.jobman.GetTask(task)
+	ord, num, err := FromTaskID(task)
 	if err != nil {
 		return err
-	}
-	w := f.workerman.FindByAddr(worker)
-	if w == nil {
-		return fmt.Errorf("worker not found: %v", worker)
 	}
 	tRunning := TaskRunning
 	wRunning := WorkerRunning
 	err = f.updateAssign(AssignUpdater{
-		Order:        t.Job.order,
-		TaskNum:      t.num,
+		Order:        ord,
+		TaskNum:      num,
 		TaskStatus:   &tRunning,
 		TaskAssignee: &worker,
 		Worker:       worker,
