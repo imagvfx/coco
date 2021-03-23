@@ -187,7 +187,8 @@ func TestTaskPop(t *testing.T) {
 				got = append(got, "") // make the blocking point visible
 				for _, pt := range popTasks {
 					err := pt.Update(TaskUpdater{
-						Status: ptrTaskStatus(TaskDone),
+						UpdateStatus: true,
+						Status:       TaskDone,
 					})
 					if err != nil {
 						t.Fatal(err)

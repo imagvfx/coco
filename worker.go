@@ -68,11 +68,11 @@ func (w *Worker) Update(u WorkerUpdater) error {
 	if err != nil {
 		return err
 	}
-	if u.Status != nil {
-		w.status = *u.Status
+	if u.UpdateStatus {
+		w.status = u.Status
 	}
-	if u.Task != nil {
-		w.task = *u.Task
+	if u.UpdateTask {
+		w.task = u.Task
 	}
 	return nil
 }
@@ -184,8 +184,10 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 		return fmt.Errorf("worker already logged off: %v", workerAddr)
 	}
 	err := w.Update(WorkerUpdater{
-		Status: ptrWorkerStatus(WorkerNotFound),
-		Task:   &w.task,
+		UpdateStatus: true,
+		Status:       WorkerNotFound,
+		UpdateTask:   true,
+		Task:         w.task,
 	})
 	if err != nil {
 		return err
@@ -211,8 +213,10 @@ func (m *WorkerManager) Ready(w *Worker) error {
 		return fmt.Errorf("nil worker")
 	}
 	err := w.Update(WorkerUpdater{
-		Status: ptrWorkerStatus(WorkerReady),
-		Task:   &TaskID{-1, -1},
+		UpdateStatus: true,
+		Status:       WorkerReady,
+		UpdateTask:   true,
+		Task:         TaskID{-1, -1},
 	})
 	if err != nil {
 		return err

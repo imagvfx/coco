@@ -482,11 +482,11 @@ func (t *Task) Update(u TaskUpdater) error {
 	if err != nil {
 		return err
 	}
-	if u.Status != nil {
-		t.setStatus(*u.Status)
+	if u.UpdateStatus {
+		t.setStatus(u.Status)
 	}
-	if u.Assignee != nil {
-		t.Assignee = *(u.Assignee)
+	if u.UpdateAssignee {
+		t.Assignee = u.Assignee
 	}
 	return nil
 }

@@ -11,12 +11,17 @@ type FarmService interface {
 }
 
 type AssignUpdater struct {
-	Task         TaskID
-	TaskStatus   *TaskStatus
-	TaskRetry    *int
-	TaskAssignee *string
-	Worker       string
-	WorkerStatus *WorkerStatus
+	Task               TaskID
+	UpdateTaskStatus   bool
+	TaskStatus         TaskStatus
+	UpdateTaskRetry    bool
+	TaskRetry          int
+	UpdateTaskAssignee bool
+	TaskAssignee       string
+
+	Worker             string
+	UpdateWorkerStatus bool
+	WorkerStatus       WorkerStatus
 }
 
 // JobService is an interface which let us use sqlite.JobService.
@@ -72,11 +77,13 @@ type JobFilter struct {
 
 // TaskUpdater has information for updating a task.
 type TaskUpdater struct {
-	ID     TaskID
-	Status *TaskStatus
-	// Assingee information actually stored to workers table.
-	Assignee *string
-	Retry    *int
+	ID             TaskID
+	UpdateStatus   bool
+	Status         TaskStatus
+	UpdateAssignee bool
+	Assignee       string
+	UpdateRetry    bool
+	Retry          int
 }
 
 // WorkerService is an interface which let us use sqlite.WorkerService.
@@ -119,7 +126,9 @@ type WorkerFilter struct {
 
 // WorkerUpdater has information for updating a worker.
 type WorkerUpdater struct {
-	Addr   string
-	Status *WorkerStatus
-	Task   *TaskID
+	Addr         string
+	UpdateStatus bool
+	Status       WorkerStatus
+	UpdateTask   bool
+	Task         TaskID
 }

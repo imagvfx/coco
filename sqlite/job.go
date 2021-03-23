@@ -265,11 +265,11 @@ func (s *JobService) UpdateTask(t coco.TaskUpdater) error {
 func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
 	keys := []string{}
 	vals := []interface{}{}
-	if t.Status != nil {
+	if t.UpdateStatus {
 		keys = append(keys, "status = ?")
 		vals = append(vals, t.Status)
 	}
-	if t.Assignee != nil {
+	if t.UpdateAssignee {
 		keys = append(keys, "assignee = ?")
 		vals = append(vals, t.Assignee)
 	}

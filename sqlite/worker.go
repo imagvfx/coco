@@ -151,15 +151,15 @@ func (s *WorkerService) UpdateWorker(w coco.WorkerUpdater) error {
 func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
 	keys := []string{}
 	vals := []interface{}{}
-	if w.Status != nil {
+	if w.UpdateStatus {
 		keys = append(keys, "status = ?")
 		vals = append(vals, w.Status)
 	}
-	if w.Task != nil {
+	if w.UpdateTask {
 		keys = append(keys, "job = ?")
-		vals = append(vals, (*w.Task)[0])
+		vals = append(vals, w.Task[0])
 		keys = append(keys, "task = ?")
-		vals = append(vals, (*w.Task)[1])
+		vals = append(vals, w.Task[1])
 	}
 	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")

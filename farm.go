@@ -34,14 +34,16 @@ func NewFarm(services Services, wgrps []*WorkerGroup) (*Farm, error) {
 }
 
 func (f *Farm) Assign(worker string, task TaskID) error {
-	tRunning := TaskRunning
-	wRunning := WorkerRunning
 	err := f.updateAssign(AssignUpdater{
-		Task:         task,
-		TaskStatus:   &tRunning,
-		TaskAssignee: &worker,
-		Worker:       worker,
-		WorkerStatus: &wRunning,
+		Task:               task,
+		UpdateTaskStatus:   true,
+		TaskStatus:         TaskRunning,
+		UpdateTaskAssignee: true,
+		TaskAssignee:       worker,
+
+		Worker:             worker,
+		UpdateWorkerStatus: true,
+		WorkerStatus:       WorkerRunning,
 	})
 	if err != nil {
 		return err
@@ -63,15 +65,15 @@ func (f *Farm) updateAssign(a AssignUpdater) error {
 		return err
 	}
 	t.Assignee = a.Worker
-	if a.TaskStatus != nil {
-		t.setStatus(*a.TaskStatus)
+	if a.UpdateTaskStatus {
+		t.setStatus(a.TaskStatus)
 	}
-	if a.TaskRetry != nil {
-		t.retry = *a.TaskRetry
+	if a.UpdateTaskRetry {
+		t.retry = a.TaskRetry
 	}
 	w.task = a.Task
-	if a.WorkerStatus != nil {
-		w.status = *a.WorkerStatus
+	if a.UpdateWorkerStatus {
+		w.status = a.WorkerStatus
 	}
 	return nil
 }
@@ -101,16 +103,20 @@ func (f *Farm) RefreshWorkers() {
 					return
 				}
 				err = t.Update(TaskUpdater{
-					Status:   ptrTaskStatus(TaskFailed),
-					Assignee: ptrString(""),
+					UpdateStatus:   true,
+					Status:         TaskFailed,
+					UpdateAssignee: true,
+					Assignee:       "",
 				})
 				if err != nil {
 					log.Printf("couldn't update task: %v", w.task)
 				}
 			}
 			err := w.Update(WorkerUpdater{
-				Status: ptrWorkerStatus(WorkerNotFound),
-				Task:   &w.task,
+				UpdateStatus: true,
+				Status:       WorkerNotFound,
+				UpdateTask:   true,
+				Task:         w.task,
 			})
 			if err != nil {
 				log.Print(err)
@@ -132,8 +138,10 @@ func (f *Farm) RefreshWorkers() {
 				return
 			}
 			err = t.Update(TaskUpdater{
-				Status:   ptrTaskStatus(TaskFailed),
-				Assignee: ptrString(""),
+				UpdateStatus:   true,
+				Status:         TaskFailed,
+				UpdateAssignee: true,
+				Assignee:       "",
 			})
 			if err != nil {
 				log.Printf("couldn't update task: %v", w.task)
@@ -196,11 +204,15 @@ func (f *Farm) Bye(addr string) error {
 		j.Lock()
 		defer j.Unlock()
 		err = f.updateAssign(AssignUpdater{
-			Task:         t.ID,
-			TaskStatus:   ptrTaskStatus(TaskFailed),
-			TaskAssignee: ptrString(""),
-			Worker:       addr,
-			WorkerStatus: ptrWorkerStatus(WorkerNotFound),
+			Task:               t.ID,
+			UpdateTaskStatus:   true,
+			TaskStatus:         TaskFailed,
+			UpdateTaskAssignee: true,
+			TaskAssignee:       "",
+
+			Worker:             addr,
+			UpdateWorkerStatus: true,
+			WorkerStatus:       WorkerNotFound,
 		})
 		if err != nil {
 			return err
@@ -232,11 +244,15 @@ func (f *Farm) Done(addr string, task TaskID) error {
 		return fmt.Errorf("unmatched task and worker information: %v.Assignee=%v, %v.task=%v", task, t.Assignee, addr, w.task)
 	}
 	err = f.updateAssign(AssignUpdater{
-		Task:         t.ID,
-		TaskStatus:   ptrTaskStatus(TaskDone),
-		TaskAssignee: ptrString(""),
-		Worker:       addr,
-		WorkerStatus: ptrWorkerStatus(WorkerReady),
+		Task:               t.ID,
+		UpdateTaskStatus:   true,
+		TaskStatus:         TaskDone,
+		UpdateTaskAssignee: true,
+		TaskAssignee:       "",
+
+		Worker:             addr,
+		UpdateWorkerStatus: true,
+		WorkerStatus:       WorkerReady,
 	})
 	if err != nil {
 		return err
@@ -274,12 +290,17 @@ func (f *Farm) Failed(addr string, task TaskID) error {
 		ts = TaskWaiting
 	}
 	err = f.updateAssign(AssignUpdater{
-		Task:         t.ID,
-		TaskStatus:   &ts,
-		TaskRetry:    &t.retry,
-		TaskAssignee: ptrString(""),
-		Worker:       addr,
-		WorkerStatus: ptrWorkerStatus(WorkerReady),
+		Task:               t.ID,
+		UpdateTaskStatus:   true,
+		TaskStatus:         ts,
+		UpdateTaskRetry:    true,
+		TaskRetry:          t.retry,
+		UpdateTaskAssignee: true,
+		TaskAssignee:       "",
+
+		Worker:             addr,
+		UpdateWorkerStatus: true,
+		WorkerStatus:       WorkerReady,
 	})
 	if err != nil {
 		return err
@@ -375,11 +396,14 @@ func (f *Farm) cancel(worker string, task TaskID) error {
 		return err
 	}
 	err = f.updateAssign(AssignUpdater{
-		Task:         t.ID,
-		TaskStatus:   ptrTaskStatus(TaskFailed),
-		TaskAssignee: ptrString(""),
-		Worker:       w.addr,
-		WorkerStatus: ptrWorkerStatus(WorkerCooling),
+		Task:               t.ID,
+		UpdateTaskStatus:   true,
+		TaskStatus:         TaskFailed,
+		UpdateTaskAssignee: true,
+		TaskAssignee:       "",
+		Worker:             w.addr,
+		UpdateWorkerStatus: true,
+		WorkerStatus:       WorkerCooling,
 	})
 	if err != nil {
 		return err
