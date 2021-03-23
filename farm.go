@@ -44,6 +44,8 @@ func (f *Farm) Assign(worker string, task TaskID) error {
 		Worker:             worker,
 		UpdateWorkerStatus: true,
 		WorkerStatus:       WorkerRunning,
+		UpdateWorkerTask:   true,
+		WorkerTask:         &task,
 	})
 	if err != nil {
 		return err
@@ -71,9 +73,11 @@ func (f *Farm) updateAssign(a AssignUpdater) error {
 	if a.UpdateTaskRetry {
 		t.retry = a.TaskRetry
 	}
-	w.task = &a.Task
 	if a.UpdateWorkerStatus {
 		w.status = a.WorkerStatus
+	}
+	if a.UpdateWorkerTask {
+		w.task = a.WorkerTask
 	}
 	return nil
 }
@@ -209,6 +213,8 @@ func (f *Farm) Bye(addr string) error {
 			Worker:             addr,
 			UpdateWorkerStatus: true,
 			WorkerStatus:       WorkerNotFound,
+			UpdateWorkerTask:   true,
+			WorkerTask:         nil,
 		})
 		if err != nil {
 			return err
@@ -252,6 +258,8 @@ func (f *Farm) Done(addr string, task TaskID) error {
 		Worker:             addr,
 		UpdateWorkerStatus: true,
 		WorkerStatus:       WorkerReady,
+		UpdateWorkerTask:   true,
+		WorkerTask:         nil,
 	})
 	if err != nil {
 		return err
@@ -303,6 +311,8 @@ func (f *Farm) Failed(addr string, task TaskID) error {
 		Worker:             addr,
 		UpdateWorkerStatus: true,
 		WorkerStatus:       WorkerReady,
+		UpdateWorkerTask:   true,
+		WorkerTask:         nil,
 	})
 	if err != nil {
 		return err
@@ -403,9 +413,12 @@ func (f *Farm) cancel(worker string, task TaskID) error {
 		TaskStatus:         TaskFailed,
 		UpdateTaskAssignee: true,
 		TaskAssignee:       "",
+
 		Worker:             w.addr,
 		UpdateWorkerStatus: true,
 		WorkerStatus:       WorkerCooling,
+		UpdateWorkerTask:   true,
+		WorkerTask:         nil,
 	})
 	if err != nil {
 		return err

@@ -50,8 +50,8 @@ func updateAssign(tx *sql.Tx, a coco.AssignUpdater) error {
 		Addr:         a.Worker,
 		UpdateStatus: a.UpdateWorkerStatus,
 		Status:       a.WorkerStatus,
-		UpdateTask:   true,
-		Task:         &a.Task,
+		UpdateTask:   a.UpdateWorkerTask,
+		Task:         a.WorkerTask,
 	})
 	if err != nil {
 		return err

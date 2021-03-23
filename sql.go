@@ -22,6 +22,8 @@ type AssignUpdater struct {
 	Worker             string
 	UpdateWorkerStatus bool
 	WorkerStatus       WorkerStatus
+	UpdateWorkerTask   bool
+	WorkerTask         *TaskID
 }
 
 // JobService is an interface which let us use sqlite.JobService.
