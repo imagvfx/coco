@@ -114,18 +114,6 @@ func (id TaskID) String() string {
 	return strconv.Itoa(id[0]) + "-" + strconv.Itoa(id[1])
 }
 
-// IsValid checks the TaskID is valid.
-func (id TaskID) IsValid() bool {
-	if id[0] < 1 {
-		// 0 is invalid with sqlite
-		return false
-	}
-	if id[1] < 0 {
-		return false
-	}
-	return true
-}
-
 // Task has a command and/or subtasks that will be run by workers.
 //
 // Task having subtasks are called Branch.

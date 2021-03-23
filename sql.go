@@ -116,7 +116,7 @@ func (s *NopWorkerService) FindWorkers(f WorkerFilter) ([]*SQLWorker, error) {
 type SQLWorker struct {
 	Addr   string
 	Status WorkerStatus
-	Task   TaskID
+	Task   *TaskID
 }
 
 // WorkerFilter is a job filter for searching workers.
@@ -130,5 +130,5 @@ type WorkerUpdater struct {
 	UpdateStatus bool
 	Status       WorkerStatus
 	UpdateTask   bool
-	Task         TaskID
+	Task         *TaskID
 }

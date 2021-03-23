@@ -15,8 +15,8 @@ func CreateWorkersTable(tx *sql.Tx) error {
 		CREATE TABLE IF NOT EXISTS workers (
 			addr TEXT PRIMARY KEY,
 			status INT NOT NULL,
-			job INT NOT NULL,
-			task INT NOT NULL
+			job INT,
+			task INT
 		);
 	`)
 	return err
@@ -49,6 +49,14 @@ func (s *WorkerService) AddWorker(w *coco.SQLWorker) error {
 // addWorker adds a job into a database.
 func addWorker(tx *sql.Tx, w *coco.SQLWorker) error {
 	// Don't insert the job's order number, it will be generated from db.
+	var (
+		maybeJob  interface{}
+		maybeTask interface{}
+	)
+	if w.Task != nil {
+		maybeJob = w.Task[0]
+		maybeTask = w.Task[1]
+	}
 	_, err := tx.Exec(`
 		INSERT INTO workers (
 			addr,
@@ -60,8 +68,8 @@ func addWorker(tx *sql.Tx, w *coco.SQLWorker) error {
 	`,
 		w.Addr,
 		w.Status,
-		w.Task[0],
-		w.Task[1],
+		maybeJob,
+		maybeTask,
 	)
 	return err
 }
@@ -117,12 +125,19 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 	workers := make([]*coco.SQLWorker, 0)
 	for rows.Next() {
 		w := &coco.SQLWorker{}
+		var (
+			maybeJob  *int64
+			maybeTask *int64
+		)
 		err := rows.Scan(
 			&w.Addr,
 			&w.Status,
-			&w.Task[0],
-			&w.Task[1],
+			&maybeJob,
+			&maybeTask,
 		)
+		if maybeJob != nil {
+			w.Task = &coco.TaskID{int(*maybeJob), int(*maybeTask)}
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -156,10 +171,18 @@ func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
 		vals = append(vals, w.Status)
 	}
 	if w.UpdateTask {
+		var (
+			maybeJob  interface{}
+			maybeTask interface{}
+		)
+		if w.Task != nil {
+			maybeJob = w.Task[0]
+			maybeTask = w.Task[1]
+		}
 		keys = append(keys, "job = ?")
-		vals = append(vals, w.Task[0])
+		vals = append(vals, maybeJob)
 		keys = append(keys, "task = ?")
-		vals = append(vals, w.Task[1])
+		vals = append(vals, maybeTask)
 	}
 	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")

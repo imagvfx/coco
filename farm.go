@@ -71,7 +71,7 @@ func (f *Farm) updateAssign(a AssignUpdater) error {
 	if a.UpdateTaskRetry {
 		t.retry = a.TaskRetry
 	}
-	w.task = a.Task
+	w.task = &a.Task
 	if a.UpdateWorkerStatus {
 		w.status = a.WorkerStatus
 	}
@@ -96,8 +96,8 @@ func (f *Farm) RefreshWorkers() {
 		tid, err := f.workerman.SendPing(w)
 		if err != nil {
 			log.Print(err)
-			if w.task.IsValid() {
-				t, err := f.jobman.GetTask(w.task)
+			if w.task != nil {
+				t, err := f.jobman.GetTask(*w.task)
 				if err != nil {
 					log.Print(err)
 					return
@@ -123,16 +123,12 @@ func (f *Farm) RefreshWorkers() {
 			}
 			return
 		}
-		if !tid.IsValid() && !w.task.IsValid() {
-			// invalid task id indicates that the worker isn't running a task.
-			return
-		}
 		if tid == w.task {
 			return
 		}
-		if w.task.IsValid() {
+		if w.task != nil {
 			log.Printf("worker is not running on expected task: %v", w.task)
-			t, err := f.jobman.GetTask(w.task)
+			t, err := f.jobman.GetTask(*w.task)
 			if err != nil {
 				log.Print(err)
 				return
@@ -147,9 +143,9 @@ func (f *Farm) RefreshWorkers() {
 				log.Printf("couldn't update task: %v", w.task)
 			}
 		}
-		if tid.IsValid() {
+		if tid != nil {
 			log.Printf("worker is running on unexpected task: %v", tid)
-			t, err := f.jobman.GetTask(tid)
+			t, err := f.jobman.GetTask(*tid)
 			if err != nil {
 				log.Print(err)
 				return
@@ -193,10 +189,10 @@ func (f *Farm) Bye(addr string) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	if w.task.IsValid() {
+	if w.task != nil {
 		f.jobman.Lock()
 		defer f.jobman.Unlock()
-		t, err := f.jobman.GetTask(w.task)
+		t, err := f.jobman.GetTask(*w.task)
 		if err != nil {
 			return err
 		}
@@ -239,7 +235,10 @@ func (f *Farm) Done(addr string, task TaskID) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	if t.Assignee != addr || w.task != task {
+	if w.task == nil {
+		return fmt.Errorf("worker has not assigned to any task: %v", addr)
+	}
+	if t.Assignee != addr || *w.task != task {
 		// TODO: fail over
 		return fmt.Errorf("unmatched task and worker information: %v.Assignee=%v, %v.task=%v", task, t.Assignee, addr, w.task)
 	}
@@ -279,9 +278,12 @@ func (f *Farm) Failed(addr string, task TaskID) error {
 	if w == nil {
 		return fmt.Errorf("unknown worker: %v", addr)
 	}
-	if t.Assignee != addr || w.task != task {
+	if w.task == nil {
+		return fmt.Errorf("worker has not assigned to any task: %v", addr)
+	}
+	if t.Assignee != addr || *w.task != task {
 		// TODO: fail over
-		return fmt.Errorf("unmatched task and worker information: %v.Assignee=%v, %v.task=%v", task, t.Assignee, addr, w.task)
+		return fmt.Errorf("unmatched task and worker information: %v.Assignee=%v, %v.task=%v", task, t.Assignee, addr, *w.task)
 	}
 	ts := TaskFailed
 	retry := t.CanRetry()
