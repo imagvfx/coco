@@ -4,3 +4,4 @@ logging from commands
 cmd/cocofarm: better test for restored popIdx
 cmd/cocofarm: fix a failed test due to wrong popIdx restoration
 good tests for WorkerManager restoration
+need simpler/better task assign information restoration
