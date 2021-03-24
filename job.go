@@ -192,9 +192,6 @@ type JobManager struct {
 	job map[JobID]*Job
 
 	// jobs is a job heap for PopTask.
-	// Delete a job doesn't delete the job in this heap,
-	// Because it is expensive to search an item from heap.
-	// It will be deleted when it is popped from PopTask.
 	jobs *uniqueHeap
 
 	// CancelTaskCh pass tasks to make them canceled and
@@ -406,6 +403,7 @@ func (m *JobManager) Delete(id JobID) error {
 		return fmt.Errorf("cannot find the job: %v", id)
 	}
 	delete(m.job, id)
+	m.jobs.Remove(id)
 	return nil
 }
 
@@ -420,11 +418,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			return nil
 		}
 		j := heap.Pop(m.jobs).(*Job)
-		_, ok := m.job[j.ID]
-		if !ok {
-			// the job deleted
-			continue
-		}
+
 		if j.Status() == TaskFailed {
 			// one or more tasks of the job failed,
 			// block the job until user retry the tasks.
