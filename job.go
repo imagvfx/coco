@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+
+	"github.com/imagvfx/coco/lib/container"
 )
 
 // JobID is a job id.
@@ -191,7 +193,7 @@ type JobManager struct {
 	job map[JobID]*Job
 
 	// jobs is a job heap for PopTask.
-	jobs *uniqueHeap
+	jobs *container.UniqueHeap
 
 	// CancelTaskCh pass tasks to make them canceled and
 	// stop the processes running by workers.
@@ -217,7 +219,7 @@ func NewJobManager(js JobService) (*JobManager, error) {
 	m := &JobManager{}
 	m.JobService = js
 	m.job = make(map[JobID]*Job)
-	m.jobs = newUniqueHeap(popCompare)
+	m.jobs = container.NewUniqueHeap(popCompare)
 	m.CancelTaskCh = make(chan *Task)
 	err := m.restore()
 	if err != nil {

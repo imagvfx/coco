@@ -256,19 +256,6 @@ func TestJobManagerPopTask(t *testing.T) {
 }
 
 func TestJobManagerPopTaskThenPushTask(t *testing.T) {
-	shouldEqual := func(got, want *JobManager) error {
-		// Unfortunately, jobManager.job and jobManager.task is hard to compare.
-		// Fortunately, those are hardly changed after initialized. Skip them for now.
-		for i, g := range got.jobs.heap.heap {
-			w := want.jobs.heap.heap[i]
-			err := ShouldEqualJob(g.(*Job), w.(*Job))
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
 	m, err := newJobManagerForPop()
 	if err != nil {
 		t.Fatal(err)
@@ -289,9 +276,16 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = shouldEqual(m, want)
-	if err != nil {
-		t.Fatalf("pop all then push all should get the same jobManager: %v", err)
+	for {
+		g := m.PopTask([]string{"*"})
+		w := want.PopTask([]string{"*"})
+		err := ShouldEqualTask(g, w)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if g == nil { // w is also nil
+			break
+		}
 	}
 }
 

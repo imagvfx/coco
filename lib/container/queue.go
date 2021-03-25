@@ -1,9 +1,9 @@
-package coco
+package container
 
-// uniqueQueue is a queue that has unique items.
-// uniqueQueue is a queue, so the value pushed first will popped first.
+// UniqueQueue is a queue that has unique items.
+// UniqueQueue is a queue, so the value pushed first will popped first.
 // Same values cannot be exist in this queue.
-type uniqueQueue struct {
+type UniqueQueue struct {
 	has     map[interface{}]bool
 	removed map[interface{}]bool
 	first   *queueItem
@@ -17,9 +17,9 @@ type queueItem struct {
 	next *queueItem
 }
 
-// newUniqueQueue creates a new uniqueQueue.
-func newUniqueQueue() *uniqueQueue {
-	return &uniqueQueue{
+// newUniqueQueue creates a new UniqueQueue.
+func NewUniqueQueue() *UniqueQueue {
+	return &UniqueQueue{
 		has:     make(map[interface{}]bool),
 		removed: make(map[interface{}]bool),
 	}
@@ -27,7 +27,7 @@ func newUniqueQueue() *uniqueQueue {
 
 // Push pushs a value to the queue.
 // If the same value has already exists in the queue, it does nothing.
-func (q *uniqueQueue) Push(v interface{}) {
+func (q *UniqueQueue) Push(v interface{}) {
 	if q.removed[v] {
 		delete(q.removed, v)
 		return
@@ -48,7 +48,7 @@ func (q *uniqueQueue) Push(v interface{}) {
 // Pop pops a value from the queue.
 // If there isn't any value in the queue, it returns nil.
 // It will clean up any removed value it met.
-func (q *uniqueQueue) Pop() interface{} {
+func (q *UniqueQueue) Pop() interface{} {
 	for {
 		if q.first == nil {
 			return nil
@@ -74,7 +74,7 @@ func (q *uniqueQueue) Pop() interface{} {
 // Otherwise, it does nothing and returns false.
 // It doesn't remove the element right away.
 // Pop will clean removed elements internally.
-func (q *uniqueQueue) Remove(v interface{}) bool {
+func (q *UniqueQueue) Remove(v interface{}) bool {
 	if !q.has[v] {
 		return false
 	}

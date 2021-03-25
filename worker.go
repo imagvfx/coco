@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/imagvfx/coco/lib/container"
 	"github.com/imagvfx/coco/pb"
 	"google.golang.org/grpc"
 )
@@ -96,7 +97,7 @@ type WorkerManager struct {
 	sync.Mutex
 	WorkerService WorkerService
 	worker        map[string]*Worker
-	workers       *uniqueQueue
+	workers       *container.UniqueQueue
 	workerGroups  []*WorkerGroup
 	nForTag       map[string]int
 	// ReadyCh tries fast matching of a worker and a task.
@@ -109,7 +110,7 @@ func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, e
 	m := &WorkerManager{}
 	m.WorkerService = ws
 	m.worker = make(map[string]*Worker)
-	m.workers = newUniqueQueue()
+	m.workers = container.NewUniqueQueue()
 	m.workerGroups = wgrps
 	m.nForTag = make(map[string]int)
 	m.ReadyCh = make(chan struct{})

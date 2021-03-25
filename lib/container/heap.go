@@ -1,17 +1,17 @@
-package coco
+package container
 
 import "container/heap"
 
-// uniqueHeap is a heap that keeps same values only once.
-type uniqueHeap struct {
+// UniqueHeap is a heap that keeps same values only once.
+type UniqueHeap struct {
 	has     map[interface{}]bool
 	removed map[interface{}]bool
 	heap    *interfaceHeap
 }
 
-// newUniqueHeap creates a new uniqueHeap.
-func newUniqueHeap(less func(i, j interface{}) bool) *uniqueHeap {
-	return &uniqueHeap{
+// NewUniqueHeap creates a new UniqueHeap.
+func NewUniqueHeap(less func(i, j interface{}) bool) *UniqueHeap {
+	return &UniqueHeap{
 		has:     make(map[interface{}]bool),
 		removed: make(map[interface{}]bool),
 		heap:    newInterfaceHeap(less),
@@ -20,7 +20,7 @@ func newUniqueHeap(less func(i, j interface{}) bool) *uniqueHeap {
 
 // Push pushs an element to the heap.
 // If the element already exists in the heap, it will just skip it.
-func (h *uniqueHeap) Push(el interface{}) {
+func (h *UniqueHeap) Push(el interface{}) {
 	if h.removed[el] {
 		delete(h.removed, el)
 		return
@@ -35,7 +35,7 @@ func (h *uniqueHeap) Push(el interface{}) {
 // Remove marks an element as removed from the heap.
 // It doesn't remove the element right away.
 // Pop will clean removed elements internally.
-func (h *uniqueHeap) Remove(el interface{}) {
+func (h *UniqueHeap) Remove(el interface{}) {
 	if !h.has[el] {
 		return
 	}
@@ -44,7 +44,7 @@ func (h *uniqueHeap) Remove(el interface{}) {
 
 // Pop pops an element from the heap.
 // It will return nil if the heap has no element.
-func (h *uniqueHeap) Pop() interface{} {
+func (h *UniqueHeap) Pop() interface{} {
 	for {
 		if h.heap.Len() == 0 {
 			return nil

@@ -1,4 +1,4 @@
-package coco
+package container
 
 import (
 	"reflect"
@@ -22,7 +22,7 @@ func TestUniqueHeap(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		h := newUniqueHeap(c.less)
+		h := NewUniqueHeap(c.less)
 		for _, v := range c.vals {
 			h.Push(v)
 		}
@@ -59,7 +59,7 @@ func TestUniqueHeapRemove(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		h := newUniqueHeap(c.less)
+		h := NewUniqueHeap(c.less)
 		for _, v := range c.vals {
 			h.Push(v)
 		}
@@ -99,7 +99,7 @@ func TestUniqueHeapRemoveThenPush(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		h := newUniqueHeap(c.less)
+		h := NewUniqueHeap(c.less)
 		for _, v := range c.vals {
 			h.Push(v)
 		}
