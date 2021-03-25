@@ -51,6 +51,9 @@ func (h *uniqueHeap) Push(el interface{}) {
 // It doesn't remove the element right away.
 // Pop will clean removed elements internally.
 func (h *uniqueHeap) Remove(el interface{}) {
+	if !h.has[el] {
+		return
+	}
 	h.removed[el] = true
 }
 
