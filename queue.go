@@ -4,9 +4,10 @@ package coco
 // uniqueQueue is a queue, so the value pushed first will popped first.
 // Same values cannot be exist in this queue.
 type uniqueQueue struct {
-	has   map[interface{}]bool
-	first *queueItem
-	last  *queueItem
+	has     map[interface{}]bool
+	removed map[interface{}]bool
+	first   *queueItem
+	last    *queueItem
 }
 
 // queueItem is a queueItem that wraps a value.
@@ -19,13 +20,18 @@ type queueItem struct {
 // newUniqueQueue creates a new uniqueQueue.
 func newUniqueQueue() *uniqueQueue {
 	return &uniqueQueue{
-		has: make(map[interface{}]bool),
+		has:     make(map[interface{}]bool),
+		removed: make(map[interface{}]bool),
 	}
 }
 
 // Push pushs a value to the queue.
 // If the same value has already exists in the queue, it does nothing.
 func (q *uniqueQueue) Push(v interface{}) {
+	if q.removed[v] {
+		delete(q.removed, v)
+		return
+	}
 	if q.has[v] {
 		return
 	}
@@ -41,43 +47,40 @@ func (q *uniqueQueue) Push(v interface{}) {
 
 // Pop pops a value from the queue.
 // If there isn't any value in the queue, it returns nil.
+// It will clean up any removed value it met.
 func (q *uniqueQueue) Pop() interface{} {
-	if q.first == nil {
-		return nil
-	}
-	v := q.first.v
-	delete(q.has, v)
-	if q.first == q.last {
-		q.first = nil
-		q.last = nil
+	for {
+		if q.first == nil {
+			return nil
+		}
+		v := q.first.v
+		if q.first == q.last {
+			q.first = nil
+			q.last = nil
+		} else {
+			q.first = q.first.next
+		}
+		delete(q.has, v)
+		if q.removed[v] {
+			delete(q.removed, v)
+			continue
+		}
 		return v
 	}
-	q.first = q.first.next
-	return v
 }
 
 // Remove finds and removes the given value from the queue.
 // If the queue has the value, it removes the value and returns true.
 // Otherwise, it does nothing and returns false.
+// It doesn't remove the element right away.
+// Pop will clean removed elements internally.
 func (q *uniqueQueue) Remove(v interface{}) bool {
 	if !q.has[v] {
 		return false
 	}
-	delete(q.has, v)
-	var prev *queueItem
-	for it := q.first; it != nil; it = it.next {
-		if it.v == v {
-			if it == q.first {
-				q.first = q.first.next
-			} else {
-				prev.next = it.next
-			}
-			if it == q.last {
-				q.last = prev
-			}
-			break
-		}
-		prev = it
+	if q.removed[v] {
+		return false
 	}
+	q.removed[v] = true
 	return true
 }
