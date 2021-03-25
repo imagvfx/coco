@@ -1,7 +1,6 @@
 package coco
 
 import (
-	"container/heap"
 	"reflect"
 	"testing"
 )
@@ -25,11 +24,14 @@ func TestUniqueHeap(t *testing.T) {
 	for _, c := range cases {
 		h := newUniqueHeap(c.less)
 		for _, v := range c.vals {
-			heap.Push(h, v)
+			h.Push(v)
 		}
 		got := []interface{}{}
-		for h.Len() != 0 {
-			v := heap.Pop(h)
+		for {
+			v := h.Pop()
+			if v == nil {
+				return
+			}
 			got = append(got, v)
 		}
 		if !reflect.DeepEqual(got, c.want) {
@@ -59,14 +61,17 @@ func TestUniqueHeapRemove(t *testing.T) {
 	for _, c := range cases {
 		h := newUniqueHeap(c.less)
 		for _, v := range c.vals {
-			heap.Push(h, v)
+			h.Push(v)
 		}
 		for _, v := range c.remove {
 			h.Remove(v)
 		}
 		got := []interface{}{}
-		for h.Len() != 0 {
-			v := heap.Pop(h)
+		for {
+			v := h.Pop()
+			if v == nil {
+				return
+			}
 			got = append(got, v)
 		}
 		if !reflect.DeepEqual(got, c.want) {
@@ -96,15 +101,18 @@ func TestUniqueHeapRemoveThenPush(t *testing.T) {
 	for _, c := range cases {
 		h := newUniqueHeap(c.less)
 		for _, v := range c.vals {
-			heap.Push(h, v)
+			h.Push(v)
 		}
 		for _, v := range c.removeThenPush {
 			h.Remove(v)
-			heap.Push(h, v)
+			h.Push(v)
 		}
 		got := []interface{}{}
-		for h.Len() != 0 {
-			v := heap.Pop(h)
+		for {
+			v := h.Pop()
+			if v == nil {
+				return
+			}
 			got = append(got, v)
 		}
 		if !reflect.DeepEqual(got, c.want) {

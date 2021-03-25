@@ -1,7 +1,6 @@
 package coco
 
 import (
-	"container/heap"
 	"fmt"
 	"log"
 	"time"
@@ -264,7 +263,7 @@ func (f *Farm) Done(addr string, task TaskID) error {
 	if err != nil {
 		return err
 	}
-	heap.Push(f.jobman.jobs, j)
+	f.jobman.jobs.Push(j)
 	f.workerman.Ready(w)
 	return nil
 }
@@ -320,7 +319,7 @@ func (f *Farm) Failed(addr string, task TaskID) error {
 	if retry {
 		t.Push()
 	}
-	heap.Push(f.jobman.jobs, j)
+	f.jobman.jobs.Push(j)
 	f.workerman.Ready(w)
 	return nil
 }

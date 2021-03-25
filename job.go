@@ -1,7 +1,6 @@
 package coco
 
 import (
-	"container/heap"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -250,7 +249,7 @@ func (m *JobManager) restore() error {
 		}
 		j.restorePopIdx()
 		m.job[j.ID] = j
-		heap.Push(m.jobs, j)
+		m.jobs.Push(j)
 	}
 	return nil
 }
@@ -299,7 +298,7 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 	}
 
 	m.job[j.ID] = j
-	heap.Push(m.jobs, j)
+	m.jobs.Push(j)
 
 	return j.ID, nil
 }
@@ -392,7 +391,7 @@ func (m *JobManager) Retry(id JobID) error {
 			t.Push()
 		}
 	}
-	heap.Push(m.jobs, j)
+	m.jobs.Push(j)
 	return nil
 }
 
@@ -414,10 +413,11 @@ func (m *JobManager) PopTask(targets []string) *Task {
 		return nil
 	}
 	for {
-		if m.jobs.Len() == 0 {
+		el := m.jobs.Pop()
+		if el == nil {
 			return nil
 		}
-		j := heap.Pop(m.jobs).(*Job)
+		j := el.(*Job)
 
 		if j.Status() == TaskFailed {
 			// one or more tasks of the job failed,
@@ -436,7 +436,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 			defer func() {
 				// The job has remaing tasks. So, push back this job
 				// after we've found a servable job.
-				heap.Push(m.jobs, j)
+				m.jobs.Push(j)
 			}()
 			continue
 		}
@@ -452,7 +452,7 @@ func (m *JobManager) PopTask(targets []string) *Task {
 				// the peeked task is also cared by this lock.
 				p := peek.CalcPriority()
 				j.CurrentPriority = p
-				heap.Push(m.jobs, j)
+				m.jobs.Push(j)
 			}
 		}
 
@@ -468,5 +468,5 @@ func (m *JobManager) PushTask(t *Task) {
 	peek := j.Peek() // peek should not be nil
 	p := peek.CalcPriority()
 	j.CurrentPriority = p
-	heap.Push(m.jobs, j)
+	m.jobs.Push(j)
 }
