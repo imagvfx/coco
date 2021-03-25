@@ -1,9 +1,7 @@
 package coco
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -287,19 +285,4 @@ func TestJobManagerPopTaskThenPushTask(t *testing.T) {
 			break
 		}
 	}
-}
-
-// sprintJob only print partial fields of the Job that is meaningful for comparing two jobs.
-func sprintJob(j *Job) string {
-	jstr := fmt.Sprintf("Job ID=%v, CurrentPriority=%v\n", j.ID, j.CurrentPriority)
-	tstr := sprintTask(j.Task, 1)
-	return jstr + tstr
-}
-
-func sprintTask(t *Task, depth int) string {
-	s := fmt.Sprintf("%v%v: popIdx=%v, priority=%v, Assignee=%v\n", strings.Repeat("\t", depth), t.Title, t.popIdx, t.Assignee, t.CalcPriority())
-	for _, t := range t.Subtasks {
-		s += sprintTask(t, depth+1)
-	}
-	return s
 }
