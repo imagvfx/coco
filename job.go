@@ -200,26 +200,24 @@ type JobManager struct {
 	CancelTaskCh chan *Task
 }
 
-func popCompare(i, j interface{}) bool {
-	iv := i.(*Job)
-	jv := j.(*Job)
-	if iv.CurrentPriority > jv.CurrentPriority {
-		return true
-	}
-	if iv.CurrentPriority < jv.CurrentPriority {
-		return false
-	}
-	return iv.ID < jv.ID
-
-}
-
 // NewJobManager creates a new JobManager.
 // It restores previous data with JobService.
 func NewJobManager(js JobService) (*JobManager, error) {
 	m := &JobManager{}
 	m.JobService = js
 	m.job = make(map[JobID]*Job)
-	m.jobs = container.NewUniqueHeap(popCompare)
+	m.jobs = container.NewUniqueHeap(func(i, j interface{}) bool {
+		iv := i.(*Job)
+		jv := j.(*Job)
+		if iv.CurrentPriority > jv.CurrentPriority {
+			return true
+		}
+		if iv.CurrentPriority < jv.CurrentPriority {
+			return false
+		}
+		return iv.ID < jv.ID
+
+	})
 	m.CancelTaskCh = make(chan *Task)
 	err := m.restore()
 	if err != nil {
