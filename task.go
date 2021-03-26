@@ -311,11 +311,6 @@ func (t *Task) Blocking() bool {
 	if t.parent.SerialSubtasks && t.status != TaskDone {
 		block = true
 	}
-	if t.status == TaskFailed {
-		// Make the task block any leaf task on the next stages.
-		// For a temporary error, user can restart the task to make it done.
-		block = true
-	}
 	return block
 }
 
@@ -387,6 +382,10 @@ func (t *Task) restorePopIdx() {
 	}
 	t.popIdx = -1 // in case all subtasks are popped
 	for i, subt := range t.Subtasks {
+		if subt.isLeaf && subt.Blocking() {
+			t.popIdx = i
+			break
+		}
 		if subt.popIdx != -1 {
 			t.popIdx = i
 			break
