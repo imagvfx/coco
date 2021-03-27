@@ -1,60 +1,59 @@
-package main
+package coco
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/imagvfx/coco"
 	"github.com/imagvfx/coco/service/sqlite"
 )
 
-func newJob() *coco.Job {
-	return &coco.Job{
-		Task: &coco.Task{
+func newJob() *Job {
+	return &Job{
+		Task: &Task{
 			Title:          "root",
 			SerialSubtasks: true,
-			Subtasks: []*coco.Task{
-				&coco.Task{
+			Subtasks: []*Task{
+				&Task{
 					Title:          "sim",
 					SerialSubtasks: true,
-					Subtasks: []*coco.Task{
-						&coco.Task{
+					Subtasks: []*Task{
+						&Task{
 							Title:          "ocean",
 							SerialSubtasks: true,
 						},
-						&coco.Task{
+						&Task{
 							Title:          "foam",
 							SerialSubtasks: true,
 						},
 					},
 				},
-				&coco.Task{
+				&Task{
 					Title:          "render",
 					SerialSubtasks: true,
-					Subtasks: []*coco.Task{
-						&coco.Task{
+					Subtasks: []*Task{
+						&Task{
 							Title:          "diffuse",
 							SerialSubtasks: false,
-							Subtasks: []*coco.Task{
-								&coco.Task{
+							Subtasks: []*Task{
+								&Task{
 									Title:          "1",
 									SerialSubtasks: true,
 								},
-								&coco.Task{
+								&Task{
 									Title:          "2",
 									SerialSubtasks: true,
 								},
 							},
 						},
-						&coco.Task{
+						&Task{
 							Title:          "reflection",
 							SerialSubtasks: false,
-							Subtasks: []*coco.Task{
-								&coco.Task{
+							Subtasks: []*Task{
+								&Task{
 									Title:          "1",
 									SerialSubtasks: true,
 								},
-								&coco.Task{
+								&Task{
 									Title:          "2",
 									SerialSubtasks: true,
 								},
@@ -67,7 +66,7 @@ func newJob() *coco.Job {
 	}
 }
 
-func TestCocoRestoreJobManager(t *testing.T) {
+func TestRestoreJobManager(t *testing.T) {
 	test := func(i int) {
 		dbpath := t.TempDir() + fmt.Sprintf("/test_%v.db", i)
 		// fmt.Println(dbpath)
@@ -77,7 +76,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		}
 		defer db.Close()
 		services := sqlite.NewServices(db)
-		farm, err := coco.NewFarm(services, nil)
+		farm, err := NewFarm(services, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,7 +87,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		}
 		workerman := farm.WorkerManager()
 		worker := "localhost:0000"
-		w := coco.NewWorker(worker)
+		w := NewWorker(worker)
 		err = workerman.Add(w)
 		if err != nil {
 			t.Fatal(err)
@@ -118,7 +117,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 			n++
 		}
 		// time.Sleep(time.Hour)
-		f, err := coco.NewFarm(services, nil)
+		f, err := NewFarm(services, nil)
 		if err != nil {
 			t.Fatalf("restore: %v", err)
 		}
@@ -131,7 +130,7 @@ func TestCocoRestoreJobManager(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = coco.ShouldEqualJob(got, want)
+		err = ShouldEqualJob(got, want)
 		if err != nil {
 			t.Fatal(err)
 		}
