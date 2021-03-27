@@ -3,7 +3,7 @@ package sqlite
 import (
 	"database/sql"
 
-	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/service"
 )
 
 // FarmService interacts with a database for coco.
@@ -16,7 +16,7 @@ func NewFarmService(db *sql.DB) *FarmService {
 	return &FarmService{db: db}
 }
 
-func (s *FarmService) UpdateAssign(a coco.AssignUpdater) error {
+func (s *FarmService) UpdateAssign(a service.AssignUpdater) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -33,9 +33,10 @@ func (s *FarmService) UpdateAssign(a coco.AssignUpdater) error {
 	return nil
 }
 
-func updateAssign(tx *sql.Tx, a coco.AssignUpdater) error {
-	err := updateTask(tx, coco.TaskUpdater{
-		ID:             a.Task,
+func updateAssign(tx *sql.Tx, a service.AssignUpdater) error {
+	err := updateTask(tx, service.TaskUpdater{
+		Job:            a.Job,
+		Task:           a.Task,
 		UpdateStatus:   a.UpdateTaskStatus,
 		Status:         a.TaskStatus,
 		UpdateRetry:    a.UpdateTaskRetry,
@@ -46,11 +47,12 @@ func updateAssign(tx *sql.Tx, a coco.AssignUpdater) error {
 	if err != nil {
 		return err
 	}
-	err = updateWorker(tx, coco.WorkerUpdater{
+	err = updateWorker(tx, service.WorkerUpdater{
 		Addr:         a.Worker,
 		UpdateStatus: a.UpdateWorkerStatus,
 		Status:       a.WorkerStatus,
 		UpdateTask:   a.UpdateWorkerTask,
+		Job:          a.WorkerJob,
 		Task:         a.WorkerTask,
 	})
 	if err != nil {

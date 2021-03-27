@@ -10,6 +10,7 @@ import (
 
 	"github.com/imagvfx/coco/lib/container"
 	"github.com/imagvfx/coco/pb"
+	"github.com/imagvfx/coco/service"
 	"google.golang.org/grpc"
 )
 
@@ -38,7 +39,7 @@ type Worker struct {
 
 	group *WorkerGroup
 
-	update func(WorkerUpdater) error
+	update func(service.WorkerUpdater) error
 }
 
 func NewWorker(addr string) *Worker {
@@ -46,34 +47,47 @@ func NewWorker(addr string) *Worker {
 }
 
 // ToSQL converts a Worker into a SQLWorker.
-func (w *Worker) ToSQL() *SQLWorker {
-	sw := &SQLWorker{
+func (w *Worker) ToSQL() *service.Worker {
+	var maybeJob *int
+	var maybeTask *int
+	if w.task != nil {
+		maybeJob = &w.task[0]
+		maybeTask = &w.task[1]
+	}
+	sw := &service.Worker{
 		Addr:   w.addr,
-		Status: w.status,
-		Task:   w.task,
+		Status: int(w.status),
+		Job:    maybeJob,
+		Task:   maybeTask,
 	}
 	return sw
 }
 
 // FromSQL converts a SQLWorker into a Worker.
-func (w *Worker) FromSQL(sw *SQLWorker) {
+func (w *Worker) FromSQL(sw *service.Worker) {
 	w.addr = sw.Addr
-	w.status = sw.Status
-	w.task = sw.Task
+	w.status = WorkerStatus(sw.Status)
+	w.task = nil
+	if sw.Job != nil {
+		w.task = &TaskID{*sw.Job, *sw.Task}
+	}
 }
 
 // Update updates a worker in both the program and the db.
-func (w *Worker) Update(u WorkerUpdater) error {
+func (w *Worker) Update(u service.WorkerUpdater) error {
 	u.Addr = w.addr
 	err := w.update(u)
 	if err != nil {
 		return err
 	}
 	if u.UpdateStatus {
-		w.status = u.Status
+		w.status = WorkerStatus(u.Status)
 	}
 	if u.UpdateTask {
-		w.task = u.Task
+		w.task = nil
+		if u.Job != nil {
+			w.task = &TaskID{*u.Job, *u.Task}
+		}
 	}
 	return nil
 }
@@ -95,7 +109,7 @@ func (g WorkerGroup) Match(addr string) bool {
 
 type WorkerManager struct {
 	sync.Mutex
-	WorkerService WorkerService
+	WorkerService service.WorkerService
 	worker        map[string]*Worker
 	workers       *container.UniqueQueue
 	workerGroups  []*WorkerGroup
@@ -106,7 +120,7 @@ type WorkerManager struct {
 
 // NewWorkerManager create a new WorkerManager.
 // It restores previous data with WorkerService.
-func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, error) {
+func NewWorkerManager(ws service.WorkerService, wgrps []*WorkerGroup) (*WorkerManager, error) {
 	m := &WorkerManager{}
 	m.WorkerService = ws
 	m.worker = make(map[string]*Worker)
@@ -123,7 +137,7 @@ func NewWorkerManager(ws WorkerService, wgrps []*WorkerGroup) (*WorkerManager, e
 
 // restore restores a WorkerManager from a db with WorkerService.
 func (m *WorkerManager) restore() error {
-	sqlWorkers, err := m.WorkerService.FindWorkers(WorkerFilter{})
+	sqlWorkers, err := m.WorkerService.FindWorkers(service.WorkerFilter{})
 	if err != nil {
 		return err
 	}
@@ -184,11 +198,18 @@ func (m *WorkerManager) Bye(workerAddr string) error {
 	if olds == WorkerNotFound {
 		return fmt.Errorf("worker already logged off: %v", workerAddr)
 	}
-	err := w.Update(WorkerUpdater{
+	var maybeJob *int
+	var maybeTask *int
+	if w.task != nil {
+		maybeJob = &w.task[0]
+		maybeTask = &w.task[1]
+	}
+	err := w.Update(service.WorkerUpdater{
 		UpdateStatus: true,
-		Status:       WorkerNotFound,
+		Status:       int(WorkerNotFound),
 		UpdateTask:   true,
-		Task:         w.task,
+		Job:          maybeJob,
+		Task:         maybeTask,
 	})
 	if err != nil {
 		return err
@@ -213,10 +234,11 @@ func (m *WorkerManager) Ready(w *Worker) error {
 	if w == nil {
 		return fmt.Errorf("nil worker")
 	}
-	err := w.Update(WorkerUpdater{
+	err := w.Update(service.WorkerUpdater{
 		UpdateStatus: true,
-		Status:       WorkerReady,
+		Status:       int(WorkerReady),
 		UpdateTask:   true,
+		Job:          nil,
 		Task:         nil,
 	})
 	if err != nil {

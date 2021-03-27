@@ -3,6 +3,9 @@ package coco
 import (
 	"reflect"
 	"testing"
+
+	"github.com/imagvfx/coco/service"
+	"github.com/imagvfx/coco/service/nop"
 )
 
 func TestTaskCalcPriority(t *testing.T) {
@@ -29,7 +32,7 @@ func TestTaskCalcPriority(t *testing.T) {
 			},
 		},
 	}
-	job.Init(&NopJobService{})
+	job.Init(&nop.JobService{})
 	cases := []struct {
 		t    *Task
 		want int
@@ -75,7 +78,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(&NopJobService{}),
+			}).Init(&nop.JobService{}),
 			want: []string{"1", "", "2", "", "3", ""},
 		},
 		{
@@ -89,7 +92,7 @@ func TestTaskPop(t *testing.T) {
 						{Title: "3"},
 					},
 				},
-			}).Init(&NopJobService{}),
+			}).Init(&nop.JobService{}),
 			want: []string{"1", "2", "3"},
 		},
 		{
@@ -130,7 +133,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(&NopJobService{}),
+			}).Init(&nop.JobService{}),
 			want: []string{"d1", "d2", "r1", "r2", "c1", "", "c2", ""},
 		},
 		{
@@ -165,7 +168,7 @@ func TestTaskPop(t *testing.T) {
 						},
 					},
 				},
-			}).Init(&NopJobService{}),
+			}).Init(&nop.JobService{}),
 			want: []string{"d1", "f1", "p1", "", "d2", "f2", "p2", ""},
 		},
 	}
@@ -186,9 +189,9 @@ func TestTaskPop(t *testing.T) {
 				}
 				got = append(got, "") // make the blocking point visible
 				for _, pt := range popTasks {
-					err := pt.Update(TaskUpdater{
+					err := pt.Update(service.TaskUpdater{
 						UpdateStatus: true,
-						Status:       TaskDone,
+						Status:       int(TaskDone),
 					})
 					if err != nil {
 						t.Fatal(err)

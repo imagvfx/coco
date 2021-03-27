@@ -3,7 +3,7 @@ package sqlite
 import (
 	"database/sql"
 
-	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/service"
 )
 
 type Services struct {
@@ -20,14 +20,14 @@ func NewServices(db *sql.DB) *Services {
 	}
 }
 
-func (s *Services) FarmService() coco.FarmService {
+func (s *Services) FarmService() service.FarmService {
 	return s.fs
 }
 
-func (s *Services) JobService() coco.JobService {
+func (s *Services) JobService() service.JobService {
 	return s.js
 }
 
-func (s *Services) WorkerService() coco.WorkerService {
+func (s *Services) WorkerService() service.WorkerService {
 	return s.ws
 }

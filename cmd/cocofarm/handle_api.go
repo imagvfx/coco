@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/service"
 )
 
 type apiHandler struct {
@@ -103,7 +104,7 @@ func (h *apiHandler) handleJob(w http.ResponseWriter, r *http.Request) {
 func (h *apiHandler) handleList(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	target := r.Form.Get("target")
-	filter := coco.JobFilter{
+	filter := service.JobFilter{
 		Target: target,
 	}
 	jobs := h.jobman.Jobs(filter)

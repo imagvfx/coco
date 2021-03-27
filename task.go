@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/imagvfx/coco/service"
 )
 
 // TaskStatus is a task status.
@@ -162,7 +164,7 @@ type Task struct {
 	// isLeaf indicates whether the task is a leaf task.
 	isLeaf bool
 
-	update func(TaskUpdater) error
+	update func(service.TaskUpdater) error
 
 	// Commands are guaranteed that they run serially from a same worker.
 	Commands Commands
@@ -274,13 +276,19 @@ func (t *Task) MarshalJSON() ([]byte, error) {
 }
 
 // ToSQL converts a Task into a SQLTask.
-func (t *Task) ToSQL() *SQLTask {
-	s := &SQLTask{
-		ID:             t.ID,
+func (t *Task) ToSQL() *service.Task {
+	cmds, err := json.Marshal(t.Commands)
+	if err != nil {
+		// should not happen
+		panic(err)
+	}
+	s := &service.Task{
+		Job:            t.ID[0],
+		Task:           t.ID[1],
 		Title:          t.Title,
-		Status:         t.status,
+		Status:         int(t.status),
 		SerialSubtasks: t.SerialSubtasks,
-		Commands:       t.Commands,
+		Commands:       string(cmds),
 	}
 	s.ParentNum = -1
 	if t.parent != nil {
@@ -290,12 +298,18 @@ func (t *Task) ToSQL() *SQLTask {
 }
 
 // FromSQL converts a SQLTask into a Task.
-func (t *Task) FromSQL(st *SQLTask) {
-	t.ID = st.ID
+func (t *Task) FromSQL(st *service.Task) {
+	t.ID = TaskID{st.Job, st.Task}
 	t.Title = st.Title
-	t.status = st.Status
+	t.status = TaskStatus(st.Status)
 	t.SerialSubtasks = st.SerialSubtasks
-	t.Commands = st.Commands
+	cmds := make(Commands, 0)
+	err := json.Unmarshal([]byte(st.Commands), &cmds)
+	if err != nil {
+		// should not happen
+		panic(err)
+	}
+	t.Commands = cmds
 }
 
 // Blocking returns a bool value that indicates whether the task is a blocking task.
@@ -463,14 +477,15 @@ func (t *Task) CalcPriority() int {
 	return 0
 }
 
-func (t *Task) Update(u TaskUpdater) error {
-	u.ID = t.ID
+func (t *Task) Update(u service.TaskUpdater) error {
+	u.Job = t.ID[0]
+	u.Task = t.ID[1]
 	err := t.update(u)
 	if err != nil {
 		return err
 	}
 	if u.UpdateStatus {
-		t.setStatus(u.Status)
+		t.setStatus(TaskStatus(u.Status))
 	}
 	if u.UpdateAssignee {
 		t.Assignee = u.Assignee

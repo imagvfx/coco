@@ -3,6 +3,8 @@ package coco
 import (
 	"reflect"
 	"testing"
+
+	"github.com/imagvfx/coco/service/nop"
 )
 
 var job = (&Job{
@@ -60,7 +62,7 @@ var job = (&Job{
 			},
 		},
 	},
-}).Init(&NopJobService{})
+}).Init(&nop.JobService{})
 
 func TestInitJob(t *testing.T) {
 	n := job.tasks[4].Stat.N()
@@ -180,7 +182,7 @@ func newJobManagerForPop() (*JobManager, error) {
 			},
 		},
 	}
-	m, err := NewJobManager(&NopJobService{})
+	m, err := NewJobManager(&nop.JobService{})
 	if err != nil {
 		return nil, err
 	}

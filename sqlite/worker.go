@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/service"
 )
 
 // CreateWorkersTable creates jobs table to a database if not exists.
@@ -33,7 +33,7 @@ func NewWorkerService(db *sql.DB) *WorkerService {
 }
 
 // AddWorker adds a worker into a database.
-func (s *WorkerService) AddWorker(w *coco.SQLWorker) error {
+func (s *WorkerService) AddWorker(w *service.Worker) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -47,16 +47,8 @@ func (s *WorkerService) AddWorker(w *coco.SQLWorker) error {
 }
 
 // addWorker adds a job into a database.
-func addWorker(tx *sql.Tx, w *coco.SQLWorker) error {
+func addWorker(tx *sql.Tx, w *service.Worker) error {
 	// Don't insert the job's order number, it will be generated from db.
-	var (
-		maybeJob  interface{}
-		maybeTask interface{}
-	)
-	if w.Task != nil {
-		maybeJob = w.Task[0]
-		maybeTask = w.Task[1]
-	}
 	_, err := tx.Exec(`
 		INSERT INTO workers (
 			addr,
@@ -68,14 +60,14 @@ func addWorker(tx *sql.Tx, w *coco.SQLWorker) error {
 	`,
 		w.Addr,
 		w.Status,
-		maybeJob,
-		maybeTask,
+		w.Job,
+		w.Task,
 	)
 	return err
 }
 
 // FindAllWorkers finds jobs those matched with given filter.
-func (s *WorkerService) FindWorkers(f coco.WorkerFilter) ([]*coco.SQLWorker, error) {
+func (s *WorkerService) FindWorkers(f service.WorkerFilter) ([]*service.Worker, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -93,7 +85,7 @@ func (s *WorkerService) FindWorkers(f coco.WorkerFilter) ([]*coco.SQLWorker, err
 }
 
 // findWorkers finds workers those matched with given filter.
-func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
+func findWorkers(tx *sql.Tx, w service.WorkerFilter) ([]*service.Worker, error) {
 	keys := []string{}
 	vals := []interface{}{}
 	if w.Addr != "" {
@@ -122,22 +114,15 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 	}
 	defer rows.Close()
 
-	workers := make([]*coco.SQLWorker, 0)
+	workers := make([]*service.Worker, 0)
 	for rows.Next() {
-		w := &coco.SQLWorker{}
-		var (
-			maybeJob  *int64
-			maybeTask *int64
-		)
+		w := &service.Worker{}
 		err := rows.Scan(
 			&w.Addr,
 			&w.Status,
-			&maybeJob,
-			&maybeTask,
+			&w.Job,
+			&w.Task,
 		)
-		if maybeJob != nil {
-			w.Task = &coco.TaskID{int(*maybeJob), int(*maybeTask)}
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +131,7 @@ func findWorkers(tx *sql.Tx, w coco.WorkerFilter) ([]*coco.SQLWorker, error) {
 	return workers, nil
 }
 
-func (s *WorkerService) UpdateWorker(w coco.WorkerUpdater) error {
+func (s *WorkerService) UpdateWorker(w service.WorkerUpdater) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -163,7 +148,7 @@ func (s *WorkerService) UpdateWorker(w coco.WorkerUpdater) error {
 	return nil
 }
 
-func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
+func updateWorker(tx *sql.Tx, w service.WorkerUpdater) error {
 	keys := []string{}
 	vals := []interface{}{}
 	if w.UpdateStatus {
@@ -171,18 +156,10 @@ func updateWorker(tx *sql.Tx, w coco.WorkerUpdater) error {
 		vals = append(vals, w.Status)
 	}
 	if w.UpdateTask {
-		var (
-			maybeJob  interface{}
-			maybeTask interface{}
-		)
-		if w.Task != nil {
-			maybeJob = w.Task[0]
-			maybeTask = w.Task[1]
-		}
 		keys = append(keys, "job = ?")
-		vals = append(vals, maybeJob)
+		vals = append(vals, w.Job)
 		keys = append(keys, "task = ?")
-		vals = append(vals, maybeTask)
+		vals = append(vals, w.Task)
 	}
 	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")

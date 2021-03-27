@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/imagvfx/coco"
+	"github.com/imagvfx/coco/service"
 )
 
 // CreateJobsTable creates jobs table to a database if not exists.
@@ -52,18 +52,18 @@ func NewJobService(db *sql.DB) *JobService {
 }
 
 // AddJob adds a job and it's tasks into a database.
-func (s *JobService) AddJob(j *coco.SQLJob) (coco.JobID, error) {
+func (s *JobService) AddJob(j *service.Job) (int, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return -1, err
 	}
 	defer tx.Rollback()
-	ord, err := addJob(tx, j)
+	id, err := addJob(tx, j)
 	if err != nil {
 		return -1, err
 	}
 	for _, t := range j.Tasks {
-		t.ID[0] = int(ord)
+		t.Job = id
 		err := addTask(tx, t)
 		if err != nil {
 			return -1, err
@@ -73,11 +73,11 @@ func (s *JobService) AddJob(j *coco.SQLJob) (coco.JobID, error) {
 	if err != nil {
 		return -1, err
 	}
-	return ord, nil
+	return id, nil
 }
 
 // addJob adds a job into a database.
-func addJob(tx *sql.Tx, j *coco.SQLJob) (coco.JobID, error) {
+func addJob(tx *sql.Tx, j *service.Job) (int, error) {
 	// Don't insert the job's order number, it will be generated from db.
 	result, err := tx.Exec(`
 		INSERT INTO jobs (
@@ -96,13 +96,12 @@ func addJob(tx *sql.Tx, j *coco.SQLJob) (coco.JobID, error) {
 	if err != nil {
 		return -1, err
 	}
-	ord := coco.JobID(id)
-	return ord, nil
+	return int(id), nil
 }
 
 // addTask adds a task into a database.
 // It tasks an order number of its job, because the task doesn't know it yet.
-func addTask(tx *sql.Tx, t *coco.SQLTask) error {
+func addTask(tx *sql.Tx, t *service.Task) error {
 	_, err := tx.Exec(`
 		INSERT INTO tasks (
 			ord,
@@ -117,8 +116,8 @@ func addTask(tx *sql.Tx, t *coco.SQLTask) error {
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`,
-		t.ID[0],
-		t.ID[1],
+		t.Job,
+		t.Task,
 		t.ParentNum,
 		t.Title,
 		t.Status,
@@ -134,7 +133,7 @@ func addTask(tx *sql.Tx, t *coco.SQLTask) error {
 }
 
 // FindJobs finds jobs those matched with given filter.
-func (s *JobService) FindJobs(f coco.JobFilter) ([]*coco.SQLJob, error) {
+func (s *JobService) FindJobs(f service.JobFilter) ([]*service.Job, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -158,7 +157,7 @@ func (s *JobService) FindJobs(f coco.JobFilter) ([]*coco.SQLJob, error) {
 }
 
 // findJobs finds jobs those matched with given filter.
-func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
+func findJobs(tx *sql.Tx, f service.JobFilter) ([]*service.Job, error) {
 	keys := []string{}
 	vals := []interface{}{}
 	if f.Target != "" {
@@ -186,11 +185,11 @@ func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
 	}
 	defer rows.Close()
 
-	jobs := make([]*coco.SQLJob, 0)
+	jobs := make([]*service.Job, 0)
 	for rows.Next() {
-		j := &coco.SQLJob{}
+		j := &service.Job{}
 		err := rows.Scan(
-			&j.ID,
+			&j.Job,
 			&j.Target,
 			&j.AutoRetry,
 		)
@@ -203,9 +202,10 @@ func findJobs(tx *sql.Tx, f coco.JobFilter) ([]*coco.SQLJob, error) {
 }
 
 // attachTasks attach all tasks to it's job.
-func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
+func attachTasks(tx *sql.Tx, j *service.Job) error {
 	rows, err := tx.Query(`
 		SELECT
+			ord,
 			num,
 			parent_num,
 			title,
@@ -217,19 +217,19 @@ func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
 			ord = ?
 		ORDER BY num ASC
 	`,
-		j.ID,
+		j.Job,
 	)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 
-	tasks := make([]*coco.SQLTask, 0)
+	tasks := make([]*service.Task, 0)
 	for rows.Next() {
-		t := &coco.SQLTask{}
-		t.ID[0] = int(j.ID)
+		t := &service.Task{}
 		err := rows.Scan(
-			&t.ID[1],
+			&t.Job,
+			&t.Task,
 			&t.ParentNum,
 			&t.Title,
 			&t.Status,
@@ -245,7 +245,7 @@ func attachTasks(tx *sql.Tx, j *coco.SQLJob) error {
 	return nil
 }
 
-func (s *JobService) UpdateTask(t coco.TaskUpdater) error {
+func (s *JobService) UpdateTask(t service.TaskUpdater) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func (s *JobService) UpdateTask(t coco.TaskUpdater) error {
 	return nil
 }
 
-func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
+func updateTask(tx *sql.Tx, t service.TaskUpdater) error {
 	keys := []string{}
 	vals := []interface{}{}
 	if t.UpdateStatus {
@@ -276,7 +276,7 @@ func updateTask(tx *sql.Tx, t coco.TaskUpdater) error {
 	if len(keys) == 0 {
 		return fmt.Errorf("need at least one parameter to update")
 	}
-	vals = append(vals, t.ID[0], t.ID[1])
+	vals = append(vals, t.Job, t.Task)
 	_, err := tx.Exec(`
 		UPDATE tasks
 		SET `+strings.Join(keys, ", ")+`

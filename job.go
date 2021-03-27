@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/imagvfx/coco/lib/container"
+	"github.com/imagvfx/coco/service"
 )
 
 // JobID is a job id.
@@ -84,7 +85,7 @@ func (j *Job) Validate() error {
 // initJob inits a job and it's tasks.
 // initJob returns unmodified pointer of the job, for in case
 // when user wants to directly assign to a variable. (see test code)
-func (j *Job) Init(js JobService) *Job {
+func (j *Job) Init(js service.JobService) *Job {
 	_, j.tasks = initJobTasks(j.Task, j, nil, 0, 0, []*Task{})
 	j.CurrentPriority = j.Peek().CalcPriority()
 	for _, t := range j.tasks {
@@ -147,12 +148,12 @@ func (j *Job) MarshalJSON() ([]byte, error) {
 }
 
 // ToSQL converts a Job into a SQLJob.
-func (j *Job) ToSQL() *SQLJob {
-	s := &SQLJob{
-		ID:        j.ID,
+func (j *Job) ToSQL() *service.Job {
+	s := &service.Job{
+		Job:       int(j.ID),
 		Target:    j.Target,
 		AutoRetry: j.AutoRetry,
-		Tasks:     make([]*SQLTask, len(j.tasks)),
+		Tasks:     make([]*service.Task, len(j.tasks)),
 	}
 	for i, t := range j.tasks {
 		s.Tasks[i] = t.ToSQL()
@@ -161,8 +162,8 @@ func (j *Job) ToSQL() *SQLJob {
 }
 
 // FromSQL converts a SQLJob into a Job.
-func (j *Job) FromSQL(sj *SQLJob) {
-	j.ID = sj.ID
+func (j *Job) FromSQL(sj *service.Job) {
+	j.ID = JobID(sj.Job)
 	j.Target = sj.Target
 	j.AutoRetry = sj.AutoRetry
 	j.tasks = make([]*Task, len(sj.Tasks))
@@ -187,7 +188,7 @@ type JobManager struct {
 	sync.Mutex
 
 	// JobService allows us to communicate with db for Jobs.
-	JobService JobService
+	JobService service.JobService
 
 	// job is a map of an order to the job.
 	job map[JobID]*Job
@@ -202,7 +203,7 @@ type JobManager struct {
 
 // NewJobManager creates a new JobManager.
 // It restores previous data with JobService.
-func NewJobManager(js JobService) (*JobManager, error) {
+func NewJobManager(js service.JobService) (*JobManager, error) {
 	m := &JobManager{}
 	m.JobService = js
 	m.job = make(map[JobID]*Job)
@@ -228,7 +229,7 @@ func NewJobManager(js JobService) (*JobManager, error) {
 
 // restore restores a JobManager from a db with JobService.
 func (m *JobManager) restore() error {
-	sqlJobs, err := m.JobService.FindJobs(JobFilter{})
+	sqlJobs, err := m.JobService.FindJobs(service.JobFilter{})
 	if err != nil {
 		return err
 	}
@@ -292,7 +293,7 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 	if err != nil {
 		return JobID(-1), err
 	}
-	j.ID = id
+	j.ID = JobID(id)
 	for _, t := range j.tasks {
 		t.ID[0] = int(j.ID)
 	}
@@ -304,7 +305,7 @@ func (m *JobManager) Add(j *Job) (JobID, error) {
 }
 
 // Jobs searches jobs with a job filter.
-func (m *JobManager) Jobs(filter JobFilter) []*Job {
+func (m *JobManager) Jobs(filter service.JobFilter) []*Job {
 	jobs := make([]*Job, 0, len(m.job))
 	for _, j := range m.job {
 		if filter.Target == "" {
@@ -351,9 +352,9 @@ func (m *JobManager) Cancel(id JobID) error {
 			}()
 		}
 		if t.status != TaskDone {
-			err := t.Update(TaskUpdater{
+			err := t.Update(service.TaskUpdater{
 				UpdateStatus:   true,
-				Status:         TaskFailed,
+				Status:         int(TaskFailed),
 				UpdateAssignee: true,
 				Assignee:       "",
 			})
@@ -381,9 +382,9 @@ func (m *JobManager) Retry(id JobID) error {
 		}
 		t.retry = 0
 		if t.Status() == TaskFailed {
-			err := t.Update(TaskUpdater{
+			err := t.Update(service.TaskUpdater{
 				UpdateStatus: true,
-				Status:       TaskWaiting,
+				Status:       int(TaskWaiting),
 			})
 			if err != nil {
 				return err
