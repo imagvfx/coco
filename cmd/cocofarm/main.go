@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/imagvfx/coco"
-	"github.com/imagvfx/coco/sqlite"
+	"github.com/imagvfx/coco/service/sqlite"
 )
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {}

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/imagvfx/coco"
-	"github.com/imagvfx/coco/sqlite"
+	"github.com/imagvfx/coco/service/sqlite"
 )
 
 func newJob() *coco.Job {
